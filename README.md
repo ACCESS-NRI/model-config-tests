@@ -2,7 +2,10 @@
 
 These pytests are used as part CI checks for model configurations.
 
-The checksum pytests are used for reproducibility CI checks in the [ACCESS-NRI/reproducibility](https://github.com/ACCESS-NRI/reproducibility) repository. Code from these tests is adapted from COSIMAS's ACCESS-OM2's [
+The checksum pytests are used for reproducibility CI checks in the [ACCESS-NRI/reproducibility](https://github.com/ACCESS-NRI/reproducibility) repository. The quick configuration tests are used in 
+[ACCESS-NRI/access-om2-configs](https://github.com/ACCESS-NRI/access-om2-configs).
+
+Code from these tests is adapted from COSIMAS's ACCESS-OM2's [
 bit reproducibility tests](https://github.com/COSIMA/access-om2/blob/master/test/test_bit_reproducibility.py).
 
 ### How to run tests manually
@@ -55,4 +58,12 @@ To run only CI reproducibility checksum tests, use `-m checksum`, e.g.
 
 ```sh
 pytest <path/to/test-code> -m checksum
+```
+
+To run quick configuration tests, use the `config` marker. To additionally run
+ACCESS-OM2 specific quick configuration tests, use `access_om2` marker,
+e.g.:
+
+```sh
+pytest <path/to/test-code> -m "config or access_om2"
 ```
