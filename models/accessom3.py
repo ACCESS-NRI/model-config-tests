@@ -1,6 +1,7 @@
 """Specific Access-OM3 Model setup and post-processing"""
 
-import hashlib
+from collections import defaultdict
+import re
 from pathlib import Path
 from payu.models.cesm_cmeps import Runconfig
 from typing import Dict, Any
@@ -62,12 +63,23 @@ class AccessOm3(Model):
 
         # ocean.stats is used for regression testing in MOM6's own test suite
         # See https://github.com/mom-ocean/MOM6/blob/2ab885eddfc47fc0c8c0bae46bc61531104428d5/.testing/Makefile#L495-L501
-        # Here we calculate the md5 hash of ocean.stats
-        with open(output_filename, 'rb') as f:
-            contents = f.read()
-            md5_hash = hashlib.md5(contents).hexdigest()
+        # Rows in ocean.stats look like:
+        #      0,  693135.000,     0, En 3.0745627134675957E-23, CFL  0.00000, ...
+        # where the first three columns are Step, Day, Truncs and the remaining
+        # columns include a label for what they are (e.g. En = Energy/Mass)
+        # Header info is only included for new runs so can't be relied on
+        output_checksums: dict[str, list[any]] = defaultdict(list)
 
-        output_checksums = {"ocean.stats": [md5_hash]}
+        with open(output_filename) as f:
+            lines = f.readlines()
+            # Skip header if it exists (for new runs)
+            istart = 2 if "Step" in lines[0] else 0
+            for line in lines[istart:]:
+                for col in line.split(","):
+                    # Only keep columns with labels (ie not Step, Day, Truncs)
+                    col = re.split(" +", col.strip().rstrip('\n'))
+                    if len(col) > 1:
+                        output_checksums[col[0]].append(col[-1])
 
         if schema_version is None:
             schema_version = DEFAULT_SCHEMA_VERSION
