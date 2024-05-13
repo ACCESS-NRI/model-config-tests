@@ -8,13 +8,7 @@ import re
 from pathlib import Path
 from typing import Dict, Any
 
-from models.model import Model
-
-BASE_SCHEMA_URL = "https://raw.githubusercontent.com/ACCESS-NRI/schema/main/au.org.access-nri/model/access-om2/experiment/reproducibility/checksums"
-
-SCHEMA_VERSION_1_0_0 = "1-0-0"
-DEFAULT_SCHEMA_VERSION = SCHEMA_VERSION_1_0_0
-SUPPORTED_SCHEMA_VERSIONS = [SCHEMA_VERSION_1_0_0]
+from models.model import Model, SCHEMA_VERSION_1_0_0
 
 class AccessOm2(Model):
     def __init__(self, experiment):
@@ -23,7 +17,6 @@ class AccessOm2(Model):
 
         self.accessom2_config = experiment.control_path / 'accessom2.nml'
         self.ocean_config = experiment.control_path / 'ocean' / 'input.nml'
-        self.default_schema_version = DEFAULT_SCHEMA_VERSION
 
     def set_model_runtime(self,
                           years: int = 0,
@@ -78,7 +71,7 @@ class AccessOm2(Model):
                     output_checksums[field].append(checksum)
 
         if schema_version is None:
-            schema_version = DEFAULT_SCHEMA_VERSION
+            schema_version = self.default_schema_version
 
         if schema_version == SCHEMA_VERSION_1_0_0:
             checksums = {
@@ -90,27 +83,3 @@ class AccessOm2(Model):
                 f"Unsupported checksum schema version: {schema_version}")
 
         return checksums
-
-    def check_checksums_over_restarts(self,
-                                      long_run_checksum: Dict[str, Any],
-                                      short_run_checksum_0: Dict[str, Any],
-                                      short_run_checksum_1: Dict[str, Any]
-                                      ) -> bool:
-        """Compare a checksums from a long run (e.g. 2 days) against
-        checksums from 2 short runs (e.g. 1 day)"""
-        short_run_checksums = short_run_checksum_0['output']
-        for field, checksums in short_run_checksum_1['output'].items():
-            if field not in short_run_checksums:
-                short_run_checksums[field] = checksums
-            else:
-                short_run_checksums[field].extend(checksums)
-
-        matching_checksums = True
-        for field, checksums in long_run_checksum['output'].items():
-            for checksum in checksums:
-                if (field not in short_run_checksums or
-                        checksum not in short_run_checksums[field]):
-                    print(f"Unequal checksum: {field}: {checksum}")
-                    matching_checksums = False
-
-        return matching_checksums

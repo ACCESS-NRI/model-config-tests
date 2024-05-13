@@ -6,13 +6,7 @@ from pathlib import Path
 from payu.models.cesm_cmeps import Runconfig
 from typing import Dict, Any
 
-from models.model import Model
-
-BASE_SCHEMA_URL = "https://raw.githubusercontent.com/ACCESS-NRI/schema/main/au.org.access-nri/model/access-om2/experiment/reproducibility/checksums"
-
-SCHEMA_VERSION_1_0_0 = "1-0-0"
-DEFAULT_SCHEMA_VERSION = SCHEMA_VERSION_1_0_0
-SUPPORTED_SCHEMA_VERSIONS = [SCHEMA_VERSION_1_0_0]
+from models.model import Model, SCHEMA_VERSION_1_0_0, DEFAULT_SCHEMA_VERSION
 
 class AccessOm3(Model):
     def __init__(self, experiment):
@@ -21,7 +15,6 @@ class AccessOm3(Model):
 
         self.runconfig = experiment.control_path / 'nuopc.runconfig'
         self.ocean_config = experiment.control_path / 'input.nml'
-        self.default_schema_version = DEFAULT_SCHEMA_VERSION
 
     def set_model_runtime(self,
                           years: int = 0,
