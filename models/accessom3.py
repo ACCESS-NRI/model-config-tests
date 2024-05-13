@@ -6,7 +6,7 @@ from pathlib import Path
 from payu.models.cesm_cmeps import Runconfig
 from typing import Dict, Any
 
-from models.model import Model, SCHEMA_VERSION_1_0_0, DEFAULT_SCHEMA_VERSION
+from models.model import Model, SCHEMA_VERSION_1_0_0
 
 class AccessOm3(Model):
     def __init__(self, experiment):
@@ -75,7 +75,7 @@ class AccessOm3(Model):
                         output_checksums[col[0]].append(col[-1])
 
         if schema_version is None:
-            schema_version = DEFAULT_SCHEMA_VERSION
+            schema_version = self.default_schema_version
 
         if schema_version == SCHEMA_VERSION_1_0_0:
             checksums = {
