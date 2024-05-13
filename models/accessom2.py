@@ -27,6 +27,12 @@ class AccessOm2(Model):
         with open(self.accessom2_config) as f:
             nml = f90nml.read(f)
 
+        # Check that two of years, months, seconds is zero
+        if sum(x == 0 for x in (years, months, seconds)) != 2:
+            raise NotImplementedError(
+                "Cannot specify runtime in seconds and years and months" +
+                " at the same time. Two of which must be zero")
+
         nml['date_manager_nml']['restart_period'] = [years, months, seconds]
         nml.write(self.accessom2_config, force=True)
 
