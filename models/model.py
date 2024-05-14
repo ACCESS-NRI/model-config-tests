@@ -2,9 +2,8 @@
 from pathlib import Path
 from typing import Dict, Any
 
-#TODO: Update to point to schema moved to a more general location
 SCHEMA_VERSION_1_0_0 = "1-0-0"
-SCHEMA_1_0_0_URL = "https://raw.githubusercontent.com/ACCESS-NRI/schema/aae51cd2835abd7eb57f6690777a25359c758e98/au.org.access-nri/model/access-om2/experiment/reproducibility/checksums/1-0-0.json"
+SCHEMA_1_0_0_URL = "https://raw.githubusercontent.com/ACCESS-NRI/schema/7666d95967de4dfd19b0d271f167fdcfd3f46962/au.org.access-nri/model/reproducibility/checksums/1-0-0.json"
 SCHEMA_VERSION_TO_URL = {
     SCHEMA_VERSION_1_0_0: SCHEMA_1_0_0_URL
 }
