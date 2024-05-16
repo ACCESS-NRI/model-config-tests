@@ -2,7 +2,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import subprocess as sp
-import sys
 import shutil
 import re
 import os
@@ -11,8 +10,8 @@ import glob
 import yaml
 from pathlib import Path
 
-from util import wait_for_qsub
-from models import index as model_index
+from model_config_tests.util import wait_for_qsub
+from model_config_tests.models import index as model_index
 
 
 class ExpTestHelper(object):

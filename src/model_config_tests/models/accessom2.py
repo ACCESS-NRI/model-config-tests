@@ -1,14 +1,12 @@
 """Specific Access-OM2 Model setup and post-processing"""
 
-# NOTE for developers: `f90nml` is imported implicitly when this code is running in
-# the `Payu` conda environment.
 from collections import defaultdict
 import f90nml
 import re
 from pathlib import Path
 from typing import Dict, Any
 
-from models.model import Model
+from model_config_tests.models.model import Model
 
 BASE_SCHEMA_URL = "https://raw.githubusercontent.com/ACCESS-NRI/schema/main/au.org.access-nri/model/access-om2/experiment/reproducibility/checksums"
 

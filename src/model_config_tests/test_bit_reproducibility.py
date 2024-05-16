@@ -7,7 +7,7 @@ import json
 import pytest
 from pathlib import Path
 
-from exp_test_helper import setup_exp
+from model_config_tests.exp_test_helper import setup_exp
 
 class TestBitReproducibility():
 
@@ -18,7 +18,7 @@ class TestBitReproducibility():
         Test that a run reproduces historical checksums
         """
         # Setup checksum output directory
-        # NOTE: The checksum output file is used as part of `repro-ci` workflow
+        # NOTE: The checksum output file is used as part of `repro-ci` workflows
         output_dir = output_path / 'checksum'
         output_dir.mkdir(parents=True, exist_ok=True)
         checksum_output_file =  output_dir / 'historical-3hr-checksum.json'

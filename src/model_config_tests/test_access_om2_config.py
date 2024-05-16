@@ -9,7 +9,7 @@ import pytest
 import f90nml
 import warnings
 
-from util import get_git_branch_name
+from model_config_tests.util import get_git_branch_name
 
 # Mutually exclusive topic keywords
 TOPIC_KEYWORDS = {

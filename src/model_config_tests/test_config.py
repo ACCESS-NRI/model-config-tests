@@ -170,7 +170,7 @@ class TestConfig:
         # Get schema from Github
         schema_path = f"{BASE_SCHEMA_PATH}/{SCHEMA_VERSION}.json"
         url = f"{BASE_SCHEMA_URL}/{SCHEMA_COMMIT}/{schema_path}"
-    
+
         response = requests.get(url)
         assert response.status_code == 200
         schema = response.json()

@@ -1,0 +1,43 @@
+[build-system]
+build-backend = "setuptools.build_meta"
+requires = [
+  "setuptools >= 61.0.0",
+  "versioneer[toml]"
+]
+
+[project]
+name = "model-config-tests"
+version = "0.0.1"
+authors = [
+  { name = "ACCESS-NRI", email = "access.nri@anu.edu.au" },
+]
+description = "Test for ACCESS model (payu) configurations"
+readme = "README.md"
+requires-python = ">=3.8"
+license = { text = "Apache-2.0" }
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: POSIX :: Linux",
+]
+dependencies = [
+    "f90nml >=0.16",
+    "requests",
+    "PyYAML",
+    "requests",
+    "pytest >=8.0.1",
+    "ruamel.yaml >=0.18.5",
+]
+
+[project.optional-dependencies]
+test = [
+    "pylint",
+    "jsonschema >=4.21.1"
+]
+
+[project.scripts]
+model-config-tests = "model_config_tests.__main__:main"
+
+[project.urls]
+Homepage = "https://github.com/ACCESS-NRI/model-config-tests/"
+Issues = "https://github.com/ACCESS-NRI/model-config-tests/issues"
