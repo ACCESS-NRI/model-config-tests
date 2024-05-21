@@ -6,6 +6,13 @@ on:
       - 'main'
 
 jobs:
+  pre-commit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+      - uses: pre-commit/action@2c7b3805fd2a0fd8c1884dcaebf91fc102a13ecd #v3.0.1
+
   pypi-build:
     name: Build package for PyPI
     if: github.repository == 'access-nri/model-config-tests'
@@ -34,18 +41,28 @@ jobs:
   tests:
     name: Tests
     runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        python-version: [ "3.9", "3.10", "3.11" ]
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Python 3.11
+      - name: Setup Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
         with:
-          python-version: 3.11
+          python-version: ${{ matrix.python-version }}
           cache: pip
 
       - name: Install model_config_tests
-        run: pip install -e '.[test]'
+        run: python3 -m pip install -e '.[test]'
 
       - name: Run tests
-        run: pytest -s tests
+        run: python3 -m pytest -s
+
+      - name: Upload code coverage
+        uses: codecov/codecov-action@v4
+        with:
+          files: ./coverage.xml
