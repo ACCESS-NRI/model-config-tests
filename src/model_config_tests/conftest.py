@@ -2,9 +2,9 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import os
-import pytest
 from pathlib import Path
 
+import pytest
 import yaml
 from ruamel.yaml import YAML
 
@@ -14,19 +14,19 @@ def output_path(request):
     """Set the output path: This contains control and lab directories for each
     test and test output files - e.g. CHECKSUMS
     """
-    path = request.config.getoption('--output-path')
+    path = request.config.getoption("--output-path")
     if path is None:
         # Set default to /scratch/PROJECT/USER/test-model-repro/
-        project = os.environ.get('PROJECT')
-        user = os.environ.get('USER')
-        path = f'/scratch/{project}/{user}/test-model-repro'
+        project = os.environ.get("PROJECT")
+        user = os.environ.get("USER")
+        path = f"/scratch/{project}/{user}/test-model-repro"
     return Path(path)
 
 
 @pytest.fixture(scope="session")
 def control_path(request):
     """Set the path of the model configuration directory to test"""
-    path = request.config.getoption('--control-path')
+    path = request.config.getoption("--control-path")
     if path is None:
         # Set default to current working directory
         path = Path.cwd()
@@ -36,17 +36,17 @@ def control_path(request):
 @pytest.fixture(scope="session")
 def checksum_path(request, control_path):
     """Set the path of the model configuration directory to test"""
-    path = request.config.getoption('--checksum-path')
+    path = request.config.getoption("--checksum-path")
     if path is None:
         # Set default to checksum stored on model configuration
-        path = control_path / 'testing' / 'checksum' / 'historical-3hr-checksum.json'
+        path = control_path / "testing" / "checksum" / "historical-3hr-checksum.json"
     return Path(path)
 
 
 @pytest.fixture(scope="session")
 def metadata(control_path: Path):
     """Read the metadata file in the control directory"""
-    metadata_path = control_path / 'metadata.yaml'
+    metadata_path = control_path / "metadata.yaml"
     # Use ruamel.yaml as that is what is used to read metadata files in Payu
     # It also errors out if there are duplicate keys in metadata
     content = YAML().load(metadata_path)
@@ -56,7 +56,7 @@ def metadata(control_path: Path):
 @pytest.fixture(scope="session")
 def config(control_path: Path):
     """Read the config file in the control directory"""
-    config_path = control_path / 'config.yaml'
+    config_path = control_path / "config.yaml"
     with open(config_path) as f:
         config_content = yaml.safe_load(f)
     return config_content
@@ -67,27 +67,33 @@ def target_branch(request):
     """Set the target branch - i.e., the branch the configuration will be
     merged into. This used is to infer configuration information, if the
     configuration branches follow a common naming scheme (e.g. ACCESS-OM2)"""
-    return request.config.getoption('--target-branch')
+    return request.config.getoption("--target-branch")
 
 
 # Set up command line options and default for directory paths
 def pytest_addoption(parser):
     """Attaches optional command line arguments"""
-    parser.addoption("--output-path",
-                     action="store",
-                     help="Specify the output directory path for test output")
+    parser.addoption(
+        "--output-path",
+        action="store",
+        help="Specify the output directory path for test output",
+    )
 
-    parser.addoption("--control-path",
-                     action="store",
-                     help="Specify the model configuration path to test")
+    parser.addoption(
+        "--control-path",
+        action="store",
+        help="Specify the model configuration path to test",
+    )
 
-    parser.addoption("--checksum-path",
-                     action="store",
-                     help="Specify the checksum file to compare against")
-    
-    parser.addoption("--target-branch",
-                     action="store",
-                     help="Specify the target branch name")
+    parser.addoption(
+        "--checksum-path",
+        action="store",
+        help="Specify the checksum file to compare against",
+    )
+
+    parser.addoption(
+        "--target-branch", action="store", help="Specify the target branch name"
+    )
 
 
 def pytest_configure(config):

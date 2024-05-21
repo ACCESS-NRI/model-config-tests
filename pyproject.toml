@@ -75,6 +75,8 @@ exclude = [
     "site-packages",
     "venv",
 ]
+
+[tool.ruff.lint]
 # E402: module level import not at top of file
 # E501: line too long - let black worry about that
 ignore = [
@@ -93,8 +95,8 @@ select = [
     "UP",
 ]
 
-[tool.ruff.mccabe]
+[tool.ruff.lint.mccabe]
 max-complexity = 18
 
-[tool.ruff.isort]
+[tool.ruff.lint.isort]
 known-first-party = ["model_config_tests"]

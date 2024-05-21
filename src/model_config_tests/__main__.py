@@ -9,6 +9,7 @@ HERE = os.path.dirname(__file__)
 
 def main():
     import pytest
+
     errcode = pytest.main([HERE] + sys.argv[1:])
     sys.exit(errcode)
 
