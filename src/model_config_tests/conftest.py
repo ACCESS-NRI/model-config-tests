@@ -16,10 +16,9 @@ def output_path(request):
     """
     path = request.config.getoption("--output-path")
     if path is None:
-        # Set default to /scratch/PROJECT/USER/test-model-repro/
-        project = os.environ.get("PROJECT")
-        user = os.environ.get("USER")
-        path = f"/scratch/{project}/{user}/test-model-repro"
+        # Set default to $TMPDIR/test-model-repro/
+        tmp_dir = os.environ.get("TMPDIR")
+        path = f"{tmp_dir}/test-model-repro"
     return Path(path)
 
 

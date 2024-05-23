@@ -32,7 +32,7 @@ git checkout <branch/tag>
 3. Setup payu
 ```sh
 module use /g/data/vk83/modules
-module load payu/1.1
+module load payu/1.1.3
 ```
 
 4. Run the pytests
@@ -42,7 +42,7 @@ model-config-tests
 
 ### Pytest Options
 
-The output directory for pytests defaults to `/scratch/$PROJECT/$USER/test-model-repro` and contains the following sub-directories:
+The output directory for pytests defaults to `$TMPDIR/test-model-repro` and contains the following subdirectories:
 - `control` - contains copies of the model configuration used for each experiment run in the tests.
 - `lab` - contains `payu` model output directories containing `work` and `archive` sub-directories.
 

@@ -59,7 +59,7 @@ jobs:
         run: python3 -m pip install ./dist/model_config_tests-*.tar.gz
 
       - name: Run model-config-tests command
-        run: model-config-tests --collect-only -m "checksum"
+        run: model-config-tests --collect-only
 
   tests:
     name: Tests
