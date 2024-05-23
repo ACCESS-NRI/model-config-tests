@@ -36,6 +36,7 @@ jobs:
     needs: ['pypi-build']
     name: Publish to PyPI.org
     runs-on: ubuntu-latest
+    environment: release
     permissions:
       # IMPORTANT: this permission is mandatory for trusted publishing
       id-token: write
