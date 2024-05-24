@@ -1,25 +1,24 @@
 """Specific Access-OM3 Model setup and post-processing"""
 
-from collections import defaultdict
 import re
+from collections import defaultdict
 from pathlib import Path
-from payu.models.cesm_cmeps import Runconfig
-from typing import Dict, Any
+from typing import Any
 
-from model_config_tests.models.model import Model, SCHEMA_VERSION_1_0_0
+from payu.models.cesm_cmeps import Runconfig
+
+from model_config_tests.models.model import SCHEMA_VERSION_1_0_0, Model
+
 
 class AccessOm3(Model):
     def __init__(self, experiment):
-        super(AccessOm3, self).__init__(experiment)
-        self.output_file = self.experiment.output000 / 'ocean.stats'
+        super().__init__(experiment)
+        self.output_file = self.experiment.output000 / "ocean.stats"
 
-        self.runconfig = experiment.control_path / 'nuopc.runconfig'
-        self.ocean_config = experiment.control_path / 'input.nml'
+        self.runconfig = experiment.control_path / "nuopc.runconfig"
+        self.ocean_config = experiment.control_path / "input.nml"
 
-    def set_model_runtime(self,
-                          years: int = 0,
-                          months: int = 0,
-                          seconds: int = 10800):
+    def set_model_runtime(self, years: int = 0, months: int = 0, seconds: int = 10800):
         """Set config files to a short time period for experiment run.
         Default is 3 hours"""
         runconfig = Runconfig(self.runconfig)
@@ -32,7 +31,8 @@ class AccessOm3(Model):
             n = str(12 * years + months)
         else:
             raise NotImplementedError(
-                f"Cannot specify runtime in seconds and year/months at the same time")
+                "Cannot specify runtime in seconds and year/months at the same time"
+            )
 
         runconfig.set("CLOCK_attributes", "restart_n", n)
         runconfig.set("CLOCK_attributes", "restart_option", freq)
@@ -45,12 +45,12 @@ class AccessOm3(Model):
         """Check for existing output file"""
         return self.output_file.exists()
 
-    def extract_checksums(self,
-                          output_directory: Path = None,
-                          schema_version: str = None) -> Dict[str, Any]:
+    def extract_checksums(
+        self, output_directory: Path = None, schema_version: str = None
+    ) -> dict[str, Any]:
         """Parse output file and create checksum using defined schema"""
         if output_directory:
-            output_filename = output_directory / 'ocean.stats'
+            output_filename = output_directory / "ocean.stats"
         else:
             output_filename = self.output_file
 
@@ -70,7 +70,7 @@ class AccessOm3(Model):
             for line in lines[istart:]:
                 for col in line.split(","):
                     # Only keep columns with labels (ie not Step, Day, Truncs)
-                    col = re.split(" +", col.strip().rstrip('\n'))
+                    col = re.split(" +", col.strip().rstrip("\n"))
                     if len(col) > 1:
                         output_checksums[col[0]].append(col[-1])
 
@@ -80,11 +80,11 @@ class AccessOm3(Model):
         if schema_version == SCHEMA_VERSION_1_0_0:
             checksums = {
                 "schema_version": schema_version,
-                "output": dict(output_checksums)
+                "output": dict(output_checksums),
             }
         else:
             raise NotImplementedError(
-                f"Unsupported checksum schema version: {schema_version}")
+                f"Unsupported checksum schema version: {schema_version}"
+            )
 
         return checksums
-

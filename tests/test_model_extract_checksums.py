@@ -1,23 +1,25 @@
-import pytest
-import requests
 import json
-import jsonschema
 from pathlib import Path
 from unittest.mock import Mock
+
+import jsonschema
+import pytest
+import requests
 
 from model_config_tests.models import index as model_index
 
 MODEL_NAMES = model_index.keys()
 
+
 @pytest.mark.parametrize("model_name", MODEL_NAMES)
 @pytest.mark.test
 def test_extract_checksums(model_name):
-    resources_dir = Path(f'test/resources/{model_name}')
+    resources_dir = Path(f"test/resources/{model_name}")
 
     # Mock ExpTestHelper
     mock_experiment = Mock()
-    mock_experiment.output000 = resources_dir / 'output000'
-    mock_experiment.control_path = Path('test/tmp')
+    mock_experiment.output000 = resources_dir / "output000"
+    mock_experiment.control_path = Path("test/tmp")
 
     # Create Model instance
     ModelType = model_index[model_name]
@@ -31,8 +33,8 @@ def test_extract_checksums(model_name):
         assert checksums["schema_version"] == version
 
         # Check the entire checksum file is expected
-        checksum_file = resources_dir / 'checksums' / f'{version}.json'
-        with open(checksum_file, 'r') as file:
+        checksum_file = resources_dir / "checksums" / f"{version}.json"
+        with open(checksum_file) as file:
             expected_checksums = json.load(file)
 
         assert checksums == expected_checksums
@@ -47,12 +49,12 @@ def test_extract_checksums(model_name):
 @pytest.mark.parametrize("model_name", MODEL_NAMES)
 @pytest.mark.test
 def test_extract_checksums_unsupported_version(model_name):
-    resources_dir = Path(f'test/resources/{model_name}')
+    resources_dir = Path(f"test/resources/{model_name}")
 
     # Mock ExpTestHelper
     mock_experiment = Mock()
-    mock_experiment.output000 = resources_dir / 'output000'
-    mock_experiment.control_path = Path('test/tmp')
+    mock_experiment.output000 = resources_dir / "output000"
+    mock_experiment.control_path = Path("test/tmp")
 
     # Create Model instance
     ModelType = model_index[model_name]
@@ -60,7 +62,7 @@ def test_extract_checksums_unsupported_version(model_name):
 
     # Test NotImplementedError gets raised for unsupported versions
     with pytest.raises(NotImplementedError):
-        model.extract_checksums(schema_version='test-version')
+        model.extract_checksums(schema_version="test-version")
 
 
 def get_schema_from_url(url):

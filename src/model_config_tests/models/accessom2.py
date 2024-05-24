@@ -5,7 +5,9 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Any
 
-from model_config_tests.models.model import Model, SCHEMA_VERSION_1_0_0
+import f90nml
+
+from model_config_tests.models.model import SCHEMA_VERSION_1_0_0, Model
 
 
 class AccessOm2(Model):
@@ -13,8 +15,8 @@ class AccessOm2(Model):
         super().__init__(experiment)
         self.output_file = self.experiment.output000 / "access-om2.out"
 
-        self.accessom2_config = experiment.control_path / 'accessom2.nml'
-        self.ocean_config = experiment.control_path / 'ocean' / 'input.nml'
+        self.accessom2_config = experiment.control_path / "accessom2.nml"
+        self.ocean_config = experiment.control_path / "ocean" / "input.nml"
 
     def set_model_runtime(self, years: int = 0, months: int = 0, seconds: int = 10800):
         """Set config files to a short time period for experiment run.
@@ -25,10 +27,11 @@ class AccessOm2(Model):
         # Check that two of years, months, seconds is zero
         if sum(x == 0 for x in (years, months, seconds)) != 2:
             raise NotImplementedError(
-                "Cannot specify runtime in seconds and years and months" +
-                " at the same time. Two of which must be zero")
+                "Cannot specify runtime in seconds and years and months"
+                + " at the same time. Two of which must be zero"
+            )
 
-        nml['date_manager_nml']['restart_period'] = [years, months, seconds]
+        nml["date_manager_nml"]["restart_period"] = [years, months, seconds]
         nml.write(self.accessom2_config, force=True)
 
     def output_exists(self) -> bool:
