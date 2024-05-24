@@ -1,4 +1,5 @@
 import json
+import os
 from pathlib import Path
 from unittest.mock import Mock
 
@@ -9,12 +10,13 @@ import requests
 from model_config_tests.models import index as model_index
 
 MODEL_NAMES = model_index.keys()
+HERE = os.path.dirname(__file__)
+RESOURCES_DIR = Path(f"{HERE}/resources")
 
 
 @pytest.mark.parametrize("model_name", MODEL_NAMES)
-@pytest.mark.test
 def test_extract_checksums(model_name):
-    resources_dir = Path(f"test/resources/{model_name}")
+    resources_dir = RESOURCES_DIR / model_name
 
     # Mock ExpTestHelper
     mock_experiment = Mock()
@@ -47,9 +49,8 @@ def test_extract_checksums(model_name):
 
 
 @pytest.mark.parametrize("model_name", MODEL_NAMES)
-@pytest.mark.test
 def test_extract_checksums_unsupported_version(model_name):
-    resources_dir = Path(f"test/resources/{model_name}")
+    resources_dir = RESOURCES_DIR / model_name
 
     # Mock ExpTestHelper
     mock_experiment = Mock()
