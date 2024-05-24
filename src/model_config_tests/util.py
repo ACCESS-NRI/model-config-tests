@@ -1,8 +1,8 @@
 # Copyright 2024 ACCESS-NRI and contributors. See the top-level COPYRIGHT file for details.
 # SPDX-License-Identifier: Apache-2.0
 
-import time
 import subprocess as sp
+import time
 
 
 def wait_for_qsub(run_id):
@@ -11,26 +11,25 @@ def wait_for_qsub(run_id):
     """
 
     while True:
-        time.sleep(1*60)
+        time.sleep(1 * 60)
         try:
-            qsub_out = sp.check_output(['qstat', run_id], stderr=sp.STDOUT)
+            qsub_out = sp.check_output(["qstat", run_id], stderr=sp.STDOUT)
         except sp.CalledProcessError as err:
             qsub_out = err.output
 
         qsub_out = qsub_out.decode()
 
-        if 'Job has finished' in qsub_out:
+        if "Job has finished" in qsub_out:
             break
 
 
 def get_git_branch_name(path):
     """Get the git branch name of the given git directory"""
     try:
-        cmd = 'git rev-parse --abbrev-ref HEAD'
-        result = sp.check_output(cmd, shell=True,
-                                         cwd=path).strip()
+        cmd = "git rev-parse --abbrev-ref HEAD"
+        result = sp.check_output(cmd, shell=True, cwd=path).strip()
         # Decode byte string to string
-        branch_name = result.decode('utf-8')
+        branch_name = result.decode("utf-8")
         return branch_name
     except sp.CalledProcessError:
         return None

@@ -1,0 +1,11 @@
+*.pyc
+/__pycache__
+/build
+/dist
+*.egg-info
+.coverage
+.ipynb_checkpoints
+.vscode
+.idea
+/tests/tmp/
+coverage.xml
