@@ -6,7 +6,7 @@ from pathlib import Path
 from payu.models.cesm_cmeps import Runconfig
 from typing import Dict, Any
 
-from models.model import Model, SCHEMA_VERSION_1_0_0
+from model_config_tests.models.model import Model, SCHEMA_VERSION_1_0_0
 
 class AccessOm3(Model):
     def __init__(self, experiment):

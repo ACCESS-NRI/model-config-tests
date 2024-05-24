@@ -1,6 +1,5 @@
 """Generic Model class"""
 from pathlib import Path
-from typing import Dict, Any
 
 SCHEMA_VERSION_1_0_0 = "1-0-0"
 SCHEMA_1_0_0_URL = "https://raw.githubusercontent.com/ACCESS-NRI/schema/7666d95967de4dfd19b0d271f167fdcfd3f46962/au.org.access-nri/model/reproducibility/checksums/1-0-0.json"
@@ -8,6 +7,7 @@ SCHEMA_VERSION_TO_URL = {
     SCHEMA_VERSION_1_0_0: SCHEMA_1_0_0_URL
 }
 DEFAULT_SCHEMA_VERSION = "1-0-0"
+
 
 class Model(object):
     def __init__(self, experiment):

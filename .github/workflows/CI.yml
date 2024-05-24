@@ -1,0 +1,92 @@
+name: CI
+
+on:
+  pull_request:
+    branches:
+      - 'main'
+
+jobs:
+  pre-commit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+      - uses: pre-commit/action@2c7b3805fd2a0fd8c1884dcaebf91fc102a13ecd #v3.0.1
+
+  pypi-build:
+    name: Build package for PyPI
+    if: github.repository == 'access-nri/model-config-tests'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.11
+          cache: 'pip'
+
+      - name: Install build dependencies
+        run: python3 -m pip install --upgrade build
+
+      - name: Build distributions
+        run: python3 -m build
+
+      - name: Upload distribution artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: release
+          path: dist
+
+  install_from_dist:
+    needs: [ 'pypi-build' ]
+    name: Test install from distribution
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download distribution
+        uses: actions/download-artifact@v4
+        with:
+          name: release
+          path: dist
+
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.11
+
+      - name: Install model_config_tests
+        run: python3 -m pip install ./dist/model_config_tests-*.tar.gz
+
+      - name: Run model-config-tests command
+        run: model-config-tests --collect-only
+
+  tests:
+    name: Tests
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        python-version: [ "3.9", "3.10", "3.11" ]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: Install model_config_tests with test dependencies
+        run: python3 -m pip install -e '.[test]'
+
+      - name: Run tests
+        run: python3 -m pytest -s --cov=./src --cov-report=xml tests
+
+      - name: Upload code coverage
+        uses: codecov/codecov-action@125fc84a9a348dbcf27191600683ec096ec9021c #v4.4.1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./coverage.xml

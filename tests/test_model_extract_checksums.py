@@ -5,7 +5,7 @@ import jsonschema
 from pathlib import Path
 from unittest.mock import Mock
 
-from models import index as model_index
+from model_config_tests.models import index as model_index
 
 MODEL_NAMES = model_index.keys()
 
