@@ -7,13 +7,7 @@ from typing import Any
 
 import f90nml
 
-from model_config_tests.models.model import Model
-
-BASE_SCHEMA_URL = "https://raw.githubusercontent.com/ACCESS-NRI/schema/main/au.org.access-nri/model/access-om2/experiment/reproducibility/checksums"
-
-SCHEMA_VERSION_1_0_0 = "1-0-0"
-DEFAULT_SCHEMA_VERSION = SCHEMA_VERSION_1_0_0
-SUPPORTED_SCHEMA_VERSIONS = [SCHEMA_VERSION_1_0_0]
+from model_config_tests.models.model import SCHEMA_VERSION_1_0_0, Model
 
 
 class AccessOm2(Model):
@@ -23,13 +17,19 @@ class AccessOm2(Model):
 
         self.accessom2_config = experiment.control_path / "accessom2.nml"
         self.ocean_config = experiment.control_path / "ocean" / "input.nml"
-        self.default_schema_version = DEFAULT_SCHEMA_VERSION
 
     def set_model_runtime(self, years: int = 0, months: int = 0, seconds: int = 10800):
         """Set config files to a short time period for experiment run.
         Default is 3 hours"""
         with open(self.accessom2_config) as f:
             nml = f90nml.read(f)
+
+        # Check that two of years, months, seconds is zero
+        if sum(x == 0 for x in (years, months, seconds)) != 2:
+            raise NotImplementedError(
+                "Cannot specify runtime in seconds and years and months"
+                + " at the same time. Two of which must be zero"
+            )
 
         nml["date_manager_nml"]["restart_period"] = [years, months, seconds]
         nml.write(self.accessom2_config, force=True)
@@ -75,7 +75,7 @@ class AccessOm2(Model):
                     output_checksums[field].append(checksum)
 
         if schema_version is None:
-            schema_version = DEFAULT_SCHEMA_VERSION
+            schema_version = self.default_schema_version
 
         if schema_version == SCHEMA_VERSION_1_0_0:
             checksums = {
@@ -88,30 +88,3 @@ class AccessOm2(Model):
             )
 
         return checksums
-
-    def check_checksums_over_restarts(
-        self,
-        long_run_checksum: dict[str, Any],
-        short_run_checksum_0: dict[str, Any],
-        short_run_checksum_1: dict[str, Any],
-    ) -> bool:
-        """Compare a checksums from a long run (e.g. 2 days) against
-        checksums from 2 short runs (e.g. 1 day)"""
-        short_run_checksums = short_run_checksum_0["output"]
-        for field, checksums in short_run_checksum_1["output"].items():
-            if field not in short_run_checksums:
-                short_run_checksums[field] = checksums
-            else:
-                short_run_checksums[field].extend(checksums)
-
-        matching_checksums = True
-        for field, checksums in long_run_checksum["output"].items():
-            for checksum in checksums:
-                if (
-                    field not in short_run_checksums
-                    or checksum not in short_run_checksums[field]
-                ):
-                    print(f"Unequal checksum: {field}: {checksum}")
-                    matching_checksums = False
-
-        return matching_checksums
