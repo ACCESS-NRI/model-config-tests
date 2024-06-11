@@ -1,0 +1,123 @@
+name: Repro Checks
+on:
+  workflow_call:
+    inputs:
+      model-name:
+        type: string
+        required: true
+        description: The name of the model to check for reproducibility
+      config-tag:
+        type: string
+        required: true
+        description: A tag on an associated config branch to use for the reproducibility run
+      environment-name:
+        type: string
+        required: true
+        description: The name of a GitHub Deployment Environment that is inherited from the caller
+      test-markers:
+        type: string
+        required: true
+        description: A python expression of markers to pass to the reproducibility pytests
+      model-config-tests-version:
+        type: string
+        required: true
+        description: A version of the model-config-tests package
+      python-version:
+        type: string
+        required: true
+        description: The python module version used to create test virtual environment
+    outputs:
+      artifact-name:
+        value: ${{ jobs.repro.outputs.artifact-name }}
+        description: Name of the artifact containing the checksums and test report for this repro run
+      experiment-location:
+        value: ${{ jobs.repro.outputs.experiment-location }}
+        description: Location of the experiment on the target environment
+env:
+  TEST_OUTPUT_LOCAL_LOCATION: /opt/test-output
+jobs:
+  repro:
+    # NOTE: A lot of these `vars` and `secrets` are not found in this repository. Instead, they are inherited
+    # from the calling workflow (for example, `ACCESS-NRI/access-om2-configs`)
+    name: Run ${{ inputs.config-tag }}
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment-name }}
+    outputs:
+      artifact-name: ${{ steps.artifact.outputs.name }}
+      experiment-location: ${{ steps.run.outputs.experiment-location }}
+    env:
+      EXPERIMENT_LOCATION: ${{ vars.EXPERIMENTS_LOCATION }}/${{ inputs.model-name }}/${{ inputs.config-tag }}
+    steps:
+      - name: Setup SSH
+        id: ssh
+        uses: access-nri/actions/.github/actions/setup-ssh@main
+        with:
+          hosts: |
+            ${{ secrets.SSH_HOST }}
+            ${{ secrets.SSH_HOST_DATA }}
+          private-key: ${{ secrets.SSH_KEY }}
+
+      - name: Run configuration
+        id: run
+        env:
+          BASE_EXPERIMENT_LOCATION: ${{ env.EXPERIMENT_LOCATION }}/base-experiment
+          TEST_VENV_LOCATION: ${{ env.EXPERIMENT_LOCATION }}/test-venv
+        run: |
+          ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} -i ${{ steps.ssh.outputs.private-key-path }} /bin/bash<<'EOT'
+
+          # Remove base experiment if it already exists
+          if [ -d "${{ env.BASE_EXPERIMENT_LOCATION }}" ]; then
+            rm -rf ${{ env.BASE_EXPERIMENT_LOCATION }}
+          fi
+
+          # Setup a base experiment
+          git clone ${{ github.event.repository.clone_url }} ${{ env.BASE_EXPERIMENT_LOCATION }}
+          cd ${{ env.BASE_EXPERIMENT_LOCATION }}
+          git checkout ${{ inputs.config-tag }}
+
+          # Load Python module
+          module load python3/${{ inputs.python-version }}
+
+          # Create and activate virtual environment
+          python3 -m venv ${{ env.TEST_VENV_LOCATION }}
+          source ${{ env.TEST_VENV_LOCATION }}/bin/activate
+
+          # Install model-config-tests
+          pip install model-config-tests==${{ inputs.model-config-tests-version }}
+
+          # The pytests in model-config-tests might fail in this command,
+          # but that is okay. We still want to run the rest of the commands
+          # after this step.
+          set +e
+
+          # Run model-config-tests pytests - this also generates checksums files
+          model-config-tests -s -m "${{ inputs.test-markers }}" \
+            --output-path ${{ env.EXPERIMENT_LOCATION }} \
+            --junitxml=${{ env.EXPERIMENT_LOCATION }}/checksum/test_report.xml
+          
+          # Deactivate and remove the test virtual environment
+          deactivate
+          rm -rf ${{ env.TEST_VENV_LOCATION }}
+
+          # We want the exit code post-`pytest` to be 0 so the overall `ssh` call succeeeds
+          # after a potential `pytest` error.
+          exit 0          
+          EOT
+          echo "experiment-location=${{ env.EXPERIMENT_LOCATION }}" >> $GITHUB_OUTPUT
+
+      - name: Copy Back Checksums and Test Report
+        run: |
+          rsync --recursive -e 'ssh -i ${{ steps.ssh.outputs.private-key-path }}' \
+              '${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST_DATA }}:${{ env.EXPERIMENT_LOCATION }}/checksum' \
+              ${{ env.TEST_OUTPUT_LOCAL_LOCATION }}
+
+      - name: Generate Test Output Artifact Name
+        id: artifact
+        run: echo "name=${{ inputs.model-name }}-${{ inputs.config-tag }}" >> $GITHUB_OUTPUT
+
+      - name: Upload Test Output
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ steps.artifact.outputs.name }}
+          if-no-files-found: error
+          path: ${{ env.TEST_OUTPUT_LOCAL_LOCATION }}
