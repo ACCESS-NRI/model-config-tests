@@ -20,6 +20,14 @@ jobs:
         with:
           ref: main
 
+      - name: Validate `config/ci.json`
+        uses: access-nri/schema/.github/actions/validate-with-schema@main
+        with:
+          schema-version: 1-0-0
+          meta-schema-version: draft-2020-12
+          schema-location: au.org.access-nri/model/configuration/ci
+          data-location: config/ci.json
+
       - name: Read scheduled tests config
         id: scheduled-config
         uses: access-nri/model-config-tests/.github/actions/parse-ci-config@main
