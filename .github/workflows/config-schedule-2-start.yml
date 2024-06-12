@@ -33,7 +33,7 @@ jobs:
     # the test results and checksum.
     needs:
       - config
-    uses: access-nri/model-config-tests/.github/workflows/repro-checks.yml@main
+    uses: access-nri/model-config-tests/.github/workflows/test-repro.yml@main
     with:
       model-name: access-om2
       environment-name: Gadi
