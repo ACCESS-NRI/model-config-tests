@@ -63,14 +63,12 @@ jobs:
 
       - name: Failure Notifier
         if: failure()
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GH_REPO: ${{ github.repository }}
-          BODY: |
+        uses: access-nri/actions/.github/actions/pr-comment@main
+        with:
+          comment: |
             :x: Automated Reproducibility testing cannot be run on this branch :x:
             Source and Target branches must be of the form `dev-<config>` and `release-<config>` respectively, and `<config>` must match between them.
             Rename the Source branch or check the Target branch, and try again.
-        run: gh pr comment --body '${{ env.BODY }}'
 
   config:
     name: Read CI Testing Configuration
@@ -90,15 +88,15 @@ jobs:
 
       - name: Read QA tests config
         id: qa-config
-        uses: access-nri/access-om2-configs/.github/actions/parse-ci-config@main
+        uses: access-nri/model-config-tests/.github/actions/parse-ci-config@main
         with:
           check: qa
           branch-or-tag: ${{ github.base_ref }}
           config-filepath: "config/ci.json"
-      
+
       - name: Read reproducibility tests config
         id: repro-config
-        uses: access-nri/access-om2-configs/.github/actions/parse-ci-config@main
+        uses: access-nri/model-config-tests/.github/actions/parse-ci-config@main
         with:
           check: reproducibility
           branch-or-tag: ${{ github.base_ref }}
@@ -126,7 +124,7 @@ jobs:
           python-version: ${{ needs.config.outputs.qa-python-version }}
           cache: pip
 
-      - name: Install model-config-tests 
+      - name: Install model-config-tests
         run: pip install model-config-tests=='${{ needs.config.outputs.qa-model-config-tests-version }}'
 
       - name: Invoke Simple CI Pytests
@@ -160,7 +158,7 @@ jobs:
       - branch-check
       - config
     if: needs.commit-check.outputs.authorship != vars.GH_ACTIONS_BOT_GIT_USER_NAME && needs.branch-check.result == 'success'
-    uses: access-nri/reproducibility/.github/workflows/checks.yml@main
+    uses: access-nri/model-config-tests/.github/workflows/config-pr-checks.yml@main
     with:
       model-name: access-om2
       environment-name: Gadi
@@ -168,7 +166,6 @@ jobs:
       test-markers: ${{ needs.config.outputs.repro-markers }}
       model-config-tests-version: ${{ needs.config.outputs.repro-model-config-tests-version }}
       python-version: ${{ needs.config.outputs.repro-python-version }}
-
     secrets: inherit
     permissions:
       contents: write
@@ -267,30 +264,23 @@ jobs:
       - repro-ci
       - check-checksum
     runs-on: ubuntu-latest
-    env:
-      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      GH_REPO: ${{ github.repository }}
     permissions:
       pull-requests: write
     steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.head_ref }}
-
       - name: Successful Release Comment
         if: needs.check-checksum.outputs.result == 'pass'
-        env:
-          BODY: |
+        uses: access-nri/actions/.github/actions/pr-comment@main
+        with:
+          comment: |
             :white_check_mark: The Bitwise Reproducibility check succeeded when comparing against `${{ needs.check-checksum.outputs.compared-checksum-version }}` for this `Release` config. :white_check_mark:
             For further information, the experiment can be found on Gadi at ${{ needs.repro-ci.outputs.experiment-location }}, and the test results at ${{ needs.check-checksum.outputs.check-run-url }}.
             You must bump the minor version of `access-om2-configs` - to bump the version, comment `!bump minor` or modify the `version` in `metadata.yaml`. The meaning of these version bumps is explained in the README.md, under `Config Tags`.
-        run: gh pr comment --body '${{ env.BODY }}'
 
       - name: Failed Release Comment
         if: needs.check-checksum.outputs.result == 'fail'
-        env:
-          BODY: |
+        uses: access-nri/actions/.github/actions/pr-comment@main
+        with:
+          comment: |
             :x: The Bitwise Reproducibility check failed when comparing against `${{ needs.check-checksum.outputs.compared-checksum-version }}` for this `Release` config. :x:
             For further information, the experiment can be found on Gadi at ${{ needs.repro-ci.outputs.experiment-location }}, and the test results at ${{ needs.check-checksum.outputs.check-run-url }}.
             You must bump the major version of `access-om2-configs` before this PR is merged to account for this - to bump the version, comment `!bump major`or modify the `version` in `metadata.yaml`. The meaning of these version bumps is explained in the README.md, under `Config Tags`.
-        run: gh pr comment --body '${{ env.BODY }}'

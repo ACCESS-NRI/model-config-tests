@@ -1,8 +1,10 @@
 name: Scheduled Checks
 on:
-  workflow_dispatch:
-  schedule:
-    - cron: '0 0 1 * *'  # once a month
+  workflow_call:
+  # Workflows that call this workflow use the following triggers:
+  # workflow_dispatch:
+  # schedule:
+  #   - cron: '0 0 1 * *'  # once a month
 jobs:
   setup:
     name: Setup Tasks
@@ -27,7 +29,7 @@ jobs:
       fail-fast: false
       matrix:
         config-tag: ${{ fromJson(needs.setup.outputs.tags) }}
-    uses: ./.github/workflows/schedule-2-start.yml
+    uses: ./.github/workflows/config-schedule-2-start.yml
     with:
       config-tag: ${{ matrix.config-tag }}
     secrets: inherit

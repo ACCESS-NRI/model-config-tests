@@ -5,12 +5,13 @@
 # based on the result of the reproducibility check.
 name: Confirm
 on:
-  issue_comment:
-    types:
-      - created
-      - edited
+  workflow_call:
+  # Workflows that call this workflow use the following triggers:
+  # issue_comment:
+  #   types:
+  #     - created
+  #     - edited
 env:
-  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
 jobs:
   bump-version:
@@ -142,11 +143,10 @@ jobs:
           git push
 
       - name: Comment Success
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          BODY: |
+        uses: access-nri/actions/.github/actions/pr-comment@main
+        with:
+          comment: |
             :white_check_mark: Version bumped from `${{ needs.bump-version.outputs.before }}` to `${{ needs.bump-version.outputs.after }}` :white_check_mark:
-        run: gh pr comment --body '${{ env.BODY }}'
 
   failure-notifier:
     name: Failure Notifier
@@ -156,19 +156,9 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       pull-requests: write
-    env:
-      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      GH_REPO: ${{ github.repository }}
     steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Checkout Associated PR ${{ github.event.issue.number }}
-        run: gh pr checkout ${{ github.event.issue.number }}
-
       - name: Comment Failure
-        env:
-          BODY: |
+        uses: access-nri/actions/.github/actions/pr-comment@main
+        with:
+          comment: |
             :x: Failed to bump VERSION or commit changes, see ${{ env.RUN_URL }} :x:
-        run: gh pr comment --body '${{ env.BODY }}'
