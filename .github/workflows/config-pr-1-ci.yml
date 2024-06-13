@@ -121,16 +121,28 @@ jobs:
     permissions:
       checks: write
     steps:
-      - name: Checkout PR ${{ github.event.action.pull_request.number }}
+      - name: Checkout PR ${{ github.event.pull_request.number }}
+        uses: actions/checkout@v4
+
+      - name: Checkout model-config-tests requirements
+        # This step checks out model-config-tests/pyproject.toml because it is
+        # used as a cache key for model-config-tests in the next step
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.head_ref }}
+          repository: access-nri/model-config-tests
+          path: model-config-tests
+          sparse-checkout: pyproject.toml
+          sparse-checkout-cone-mode: false
 
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: ${{ needs.config.outputs.qa-python-version }}
+          # We can use cache:pip to cache model-config-tests despite the actual
+          # config repository not containing any python, because we checkout
+          # model-config-tests/pyproject.toml, which contains data on the tests
           cache: pip
+          cache-dependency-path: model-config-tests/pyproject.toml
 
       - name: Install model-config-tests
         run: pip install model-config-tests=='${{ needs.config.outputs.qa-model-config-tests-version }}'
