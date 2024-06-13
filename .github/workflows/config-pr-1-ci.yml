@@ -89,7 +89,7 @@ jobs:
       - name: Validate `config/ci.json`
         uses: access-nri/schema/.github/actions/validate-with-schema@main
         with:
-          schema-version: 1-0-0
+          schema-version: ${{ vars.CI_JSON_SCHEMA_VERSION }}
           meta-schema-version: draft-2020-12
           schema-location: au.org.access-nri/model/configuration/ci
           data-location: config/ci.json
