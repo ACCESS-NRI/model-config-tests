@@ -108,31 +108,39 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       issues: write
-    env:
-      MODEL: access-om2
-      MODEL_URL: https://github.com/ACCESS-NRI/access-om2
-      CONFIG: access-om2-configs
-      CONFIG_URL: https://github.com/ACCESS-NRI/access-om2-configs
-      TAG_URL: https://github.com/ACCESS-NRI/access-om2-configs/releases/tag/${{ needs.check-checksum.outputs.compared-checksum-version }}
-      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
     steps:
+      - name: Setup Issue Variables
+        id: variables
+        run: |
+          config=${{ github.event.repository.name }}
+          echo "config=$config" >> $GITHUB_OUTPUT
+          echo "config-url=https://github.com/ACCESS-NRI/$config" >> $GITHUB_OUTPUT
+          # model is just the config repo name without the '-configs' bit, so split it below with bash param expansion
+          model=${config%-*}
+          echo "model=$model" >> $GITHUB_OUTPUT
+          echo "model-url=https://github.com/ACCESS-NRI/$model" >> $GITHUB_OUTPUT
+          echo "tag-url=https://github.com/ACCESS-NRI/access-om2-configs/releases/tag/${{ needs.check-checksum.outputs.compared-checksum-version }}" >> GITHUB_OUTPUT
+          echo "run-url=${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" >> $GITHUB_OUTPUT
+
+          cat $GITHUB_OUTPUT
+
       - name: Create issue
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
           BODY: |
-            There was a failure of a monthly reproducibility check on ${{ github.repository }}.
+            There was a failure of a monthly reproducibility check on `${{ github.repository }}`.
             Logs, checksums and other artifacts can be found at the Failed Run Log link below.
 
-            Model: ${{ env.MODEL }}, found here: ${{ env.MODEL_URL }}
-            Config Repo: ${{ env.CONFIG }}, found here: ${{ env.CONFIG_URL }}
-            Config Tag Tested for Reproducibility: ${{ needs.check-checksum.outputs.compared-checksum-version }}, found here: ${{ env.TAG_URL }}
-            Failed Run Log: ${{ env.RUN_URL }}
-            Experiment Location (Gadi): ${{ needs.repro-ci.outputs.experiment-location }}
+            Model: `${{ steps.variables.outputs.model }}`, found here: ${{ steps.variables.outputs.model-url }}
+            Config Repo: `${{ steps.variables.outputs.config }}`, found here: ${{ steps.variables.outputs.config-url }}
+            Config Tag Tested for Reproducibility: `${{ needs.check-checksum.outputs.compared-checksum-version }}`, found here: ${{ steps.variables.outputs.tag-url }}
+            Failed Run Log: ${{ steps.variables.outputs.run-url }}
+            Experiment Location (Gadi): `${{ needs.repro-ci.outputs.experiment-location }}`
 
             Tagging @ACCESS-NRI/model-release
         run: |
           gh issue create \
-            --title "Scheduled Repro Check Failed for Config ${{ needs.check-checksum.outputs.compared-checksum-version }}" \
+            --title 'Scheduled Repro Check Failed for Config `${{ needs.check-checksum.outputs.compared-checksum-version }}`' \
             --label "type:repro-fail,priority:blocker" \
-            --body "${{ env.BODY }}"
+            --body '${{ env.BODY }}'
