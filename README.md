@@ -1,48 +1,55 @@
-## Model Configuration Pytests
+# Model Configuration Pytests and CI
 
-These pytests are used as part CI checks for model configurations.
+This repository houses pytests that are used as part CI checks for model configurations, as well as reusable components of model configuration CI.
 
-The checksum pytests are used for reproducibility CI checks in the [ACCESS-NRI/reproducibility](https://github.com/ACCESS-NRI/reproducibility) repository. The quick configuration tests are used in 
-[ACCESS-NRI/access-om2-configs](https://github.com/ACCESS-NRI/access-om2-configs).
+The checksum pytests are used for reproducibility CI checks in this repository. The quick configuration tests are used in any repository that calls `config-pr-1-ci.yml` or is templated by [`ACCESS-NRI/model-configs-template](https://github.com/ACCESS-NRI/model-configs-template). For example, [ACCESS-NRI/access-om2-configs](https://github.com/ACCESS-NRI/access-om2-configs).
 
-Code from these tests is adapted from COSIMAS's ACCESS-OM2's [
+Code from these pytests is adapted from COSIMAS's ACCESS-OM2's [
 bit reproducibility tests](https://github.com/COSIMA/access-om2/blob/master/test/test_bit_reproducibility.py).
+
+## Pytests
 
 ### How to run tests manually (from a local install of model-config-tests)
 
 1. First clone the pytest code into a separate directory.
-```sh
-git clone https://github.com/ACCESS-NRI/model-config-tests/ model-config-tests
-```
+
+    ```sh
+    git clone https://github.com/ACCESS-NRI/model-config-tests/ model-config-tests
+    ```
 
 2. To create a local install of `model-config-tests`
-```sh
-cd model-config-tests
-pip install --user -e .
-model-config-tests --help # model-config-tests runs the pytest command for tests in the package
-```
 
-2. Checkout an experiment (in this case it is using an ACCESS-OM2 config)
-```sh
-git clone https://github.com/ACCESS-NRI/access-om2-configs/ <experiment>
-cd <experiment>
-git checkout <branch/tag>
-```
+    ```sh
+    cd model-config-tests
+    pip install --user -e .
+    model-config-tests --help # model-config-tests runs the pytest command for tests in the package
+    ```
 
-3. Setup payu
-```sh
-module use /g/data/vk83/modules
-module load payu/1.1.3
-```
+3. Checkout an experiment (in this case it is using an ACCESS-OM2 config)
 
-4. Run the pytests
-```sh
-model-config-tests
-```
+    ```sh
+    git clone https://github.com/ACCESS-NRI/access-om2-configs/ <experiment>
+    cd <experiment>
+    git checkout <branch/tag>
+    ```
+
+4. Setup payu
+
+    ```sh
+    module use /g/data/vk83/modules
+    module load payu/1.1.3
+    ```
+
+5. Run the pytests
+
+    ```sh
+    model-config-tests
+    ```
 
 ### Pytest Options
 
 The output directory for pytests defaults to `$TMPDIR/test-model-repro` and contains the following subdirectories:
+
 - `control` - contains copies of the model configuration used for each experiment run in the tests.
 - `lab` - contains `payu` model output directories containing `work` and `archive` sub-directories.
 
@@ -54,7 +61,7 @@ To specify a different folder for pytest outputs, use `--output-path` command fl
 model-config-tests --output-path /some/other/path/for/output
 ```
 
-By default, the control directory, e.g. the model configuration to test, is the current working directory. This can be set similarly to above by using the 
+By default, the control directory, e.g. the model configuration to test, is the current working directory. This can be set similarly to above by using the
 `--control-path` command flag.
 
 The path containing the checksum file to check against can also be set using
@@ -74,3 +81,48 @@ e.g.:
 ```sh
 model-config-tests -m "config or access_om2"
 ```
+
+## CI/CD
+
+The `.github` directory contains many different workflows and actions. This section describes how they are used.
+
+### CI/CD For This Repository
+
+`CI.yml` and `CD.yml` are used to test, package and upload the `model-config-tests` package that is used by `model-configs`-style repositories across the ACCESS-NRI. These are the only workflows that run on this repositories. The others are reusable workflows called by `model-configs`-style repositories, among others.
+
+### Reusable CI
+
+The `config-*.yml`, `generate-checksums.yml` and `test-repro.yml` workflows are called by `model-configs`-style repositories to test model configurations. They are stored in this repository to allow a central place to update generic CI used by all model configuration repositories.
+
+Below is information on the use of these workflows.
+
+#### `config-pr-*.yml` Pipeline
+
+The `config-pr-*` Pipeline is a series of workflows that govern the testing, ChatOps and merging procedures of pull requests for model configuration repositories, such as [`ACCESS-NRI/access-om2-configs`](https://github.com/ACCESS-NRI/model-configs-template).
+
+Essentially, these files work on two types of configuration branch pull requests in the model configuration repository. More information on the terminology used in model configuration repositories can be found in the `README.md` of the `ACCESS-NRI/model-configs-template` repository. The types of pull requests are:
+
+- Pull requests into `dev-*`: Allows quick checks of configuration metadata and common mistakes in configurations during PRs into the `dev-*` configuration branches.
+- Pull requests from `dev-*` into `release-*`: Allows both quick checks, as well as a longer, more comprehensive check on the reproducibility of the changes being brought into the `release-*` configuration branch, compared to the previous `release-*` commit. It also acts on 'comment commands' run during the pull request, like `!bump` for updating the version of the configuration ([see the 'Config Tags' section](https://github.com/ACCESS-NRI/model-configs-template/blob/main/README.md) in the `ACCESS-NRI/model-configs-template` repository for more). It is also responsible for the creation of the final config tag and release, once merged.
+
+#### `config-schedule-*.yml` Pipeline
+
+The `config-schedule-*` Pipeline is a series of workflows used to check the reproducibility of certain config tags against themselves, every month. This is used as a kind of canary to make sure that we continue to get the same results on the same deployment targets.
+
+#### `generate-checksums` Reusable Workflow
+
+This workflow is used to easily generate the checksums used in the reproducibility checks, for a specific branch of a model configuration repository, if they don't already exist. This is most often used for the initial commit of a checksum to the `release-*` configuration branch.
+
+#### `test-repro` Reusable Workflow
+
+This workflow is used to test the reproducibility of a given model repository against historical checksums, and can be used as a standalone workflow.
+
+Using it has some requirements outside of just filling in the inputs: One must have a valid GitHub Environment (specified by the `environment-name` input) in the calling repository, that has the following `secrets` and `vars` defined:
+
+- `secrets.SSH_HOST` - hostname for the deployment target
+- `secrets.SSH_HOST_DATA` - hostname for the data mover on the deployment target (if it exists)
+- `secrets.SSH_KEY` - private key for access to the deployment target
+- `secrets.SSH_USER` - username for access to the deployment target
+- `vars.EXPERIMENTS_LOCATION` - directory on the deployment target that will contain all the experiments used during testing of reproducibility across multiple runs of this workflow (ex. `/scratch/some/directory/experiments`)
+- `vars.PAYU_MODULE_LOCATION` - location of the Payu module on the deployment target (ex. `/g/data/vk83/modules`)
+- `vars.PAYU_VERSION` - version of Payu to use for the experiments (ex. `1.1`)
