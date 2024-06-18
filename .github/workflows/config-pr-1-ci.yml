@@ -294,7 +294,7 @@ jobs:
           comment: |
             :white_check_mark: The Bitwise Reproducibility check succeeded when comparing against `${{ needs.check-checksum.outputs.compared-checksum-version }}` for this `Release` config. :white_check_mark:
             For further information, the experiment can be found on Gadi at ${{ needs.repro-ci.outputs.experiment-location }}, and the test results at ${{ needs.check-checksum.outputs.check-run-url }}.
-            You must bump the minor version of `access-om2-configs` - to bump the version, comment `!bump minor` or modify the `version` in `metadata.yaml`. The meaning of these version bumps is explained in the README.md, under `Config Tags`.
+            You must bump the minor version of this configuration - to bump the version, comment `!bump minor` or modify the `version` in `metadata.yaml`. The meaning of these version bumps is explained in the README.md, under `Config Tags`.
 
       - name: Failed Release Comment
         if: needs.check-checksum.outputs.result == 'fail'
@@ -303,4 +303,4 @@ jobs:
           comment: |
             :x: The Bitwise Reproducibility check failed when comparing against `${{ needs.check-checksum.outputs.compared-checksum-version }}` for this `Release` config. :x:
             For further information, the experiment can be found on Gadi at ${{ needs.repro-ci.outputs.experiment-location }}, and the test results at ${{ needs.check-checksum.outputs.check-run-url }}.
-            You must bump the major version of `access-om2-configs` before this PR is merged to account for this - to bump the version, comment `!bump major`or modify the `version` in `metadata.yaml`. The meaning of these version bumps is explained in the README.md, under `Config Tags`.
+            You must bump the major version of this configuration before this PR is merged to account for this - to bump the version, comment `!bump major`or modify the `version` in `metadata.yaml`. The meaning of these version bumps is explained in the README.md, under `Config Tags`.

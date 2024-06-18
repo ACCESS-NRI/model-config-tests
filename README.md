@@ -88,7 +88,7 @@ The `.github` directory contains many different workflows and actions. This sect
 
 ### CI/CD For This Repository
 
-`CI.yml` and `CD.yml` are used to test, package and upload the `model-config-tests` package that is used by `model-configs`-style repositories across the ACCESS-NRI. These are the only workflows that run on this repositories. The others are reusable workflows called by `model-configs`-style repositories, among others.
+`CI.yml` and `CD.yml` are used to test, package and upload the `model-config-tests` package that is used by `model-configs`-style repositories across the ACCESS-NRI. These are the only workflows that run on this repository. The others are reusable workflows called by `model-configs`-style repositories, among others.
 
 ### Reusable CI
 
@@ -98,7 +98,7 @@ Below is information on the use of these workflows.
 
 #### `config-pr-*.yml` Pipeline
 
-The `config-pr-*` Pipeline is a series of workflows that govern the testing, ChatOps and merging procedures of pull requests for model configuration repositories, such as [`ACCESS-NRI/access-om2-configs`](https://github.com/ACCESS-NRI/model-configs-template).
+The `config-pr-*` Pipeline is a series of workflows that govern the testing, ChatOps and merging procedures of pull requests for model configuration repositories, such as [`ACCESS-NRI/access-om2-configs`](https://github.com/ACCESS-NRI/access-om2-configs).
 
 Essentially, these files work on two types of configuration branch pull requests in the model configuration repository. More information on the terminology used in model configuration repositories can be found in the `README.md` of the `ACCESS-NRI/model-configs-template` repository. The types of pull requests are:
 

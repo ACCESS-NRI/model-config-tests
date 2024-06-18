@@ -30,7 +30,7 @@ This action parses the CI testing configuration file. The caller of the action n
       
       - name: Read scheduled test config
         id: scheduled-config
-        uses: access-nri/access-om2-configs/.github/actions/parse-ci-config@main
+        uses: access-nri/model-config-tests/.github/actions/parse-ci-config@main
         with:
           check: scheduled
           branch-or-tag: "release-1deg_jra55_ryf-2.0"
