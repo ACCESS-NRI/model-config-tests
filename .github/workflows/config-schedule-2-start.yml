@@ -43,7 +43,6 @@ jobs:
       - config
     uses: access-nri/model-config-tests/.github/workflows/test-repro.yml@main
     with:
-      model-name: access-om2
       environment-name: Gadi
       config-tag: ${{ inputs.config-tag }}
       test-markers: ${{ needs.config.outputs.markers }}

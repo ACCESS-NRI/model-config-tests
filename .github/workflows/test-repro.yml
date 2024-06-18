@@ -2,10 +2,6 @@ name: Repro Checks
 on:
   workflow_call:
     inputs:
-      model-name:
-        type: string
-        required: true
-        description: The name of the model to check for reproducibility
       config-tag:
         type: string
         required: true
@@ -46,7 +42,7 @@ jobs:
       artifact-name: ${{ steps.artifact.outputs.name }}
       experiment-location: ${{ steps.run.outputs.experiment-location }}
     env:
-      EXPERIMENT_LOCATION: ${{ vars.EXPERIMENTS_LOCATION }}/${{ inputs.model-name }}/${{ inputs.config-tag }}
+      EXPERIMENT_LOCATION: ${{ vars.EXPERIMENTS_LOCATION }}/${{ github.event.repository.name }}/${{ inputs.config-tag }}
     steps:
       - name: Setup SSH
         id: ssh
@@ -94,14 +90,14 @@ jobs:
           model-config-tests -s -m "${{ inputs.test-markers }}" \
             --output-path ${{ env.EXPERIMENT_LOCATION }} \
             --junitxml=${{ env.EXPERIMENT_LOCATION }}/checksum/test_report.xml
-          
+
           # Deactivate and remove the test virtual environment
           deactivate
           rm -rf ${{ env.TEST_VENV_LOCATION }}
 
           # We want the exit code post-`pytest` to be 0 so the overall `ssh` call succeeeds
           # after a potential `pytest` error.
-          exit 0          
+          exit 0
           EOT
           echo "experiment-location=${{ env.EXPERIMENT_LOCATION }}" >> $GITHUB_OUTPUT
 
@@ -113,7 +109,7 @@ jobs:
 
       - name: Generate Test Output Artifact Name
         id: artifact
-        run: echo "name=${{ inputs.model-name }}-${{ inputs.config-tag }}" >> $GITHUB_OUTPUT
+        run: echo "name=${{ github.event.repository.name }}-${{ inputs.config-tag }}" >> $GITHUB_OUTPUT
 
       - name: Upload Test Output
         uses: actions/upload-artifact@v3

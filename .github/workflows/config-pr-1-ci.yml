@@ -180,7 +180,6 @@ jobs:
     if: needs.commit-check.outputs.authorship != vars.GH_ACTIONS_BOT_GIT_USER_NAME && needs.branch-check.result == 'success'
     uses: access-nri/model-config-tests/.github/workflows/test-repro.yml@main
     with:
-      model-name: access-om2
       environment-name: Gadi
       config-tag: ${{ github.head_ref }}
       test-markers: ${{ needs.config.outputs.repro-markers }}

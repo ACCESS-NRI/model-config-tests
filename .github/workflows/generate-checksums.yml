@@ -2,10 +2,6 @@ name: Initial Checksums
 on:
   workflow_call:
     inputs:
-      model-name:
-        type: string
-        required: true
-        description: Name of the model that is having it's checksums generated.
       config-branch-name:
         type: string
         required: true
@@ -50,7 +46,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment-name }}
     env:
-      EXPERIMENT_LOCATION: ${{ vars.EXPERIMENTS_LOCATION }}/${{ inputs.model-name }}/${{ inputs.config-branch-name }}
+      EXPERIMENT_LOCATION: ${{ vars.EXPERIMENTS_LOCATION }}/${{ github.event.repository.name }}/${{ inputs.config-branch-name }}
     outputs:
       artifact-name: ${{ steps.artifact.outputs.name }}
       checksum-location: ${{ steps.run.outputs.checksum-location }}
@@ -122,7 +118,7 @@ jobs:
 
       - name: Generate Output Artifact Name
         id: artifact
-        run: echo "name=${{ inputs.model-name }}-${{ inputs.config-branch-name }}" >> $GITHUB_OUTPUT
+        run: echo "name=${{ github.event.repository.name }}-${{ inputs.config-branch-name }}" >> $GITHUB_OUTPUT
 
       - name: Upload Output
         uses: actions/upload-artifact@v4
