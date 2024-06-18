@@ -9,41 +9,42 @@ bit reproducibility tests](https://github.com/COSIMA/access-om2/blob/master/test
 
 ## Pytests
 
-### How to run tests manually (from a local install of model-config-tests)
+### How to run pytests manually on NCI
 
-1. First clone the pytest code into a separate directory.
-
+1. Create and activate a python virtual environment for installing and running tests
     ```sh
-    git clone https://github.com/ACCESS-NRI/model-config-tests/ model-config-tests
+    module load python3/3.11.0
+    python3 -m venv <path/to/test-venv>
+    source <path/to/test-venv>/bin/activate
     ```
 
-2. To create a local install of `model-config-tests`
-
+2. Either pip install a released version of `model-config-tests`,
     ```sh
-    cd model-config-tests
-    pip install --user -e .
-    model-config-tests --help # model-config-tests runs the pytest command for tests in the package
+    pip install model-config-tests==0.0.1
+    ```
+    Or to install `model-config-tests` in "editable" mode, first clone the repository, and then run pip install from the repository. This means any changes to the code are reflected in the installed package.
+    ```sh
+    git clone https://github.com/ACCESS-NRI/model-config-tests/ <path/to/model-config-tests>
+    pip install -e <path/to/model-config-tests>
     ```
 
 3. Checkout an experiment (in this case it is using an ACCESS-OM2 config)
 
     ```sh
-    git clone https://github.com/ACCESS-NRI/access-om2-configs/ <experiment>
-    cd <experiment>
+    git clone https://github.com/ACCESS-NRI/access-om2-configs/ <path/to/experiment>
+    cd <path/to/experiment>
     git checkout <branch/tag>
     ```
 
-4. Setup payu
-
-    ```sh
-    module use /g/data/vk83/modules
-    module load payu/1.1.3
-    ```
-
-5. Run the pytests
-
+4. Run the pytests
     ```sh
     model-config-tests
+    ```
+
+5. Once done with testing, deactivate the virtual environment, and if the environment is no longer needed, remove the environment
+    ```sh
+    deactivate
+    rm -rf <path/to/test-venv> # Deletes the test environment
     ```
 
 ### Pytest Options
