@@ -124,5 +124,3 @@ Using it has some requirements outside of just filling in the inputs: One must h
 - `secrets.SSH_KEY` - private key for access to the deployment target
 - `secrets.SSH_USER` - username for access to the deployment target
 - `vars.EXPERIMENTS_LOCATION` - directory on the deployment target that will contain all the experiments used during testing of reproducibility across multiple runs of this workflow (ex. `/scratch/some/directory/experiments`)
-- `vars.PAYU_MODULE_LOCATION` - location of the Payu module on the deployment target (ex. `/g/data/vk83/modules`)
-- `vars.PAYU_VERSION` - version of Payu to use for the experiments (ex. `1.1`)
