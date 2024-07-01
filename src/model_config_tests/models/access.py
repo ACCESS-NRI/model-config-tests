@@ -8,23 +8,32 @@ import yaml
 from model_config_tests.models.model import SCHEMA_VERSION_1_0_0, Model
 from model_config_tests.models.mom import mom5_extract_checksums
 
+# Default model runtime (24 hrs)
+DEFAULT_RUNTIME_SECONDS = 86400
+
 
 class Access(Model):
     def __init__(self, experiment):
         super().__init__(experiment)
+        # Override model default runtime
+        self.default_runtime_seconds = DEFAULT_RUNTIME_SECONDS
 
         self.output_file = self.experiment.output000 / "access.out"
 
-    def set_model_runtime(self, years: int = 0, months: int = 0, seconds: int = 10800):
+    def set_model_runtime(
+        self, years: int = 0, months: int = 0, seconds: int = DEFAULT_RUNTIME_SECONDS
+    ):
         """Set config files to a short time period for experiment run.
-        Default is 3 hours"""
+        Default is 24 hours"""
         with open(self.experiment.config_path) as f:
             doc = yaml.safe_load(f)
 
+        assert seconds % 86400 == 0, "Only days are supported in payu UM driver"
+
         # Set runtime in config.yaml
         doc["calendar"]["runtime"] = {
-            "year": years,
-            "month": months,
+            "years": years,
+            "months": months,
             "days": 0,
             "seconds": seconds,
         }

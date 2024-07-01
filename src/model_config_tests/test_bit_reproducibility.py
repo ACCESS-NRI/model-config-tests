@@ -24,26 +24,43 @@ class TestBitReproducibility:
         # NOTE: The checksum output file is used as part of `repro-ci` workflows
         output_dir = output_path / "checksum"
         output_dir.mkdir(parents=True, exist_ok=True)
-        checksum_output_file = output_dir / "historical-3hr-checksum.json"
+
+        # Setup experiment
+        exp = setup_exp(control_path, output_path, "test_bit_repro_historical")
+
+        # Get model checksum output filename
+        runtime_hours = exp.model.default_runtime_seconds // 3600
+        checksum_filename = f"historical-{runtime_hours}hr-checksum.json"
+
+        # Remove any pre-existing checksums files from output directory
+        checksum_output_file = output_dir / checksum_filename
         if checksum_output_file.exists():
             checksum_output_file.unlink()
 
-        # Setup and run experiment
-        exp = setup_exp(control_path, output_path, "test_bit_repro_historical")
+        # Set model runtime using the configured default
         exp.model.set_model_runtime()
+
+        # Run Experiment
         exp.setup_and_run()
 
-        assert exp.model.output_exists()
+        assert exp.model.output_exists(), "Output file for model does not exist"
 
         # Check checksum against historical checksum file
         hist_checksums = None
         hist_checksums_schema_version = None
 
+        if checksum_path is None:
+            # Default to testing/checksum/historical-*hr-checksums.json
+            # stored on model configuration directory
+            config_checksum_dir = control_path / "testing" / "checksum"
+            checksum_path = config_checksum_dir / checksum_filename
+
+        # Get checksum file version
         if (
             not checksum_path.exists()
         ):  # AKA, if the config branch doesn't have a checksum, or the path is misconfigured
             hist_checksums_schema_version = exp.model.default_schema_version
-        else:  # we can use the historic-3hr-checksum that is in the testing directory
+        else:  # we can use the historic-*hr-checksum that is in the testing directory
             with open(checksum_path) as file:
                 hist_checksums = json.load(file)
 
@@ -68,7 +85,7 @@ class TestBitReproducibility:
         exp_bit_repo1 = setup_exp(control_path, output_path, "test_bit_repro_repeat_1")
         exp_bit_repo2 = setup_exp(control_path, output_path, "test_bit_repro_repeat_2")
 
-        # Reconfigure to a 3 hours (default) and run
+        # Reconfigure to the default model runtime and run
         for exp in [exp_bit_repo1, exp_bit_repo2]:
             exp.model.set_model_runtime()
             exp.setup_and_run()

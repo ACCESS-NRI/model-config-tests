@@ -33,13 +33,10 @@ def control_path(request):
 
 
 @pytest.fixture(scope="session")
-def checksum_path(request, control_path):
+def checksum_path(request):
     """Set the path of the model configuration directory to test"""
     path = request.config.getoption("--checksum-path")
-    if path is None:
-        # Set default to checksum stored on model configuration
-        path = control_path / "testing" / "checksum" / "historical-3hr-checksum.json"
-    return Path(path)
+    return Path(path) if path else None
 
 
 @pytest.fixture(scope="session")

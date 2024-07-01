@@ -5,7 +5,11 @@ from typing import Any
 
 import f90nml
 
-from model_config_tests.models.model import SCHEMA_VERSION_1_0_0, Model
+from model_config_tests.models.model import (
+    DEFAULT_RUNTIME_SECONDS,
+    SCHEMA_VERSION_1_0_0,
+    Model,
+)
 from model_config_tests.models.mom import mom5_extract_checksums
 
 
@@ -17,7 +21,9 @@ class AccessOm2(Model):
         self.accessom2_config = experiment.control_path / "accessom2.nml"
         self.ocean_config = experiment.control_path / "ocean" / "input.nml"
 
-    def set_model_runtime(self, years: int = 0, months: int = 0, seconds: int = 10800):
+    def set_model_runtime(
+        self, years: int = 0, months: int = 0, seconds: int = DEFAULT_RUNTIME_SECONDS
+    ):
         """Set config files to a short time period for experiment run.
         Default is 3 hours"""
         with open(self.accessom2_config) as f:
