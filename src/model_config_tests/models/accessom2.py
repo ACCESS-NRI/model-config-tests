@@ -1,13 +1,12 @@
 """Specific Access-OM2 Model setup and post-processing"""
 
-import re
-from collections import defaultdict
 from pathlib import Path
 from typing import Any
 
 import f90nml
 
 from model_config_tests.models.model import SCHEMA_VERSION_1_0_0, Model
+from model_config_tests.models.mom import mom5_extract_checksums
 
 
 class AccessOm2(Model):
@@ -47,32 +46,8 @@ class AccessOm2(Model):
         else:
             output_filename = self.output_file
 
-        # Regex pattern for checksums in the `<model>.out` file
-        # Examples:
-        # [chksum] ht              -2390360641069121536
-        # [chksum] hu               6389284661071183872
-        # [chksum] htr               928360042410663049
-        pattern = r"\[chksum\]\s+(.+)\s+(-?\d+)"
-
-        # checksums outputted in form:
-        # {
-        #   "ht": ["-2390360641069121536"],
-        #   "hu": ["6389284661071183872"],
-        #   "htr": ["928360042410663049"]
-        # }
-        # with potential for multiple checksums for one key.
-        output_checksums: dict[str, list[any]] = defaultdict(list)
-
-        with open(output_filename) as f:
-            for line in f:
-                # Check for checksum pattern match
-                match = re.match(pattern, line)
-                if match:
-                    # Extract values
-                    field = match.group(1).strip()
-                    checksum = match.group(2).strip()
-
-                    output_checksums[field].append(checksum)
+        # Extract mom5 checksums
+        output_checksums = mom5_extract_checksums(output_filename)
 
         if schema_version is None:
             schema_version = self.default_schema_version
