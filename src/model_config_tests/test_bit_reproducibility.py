@@ -5,71 +5,115 @@
 
 import json
 from pathlib import Path
+from typing import Optional
 
 import pytest
 
 from model_config_tests.exp_test_helper import setup_exp
 
 
+def set_checksum_output_dir(output_path: Path):
+    """Create an output directory for checksums and remove any pre-existing
+    historical checksums. Note: The checksums stored in this directory are
+    used in Reproducibility CI workflows, and are copied up to Github"""
+    output_dir = output_path / "checksum"
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    pre_existing_files = output_dir.glob("historical-*hr-checksum.json")
+    for file in pre_existing_files:
+        file.unlink()
+
+    return output_dir
+
+
+def read_historical_checksums(
+    control_path: Path, checksum_filename: str, checksum_path: Optional[Path] = None
+):
+    """Read a historical checksum file"""
+    if checksum_path is None:
+        # Default to testing/checksum/historical-*hr-checksums.json
+        # stored on model configuration directory
+        config_checksum_dir = control_path / "testing" / "checksum"
+        checksum_path = config_checksum_dir / checksum_filename
+
+    hist_checksums = None
+    if checksum_path.exists():
+        with open(checksum_path) as file:
+            hist_checksums = json.load(file)
+
+    return hist_checksums
+
+
 class TestBitReproducibility:
 
     @pytest.mark.checksum
     def test_bit_repro_historical(
-        self, output_path: Path, control_path: Path, checksum_path: Path
+        self,
+        output_path: Path,
+        control_path: Path,
+        checksum_path: Optional[Path],
+        keep_archive: Optional[bool],
     ):
         """
         Test that a run reproduces historical checksums
+
+        Parameters (these are fixtures defined in conftest.py)
+        ----------
+        output_path: Path
+            Output directory for test output and where the control and
+            lab directories are stored for the payu experiments. Default is
+            set in conftest.py
+        control_path: Path
+            Path to the model configuration to test. This is copied for
+            for control directories in experiments. Default is set in
+            conftests.py
+        checksum_path: Optional[Path]
+            Path to checksums to compare model output against. Default is
+            set to checksums saved on model configuration (set in )
+        keep_archive: Optional[bool]
+            This flag is used in testing for test code to use a previous test
+            archive, and to disable running the model with payu
         """
         # Setup checksum output directory
-        # NOTE: The checksum output file is used as part of `repro-ci` workflows
-        output_dir = output_path / "checksum"
-        output_dir.mkdir(parents=True, exist_ok=True)
+        checksum_output_dir = set_checksum_output_dir(output_path=output_path)
 
         # Setup experiment
-        exp = setup_exp(control_path, output_path, "test_bit_repro_historical")
-
-        # Get model checksum output filename
-        runtime_hours = exp.model.default_runtime_seconds // 3600
-        checksum_filename = f"historical-{runtime_hours}hr-checksum.json"
-
-        # Remove any pre-existing checksums files from output directory
-        checksum_output_file = output_dir / checksum_filename
-        if checksum_output_file.exists():
-            checksum_output_file.unlink()
+        exp = setup_exp(
+            control_path, output_path, "test_bit_repro_historical", keep_archive
+        )
 
         # Set model runtime using the configured default
         exp.model.set_model_runtime()
 
-        # Run Experiment
+        # Run the experiment using payu
         exp.setup_and_run()
 
-        assert exp.model.output_exists(), "Output file for model does not exist"
+        assert (
+            exp.model.output_exists()
+        ), "Output file for experiment run does not exist"
 
-        # Check checksum against historical checksum file
-        hist_checksums = None
-        hist_checksums_schema_version = None
+        # Set the checksum output filename using the model default runtime
+        runtime_hours = exp.model.default_runtime_seconds // 3600
+        checksum_filename = f"historical-{runtime_hours}hr-checksum.json"
 
-        if checksum_path is None:
-            # Default to testing/checksum/historical-*hr-checksums.json
-            # stored on model configuration directory
-            config_checksum_dir = control_path / "testing" / "checksum"
-            checksum_path = config_checksum_dir / checksum_filename
+        # Read the historical checksum file
+        hist_checksums = read_historical_checksums(
+            control_path, checksum_filename, checksum_path
+        )
 
-        # Get checksum file version
-        if (
-            not checksum_path.exists()
-        ):  # AKA, if the config branch doesn't have a checksum, or the path is misconfigured
-            hist_checksums_schema_version = exp.model.default_schema_version
-        else:  # we can use the historic-*hr-checksum that is in the testing directory
-            with open(checksum_path) as file:
-                hist_checksums = json.load(file)
+        # Use historical file checksums schema version for parsing checksum,
+        # otherwise use the model default, if file does not exist
+        schema_version = (
+            hist_checksums["schema_version"]
+            if hist_checksums
+            else exp.model.default_schema_version
+        )
 
-                # Parse checksums using the same version
-                hist_checksums_schema_version = hist_checksums["schema_version"]
-
-        checksums = exp.extract_checksums(schema_version=hist_checksums_schema_version)
+        # Extract checksums
+        checksums = exp.extract_checksums(schema_version=schema_version)
 
         # Write out checksums to output file
+        checksum_output_file = checksum_output_dir / checksum_filename
         with open(checksum_output_file, "w") as file:
             json.dump(checksums, file, indent=2)
 

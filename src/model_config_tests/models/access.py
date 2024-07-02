@@ -31,12 +31,16 @@ class Access(Model):
         assert seconds % 86400 == 0, "Only days are supported in payu UM driver"
 
         # Set runtime in config.yaml
-        doc["calendar"]["runtime"] = {
+        runtime_config = {
             "years": years,
             "months": months,
             "days": 0,
             "seconds": seconds,
         }
+        if "calendar" in doc:
+            doc["calendar"]["runtime"] = runtime_config
+        else:
+            doc["calendar"] = {"runtime": runtime_config}
 
         with open(self.experiment.config_path, "w") as f:
             yaml.dump(doc, f)

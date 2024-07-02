@@ -66,6 +66,15 @@ def target_branch(request):
     return request.config.getoption("--target-branch")
 
 
+@pytest.fixture(scope="session")
+def keep_archive(request):
+    """Set keep_archive boolean flag. Enabling this will keep a
+    pre-existing archive from a previous test run and disable running
+    payu run again. This is useful for testing the test code when the output
+    has already been generated."""
+    return request.config.getoption("--keep-archive")
+
+
 # Set up command line options and default for directory paths
 def pytest_addoption(parser):
     """Attaches optional command line arguments"""
@@ -89,6 +98,12 @@ def pytest_addoption(parser):
 
     parser.addoption(
         "--target-branch", action="store", help="Specify the target branch name"
+    )
+
+    parser.addoption(
+        "--keep-archive",
+        action="store_true",
+        help="Keep archive from previous test run and disable running payu",
     )
 
 

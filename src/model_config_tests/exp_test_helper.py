@@ -17,7 +17,7 @@ from model_config_tests.util import wait_for_qsub
 
 class ExpTestHelper:
 
-    def __init__(self, control_path: Path, lab_path: Path):
+    def __init__(self, control_path: Path, lab_path: Path, disable_payu_run=False):
 
         self.exp_name = control_path.name
         self.control_path = control_path
@@ -32,6 +32,8 @@ class ExpTestHelper:
             self.config = yaml.safe_load(f)
 
         self.set_model()
+
+        self.disable_payu_run = disable_payu_run
 
     def set_model(self):
         """Set model based on payu config. Currently only setting top-level
@@ -81,6 +83,9 @@ class ExpTestHelper:
 
         Don't do any work if it has already run.
         """
+        if self.disable_payu_run:
+            # Skip running payu if it's disabled.
+            return
 
         if self.has_run():
             return 0, None, None, None
@@ -91,6 +96,9 @@ class ExpTestHelper:
         """
         Run using qsub
         """
+        if self.disable_payu_run:
+            # Skip running payu if it's disabled.
+            return
 
         # Change to experiment directory and run.
         owd = Path.cwd()
@@ -155,7 +163,9 @@ class ExpTestHelper:
         return self.run()
 
 
-def setup_exp(control_path: Path, output_path: Path, exp_name: str):
+def setup_exp(
+    control_path: Path, output_path: Path, exp_name: str, keep_archive: bool = False
+):
     """
     Create a exp by copying over base config
     """
@@ -172,16 +182,21 @@ def setup_exp(control_path: Path, output_path: Path, exp_name: str):
 
     exp_lab_path = output_path / "lab"
 
-    exp = ExpTestHelper(control_path=exp_control_path, lab_path=exp_lab_path)
+    exp = ExpTestHelper(
+        control_path=exp_control_path,
+        lab_path=exp_lab_path,
+        disable_payu_run=keep_archive,
+    )
 
     # Remove any pre-existing archive or work directories for the experiment
-    try:
-        shutil.rmtree(exp.archive_path)
-    except FileNotFoundError:
-        pass
-    try:
-        shutil.rmtree(exp.work_path)
-    except FileNotFoundError:
-        pass
+    if not keep_archive:
+        try:
+            shutil.rmtree(exp.archive_path)
+        except FileNotFoundError:
+            pass
+        try:
+            shutil.rmtree(exp.work_path)
+        except FileNotFoundError:
+            pass
 
     return exp
