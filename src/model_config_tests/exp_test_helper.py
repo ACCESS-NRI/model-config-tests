@@ -83,11 +83,8 @@ class ExpTestHelper:
 
         Don't do any work if it has already run.
         """
-        if self.disable_payu_run:
-            # Skip running payu if it's disabled.
-            return
-
-        if self.has_run():
+        # Skip running payu if it's disabled, or if output already exists
+        if self.disable_payu_run or self.has_run():
             return 0, None, None, None
         else:
             return self.force_qsub_run()
@@ -98,7 +95,7 @@ class ExpTestHelper:
         """
         if self.disable_payu_run:
             # Skip running payu if it's disabled.
-            return
+            return 0, None, None, None
 
         # Change to experiment directory and run.
         owd = Path.cwd()
@@ -143,6 +140,10 @@ class ExpTestHelper:
 
         # Read the qsub id of the collate job from the stdout.
         # Payu puts this here.
+
+        # TODO: Fish out the exit code from the run logs and early
+        # return if status != 0
+
         m = re.search(r"(\d+.gadi-pbs)\n", stdout)
         if m is None:
             print("Error: qsub id of collate job.", file=sys.stderr)
@@ -161,6 +162,18 @@ class ExpTestHelper:
     def setup_and_run(self):
         self.setup_for_test_run()
         return self.run()
+
+    def print_run_logs(self, status, stdout, stderr, output_files):
+        """Print run information"""
+        run_info = (
+            f"Experiment run: {self.exp_name}\n"
+            f"Status: {status}\n"
+            f"Control directory: {self.control_path}\n"
+            f"Output files: {output_files}\n"
+            f"--- stdout ---\n{stdout}\n"
+            f"--- stderr ---\n{stderr}\n"
+        )
+        print(run_info)
 
 
 def setup_exp(

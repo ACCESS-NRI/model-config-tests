@@ -86,11 +86,21 @@ class TestBitReproducibility:
         exp.model.set_model_runtime()
 
         # Run the experiment using payu
-        exp.setup_and_run()
+        status, stdout, stderr, output_files = exp.setup_and_run()
 
-        assert (
-            exp.model.output_exists()
-        ), "Output file for experiment run does not exist"
+        if status != 0 or not exp.model.output_exists():
+            # Log the run information
+            exp.print_run_logs(status, stdout, stderr, output_files)
+
+        assert status == 0, (
+            "There was an error running the experiment. "
+            "See the logs for more infomation on the experiment run"
+        )
+
+        assert exp.model.output_exists(), (
+            "Output file for the model does not exist. "
+            "See the logs for more information on the experiment run"
+        )
 
         # Set the checksum output filename using the model default runtime
         runtime_hours = exp.model.default_runtime_seconds // 3600
