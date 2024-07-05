@@ -131,7 +131,7 @@ class TestBitReproducibility:
             hist_checksums == checksums
         ), f"Checksums were not equal. The new checksums have been written to {checksum_output_file}."
 
-    @pytest.mark.slow
+    @pytest.mark.checksum_slow
     def test_bit_repro_repeat(self, output_path: Path, control_path: Path):
         """
         Test that a run has same checksums when ran twice
@@ -153,7 +153,7 @@ class TestBitReproducibility:
 
         assert produced == expected
 
-    @pytest.mark.checksum
+    @pytest.mark.checksum_slow
     def test_restart_repro(self, output_path: Path, control_path: Path):
         """
         Test that a run reproduces across restarts.

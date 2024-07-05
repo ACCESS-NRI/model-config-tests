@@ -109,10 +109,10 @@ def pytest_addoption(parser):
 
 def pytest_configure(config):
     config.addinivalue_line(
-        "markers", "slow: mark tests as slow (deselect with '-m \"not slow\"')"
+        "markers", "checksum: mark tests to run as part of reproducibility CI tests"
     )
     config.addinivalue_line(
-        "markers", "checksum: mark tests to run as part of reproducibility CI tests"
+        "markers", "checksum_slow: mark tests as slow reproducibility tests"
     )
     config.addinivalue_line(
         "markers", "config: mark as configuration tests in quick QA CI checks"
