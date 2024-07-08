@@ -10,7 +10,7 @@ from model_config_tests.models.model import (
     SCHEMA_VERSION_1_0_0,
     Model,
 )
-from model_config_tests.models.mom import mom5_extract_checksums
+from model_config_tests.models.mom5 import mom5_extract_checksums
 
 
 class AccessOm2(Model):

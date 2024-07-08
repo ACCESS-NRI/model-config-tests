@@ -6,13 +6,14 @@ from typing import Any
 import yaml
 
 from model_config_tests.models.model import SCHEMA_VERSION_1_0_0, Model
-from model_config_tests.models.mom import mom5_extract_checksums
+from model_config_tests.models.mom5 import mom5_extract_checksums
+from model_config_tests.util import SECONDS_IN_DAY
 
 # Default model runtime (24 hrs)
-DEFAULT_RUNTIME_SECONDS = 86400
+DEFAULT_RUNTIME_SECONDS = SECONDS_IN_DAY
 
 
-class Access(Model):
+class AccessEsm1p5(Model):
     def __init__(self, experiment):
         super().__init__(experiment)
         # Override model default runtime
@@ -28,7 +29,9 @@ class Access(Model):
         with open(self.experiment.config_path) as f:
             doc = yaml.safe_load(f)
 
-        assert seconds % 86400 == 0, "Only days are supported in payu UM driver"
+        assert (
+            seconds % SECONDS_IN_DAY == 0
+        ), "Only days are supported in payu UM driver"
 
         # Set runtime in config.yaml
         runtime_config = {

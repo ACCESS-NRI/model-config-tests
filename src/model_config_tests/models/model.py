@@ -2,6 +2,8 @@
 
 from pathlib import Path
 
+from model_config_tests.util import SECONDS_IN_HOUR
+
 # Default Schema values
 SCHEMA_VERSION_1_0_0 = "1-0-0"
 SCHEMA_1_0_0_URL = "https://raw.githubusercontent.com/ACCESS-NRI/schema/7666d95967de4dfd19b0d271f167fdcfd3f46962/au.org.access-nri/model/reproducibility/checksums/1-0-0.json"
@@ -9,7 +11,7 @@ SCHEMA_VERSION_TO_URL = {SCHEMA_VERSION_1_0_0: SCHEMA_1_0_0_URL}
 DEFAULT_SCHEMA_VERSION = "1-0-0"
 
 # Default model runtime (3 hrs)
-DEFAULT_RUNTIME_SECONDS = 10800
+DEFAULT_RUNTIME_SECONDS = SECONDS_IN_HOUR * 3
 
 
 class Model:

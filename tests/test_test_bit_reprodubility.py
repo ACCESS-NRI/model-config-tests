@@ -265,8 +265,8 @@ def test_test_bit_repro_historical_access_no_reference_checksums(tmp_dir):
 
 
 def test_test_bit_repro_historical_access_no_model_output(tmp_dir):
-    """Check when a test exits, there are no checksums are in output directory
-    - similar to when payu run exits with an error"""
+    """Check when a test exits, that there are no checksums in the output
+    directory- similar to when payu run exits with an error"""
     test_name = "test_bit_repro_historical"
     model_name = "access"
 
