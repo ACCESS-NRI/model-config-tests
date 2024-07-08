@@ -4,6 +4,11 @@
 import subprocess as sp
 import time
 
+# Time related constants
+MINUTE_IN_SECONDS = 60
+HOUR_IN_SECONDS = MINUTE_IN_SECONDS * 60
+DAY_IN_SECONDS = HOUR_IN_SECONDS * 24
+
 
 def wait_for_qsub(run_id):
     """
@@ -11,7 +16,7 @@ def wait_for_qsub(run_id):
     """
 
     while True:
-        time.sleep(1 * 60)
+        time.sleep(MINUTE_IN_SECONDS)
         try:
             qsub_out = sp.check_output(["qstat", run_id], stderr=sp.STDOUT)
         except sp.CalledProcessError as err:

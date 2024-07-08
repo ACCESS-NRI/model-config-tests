@@ -33,13 +33,10 @@ def control_path(request):
 
 
 @pytest.fixture(scope="session")
-def checksum_path(request, control_path):
+def checksum_path(request):
     """Set the path of the model configuration directory to test"""
     path = request.config.getoption("--checksum-path")
-    if path is None:
-        # Set default to checksum stored on model configuration
-        path = control_path / "testing" / "checksum" / "historical-3hr-checksum.json"
-    return Path(path)
+    return Path(path) if path else None
 
 
 @pytest.fixture(scope="session")
@@ -69,6 +66,15 @@ def target_branch(request):
     return request.config.getoption("--target-branch")
 
 
+@pytest.fixture(scope="session")
+def keep_archive(request):
+    """Set keep_archive boolean flag. Enabling this will keep a
+    pre-existing archive from a previous test run and disable running
+    payu run again. This is useful for testing the test code when the output
+    has already been generated."""
+    return request.config.getoption("--keep-archive")
+
+
 # Set up command line options and default for directory paths
 def pytest_addoption(parser):
     """Attaches optional command line arguments"""
@@ -94,13 +100,19 @@ def pytest_addoption(parser):
         "--target-branch", action="store", help="Specify the target branch name"
     )
 
+    parser.addoption(
+        "--keep-archive",
+        action="store_true",
+        help="Keep archive from previous test run and disable running payu",
+    )
+
 
 def pytest_configure(config):
     config.addinivalue_line(
-        "markers", "slow: mark tests as slow (deselect with '-m \"not slow\"')"
+        "markers", "checksum: mark tests to run as part of reproducibility CI tests"
     )
     config.addinivalue_line(
-        "markers", "checksum: mark tests to run as part of reproducibility CI tests"
+        "markers", "checksum_slow: mark tests as slow reproducibility tests"
     )
     config.addinivalue_line(
         "markers", "config: mark as configuration tests in quick QA CI checks"

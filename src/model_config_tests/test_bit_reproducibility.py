@@ -5,54 +5,126 @@
 
 import json
 from pathlib import Path
+from typing import Optional
 
 import pytest
 
 from model_config_tests.exp_test_helper import setup_exp
+from model_config_tests.util import DAY_IN_SECONDS, HOUR_IN_SECONDS
+
+
+def set_checksum_output_dir(output_path: Path):
+    """Create an output directory for checksums and remove any pre-existing
+    historical checksums. Note: The checksums stored in this directory are
+    used in Reproducibility CI workflows, and are copied up to Github"""
+    output_dir = output_path / "checksum"
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    pre_existing_files = output_dir.glob("historical-*hr-checksum.json")
+    for file in pre_existing_files:
+        file.unlink()
+
+    return output_dir
+
+
+def read_historical_checksums(
+    control_path: Path, checksum_filename: str, checksum_path: Optional[Path] = None
+):
+    """Read a historical checksum file"""
+    if checksum_path is None:
+        # Default to testing/checksum/historical-*hr-checksums.json
+        # stored on model configuration directory
+        config_checksum_dir = control_path / "testing" / "checksum"
+        checksum_path = config_checksum_dir / checksum_filename
+
+    hist_checksums = None
+    if checksum_path.exists():
+        with open(checksum_path) as file:
+            hist_checksums = json.load(file)
+
+    return hist_checksums
 
 
 class TestBitReproducibility:
 
     @pytest.mark.checksum
     def test_bit_repro_historical(
-        self, output_path: Path, control_path: Path, checksum_path: Path
+        self,
+        output_path: Path,
+        control_path: Path,
+        checksum_path: Optional[Path],
+        keep_archive: Optional[bool],
     ):
         """
         Test that a run reproduces historical checksums
+
+        Parameters (these are fixtures defined in conftest.py)
+        ----------
+        output_path: Path
+            Output directory for test output and where the control and
+            lab directories are stored for the payu experiments. Default is
+            set in conftest.py
+        control_path: Path
+            Path to the model configuration to test. This is copied for
+            for control directories in experiments. Default is set in
+            conftests.py
+        checksum_path: Optional[Path]
+            Path to checksums to compare model output against. Default is
+            set to checksums saved on model configuration (set in )
+        keep_archive: Optional[bool]
+            This flag is used in testing for test code to use a previous test
+            archive, and to disable running the model with payu
         """
         # Setup checksum output directory
-        # NOTE: The checksum output file is used as part of `repro-ci` workflows
-        output_dir = output_path / "checksum"
-        output_dir.mkdir(parents=True, exist_ok=True)
-        checksum_output_file = output_dir / "historical-3hr-checksum.json"
-        if checksum_output_file.exists():
-            checksum_output_file.unlink()
+        checksum_output_dir = set_checksum_output_dir(output_path=output_path)
 
-        # Setup and run experiment
-        exp = setup_exp(control_path, output_path, "test_bit_repro_historical")
+        # Setup experiment
+        exp = setup_exp(
+            control_path, output_path, "test_bit_repro_historical", keep_archive
+        )
+
+        # Set model runtime using the configured default
         exp.model.set_model_runtime()
-        exp.setup_and_run()
 
-        assert exp.model.output_exists()
+        # Run the experiment using payu
+        status, stdout, stderr, output_files = exp.setup_and_run()
 
-        # Check checksum against historical checksum file
-        hist_checksums = None
-        hist_checksums_schema_version = None
+        if status != 0 or not exp.model.output_exists():
+            # Log the run information
+            exp.print_run_logs(status, stdout, stderr, output_files)
 
-        if (
-            not checksum_path.exists()
-        ):  # AKA, if the config branch doesn't have a checksum, or the path is misconfigured
-            hist_checksums_schema_version = exp.model.default_schema_version
-        else:  # we can use the historic-3hr-checksum that is in the testing directory
-            with open(checksum_path) as file:
-                hist_checksums = json.load(file)
+        assert status == 0, (
+            "There was an error running the experiment. "
+            "See the logs for more infomation on the experiment run"
+        )
 
-                # Parse checksums using the same version
-                hist_checksums_schema_version = hist_checksums["schema_version"]
+        assert exp.model.output_exists(), (
+            "Output file for the model does not exist. "
+            "See the logs for more information on the experiment run"
+        )
 
-        checksums = exp.extract_checksums(schema_version=hist_checksums_schema_version)
+        # Set the checksum output filename using the model default runtime
+        runtime_hours = exp.model.default_runtime_seconds // HOUR_IN_SECONDS
+        checksum_filename = f"historical-{runtime_hours}hr-checksum.json"
+
+        # Read the historical checksum file
+        hist_checksums = read_historical_checksums(
+            control_path, checksum_filename, checksum_path
+        )
+
+        # Use historical file checksums schema version for parsing checksum,
+        # otherwise use the model default, if file does not exist
+        schema_version = (
+            hist_checksums["schema_version"]
+            if hist_checksums
+            else exp.model.default_schema_version
+        )
+
+        # Extract checksums
+        checksums = exp.extract_checksums(schema_version=schema_version)
 
         # Write out checksums to output file
+        checksum_output_file = checksum_output_dir / checksum_filename
         with open(checksum_output_file, "w") as file:
             json.dump(checksums, file, indent=2)
 
@@ -60,7 +132,7 @@ class TestBitReproducibility:
             hist_checksums == checksums
         ), f"Checksums were not equal. The new checksums have been written to {checksum_output_file}."
 
-    @pytest.mark.slow
+    @pytest.mark.checksum_slow
     def test_bit_repro_repeat(self, output_path: Path, control_path: Path):
         """
         Test that a run has same checksums when ran twice
@@ -68,7 +140,7 @@ class TestBitReproducibility:
         exp_bit_repo1 = setup_exp(control_path, output_path, "test_bit_repro_repeat_1")
         exp_bit_repo2 = setup_exp(control_path, output_path, "test_bit_repro_repeat_2")
 
-        # Reconfigure to a 3 hours (default) and run
+        # Reconfigure to the default model runtime and run
         for exp in [exp_bit_repo1, exp_bit_repo2]:
             exp.model.set_model_runtime()
             exp.setup_and_run()
@@ -82,7 +154,7 @@ class TestBitReproducibility:
 
         assert produced == expected
 
-    @pytest.mark.checksum
+    @pytest.mark.checksum_slow
     def test_restart_repro(self, output_path: Path, control_path: Path):
         """
         Test that a run reproduces across restarts.
@@ -91,7 +163,7 @@ class TestBitReproducibility:
         exp_2x1day = setup_exp(control_path, output_path, "test_restart_repro_2x1day")
 
         # Reconfigure to a 1 day run.
-        exp_2x1day.model.set_model_runtime(seconds=86400)
+        exp_2x1day.model.set_model_runtime(seconds=DAY_IN_SECONDS)
 
         # Now run twice.
         exp_2x1day.setup_and_run()
@@ -100,7 +172,7 @@ class TestBitReproducibility:
         # Now do a single 2 day run
         exp_2day = setup_exp(control_path, output_path, "test_restart_repro_2day")
         # Reconfigure
-        exp_2day.model.set_model_runtime(seconds=172800)
+        exp_2day.model.set_model_runtime(seconds=(2 * DAY_IN_SECONDS))
 
         # Run once.
         exp_2day.setup_and_run()

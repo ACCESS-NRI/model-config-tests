@@ -17,7 +17,7 @@ from model_config_tests.util import wait_for_qsub
 
 class ExpTestHelper:
 
-    def __init__(self, control_path: Path, lab_path: Path):
+    def __init__(self, control_path: Path, lab_path: Path, disable_payu_run=False):
 
         self.exp_name = control_path.name
         self.control_path = control_path
@@ -32,6 +32,8 @@ class ExpTestHelper:
             self.config = yaml.safe_load(f)
 
         self.set_model()
+
+        self.disable_payu_run = disable_payu_run
 
     def set_model(self):
         """Set model based on payu config. Currently only setting top-level
@@ -81,8 +83,8 @@ class ExpTestHelper:
 
         Don't do any work if it has already run.
         """
-
-        if self.has_run():
+        # Skip running payu if it's disabled, or if output already exists
+        if self.disable_payu_run or self.has_run():
             return 0, None, None, None
         else:
             return self.force_qsub_run()
@@ -91,6 +93,9 @@ class ExpTestHelper:
         """
         Run using qsub
         """
+        if self.disable_payu_run:
+            # Skip running payu if it's disabled.
+            return 0, None, None, None
 
         # Change to experiment directory and run.
         owd = Path.cwd()
@@ -135,6 +140,10 @@ class ExpTestHelper:
 
         # Read the qsub id of the collate job from the stdout.
         # Payu puts this here.
+
+        # TODO: Fish out the exit code from the run logs and early
+        # return if status != 0
+
         m = re.search(r"(\d+.gadi-pbs)\n", stdout)
         if m is None:
             print("Error: qsub id of collate job.", file=sys.stderr)
@@ -154,8 +163,22 @@ class ExpTestHelper:
         self.setup_for_test_run()
         return self.run()
 
+    def print_run_logs(self, status, stdout, stderr, output_files):
+        """Print run information"""
+        run_info = (
+            f"Experiment run: {self.exp_name}\n"
+            f"Status: {status}\n"
+            f"Control directory: {self.control_path}\n"
+            f"Output files: {output_files}\n"
+            f"--- stdout ---\n{stdout}\n"
+            f"--- stderr ---\n{stderr}\n"
+        )
+        print(run_info)
 
-def setup_exp(control_path: Path, output_path: Path, exp_name: str):
+
+def setup_exp(
+    control_path: Path, output_path: Path, exp_name: str, keep_archive: bool = False
+):
     """
     Create a exp by copying over base config
     """
@@ -172,16 +195,21 @@ def setup_exp(control_path: Path, output_path: Path, exp_name: str):
 
     exp_lab_path = output_path / "lab"
 
-    exp = ExpTestHelper(control_path=exp_control_path, lab_path=exp_lab_path)
+    exp = ExpTestHelper(
+        control_path=exp_control_path,
+        lab_path=exp_lab_path,
+        disable_payu_run=keep_archive,
+    )
 
     # Remove any pre-existing archive or work directories for the experiment
-    try:
-        shutil.rmtree(exp.archive_path)
-    except FileNotFoundError:
-        pass
-    try:
-        shutil.rmtree(exp.work_path)
-    except FileNotFoundError:
-        pass
+    if not keep_archive:
+        try:
+            shutil.rmtree(exp.archive_path)
+        except FileNotFoundError:
+            pass
+        try:
+            shutil.rmtree(exp.work_path)
+        except FileNotFoundError:
+            pass
 
     return exp

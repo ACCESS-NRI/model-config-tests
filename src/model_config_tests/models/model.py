@@ -2,10 +2,16 @@
 
 from pathlib import Path
 
+from model_config_tests.util import HOUR_IN_SECONDS
+
+# Default Schema values
 SCHEMA_VERSION_1_0_0 = "1-0-0"
 SCHEMA_1_0_0_URL = "https://raw.githubusercontent.com/ACCESS-NRI/schema/7666d95967de4dfd19b0d271f167fdcfd3f46962/au.org.access-nri/model/reproducibility/checksums/1-0-0.json"
 SCHEMA_VERSION_TO_URL = {SCHEMA_VERSION_1_0_0: SCHEMA_1_0_0_URL}
 DEFAULT_SCHEMA_VERSION = "1-0-0"
+
+# Default model runtime (3 hrs)
+DEFAULT_RUNTIME_SECONDS = HOUR_IN_SECONDS * 3
 
 
 class Model:
@@ -15,11 +21,15 @@ class Model:
         self.default_schema_version = DEFAULT_SCHEMA_VERSION
         self.schema_version_to_url = SCHEMA_VERSION_TO_URL
 
+        self.default_runtime_seconds = DEFAULT_RUNTIME_SECONDS
+
     def extract_checksums(self, output_directory: Path, schema_version: str):
         """Extract checksums from output directory"""
         raise NotImplementedError
 
-    def set_model_runtime(self, years: int = 0, months: int = 0, seconds: int = 10800):
+    def set_model_runtime(
+        self, years: int = 0, months: int = 0, seconds: int = DEFAULT_RUNTIME_SECONDS
+    ):
         """Configure model runtime"""
         raise NotImplementedError
 

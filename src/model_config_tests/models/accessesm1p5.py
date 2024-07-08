@@ -1,43 +1,52 @@
-"""Specific Access-OM2 Model setup and post-processing"""
+"""Specific ACCESS-ESM1.5 Model setup and post-processing"""
 
 from pathlib import Path
 from typing import Any
 
-import f90nml
+import yaml
 
-from model_config_tests.models.model import (
-    DEFAULT_RUNTIME_SECONDS,
-    SCHEMA_VERSION_1_0_0,
-    Model,
-)
+from model_config_tests.models.model import SCHEMA_VERSION_1_0_0, Model
 from model_config_tests.models.mom5 import mom5_extract_checksums
+from model_config_tests.util import DAY_IN_SECONDS
+
+# Default model runtime (24 hrs)
+DEFAULT_RUNTIME_SECONDS = DAY_IN_SECONDS
 
 
-class AccessOm2(Model):
+class AccessEsm1p5(Model):
     def __init__(self, experiment):
         super().__init__(experiment)
-        self.output_file = self.experiment.output000 / "access-om2.out"
+        # Override model default runtime
+        self.default_runtime_seconds = DEFAULT_RUNTIME_SECONDS
 
-        self.accessom2_config = experiment.control_path / "accessom2.nml"
-        self.ocean_config = experiment.control_path / "ocean" / "input.nml"
+        self.output_file = self.experiment.output000 / "access.out"
 
     def set_model_runtime(
         self, years: int = 0, months: int = 0, seconds: int = DEFAULT_RUNTIME_SECONDS
     ):
         """Set config files to a short time period for experiment run.
-        Default is 3 hours"""
-        with open(self.accessom2_config) as f:
-            nml = f90nml.read(f)
+        Default is 24 hours"""
+        with open(self.experiment.config_path) as f:
+            doc = yaml.safe_load(f)
 
-        # Check that two of years, months, seconds is zero
-        if sum(x == 0 for x in (years, months, seconds)) != 2:
-            raise NotImplementedError(
-                "Cannot specify runtime in seconds and years and months"
-                + " at the same time. Two of which must be zero"
-            )
+        assert (
+            seconds % DAY_IN_SECONDS == 0
+        ), "Only days are supported in payu UM driver"
 
-        nml["date_manager_nml"]["restart_period"] = [years, months, seconds]
-        nml.write(self.accessom2_config, force=True)
+        # Set runtime in config.yaml
+        runtime_config = {
+            "years": years,
+            "months": months,
+            "days": 0,
+            "seconds": seconds,
+        }
+        if "calendar" in doc:
+            doc["calendar"]["runtime"] = runtime_config
+        else:
+            doc["calendar"] = {"runtime": runtime_config}
+
+        with open(self.experiment.config_path, "w") as f:
+            yaml.dump(doc, f)
 
     def output_exists(self) -> bool:
         """Check for existing output file"""
@@ -48,7 +57,7 @@ class AccessOm2(Model):
     ) -> dict[str, Any]:
         """Parse output file and create checksum using defined schema"""
         if output_directory:
-            output_filename = output_directory / "access-om2.out"
+            output_filename = output_directory / "access.out"
         else:
             output_filename = self.output_file
 
