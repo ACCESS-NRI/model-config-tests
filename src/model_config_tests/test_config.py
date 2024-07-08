@@ -22,7 +22,7 @@ SCHEMA_COMMIT = "4b7207e47afe402a732c58741ff66acc5f93b8cf"
 LICENSE = "CC-BY-4.0"
 LICENSE_URL = "https://creativecommons.org/licenses/by/4.0/legalcode.txt"
 
-# Releaase modules location on NCI
+# Release modules location on NCI
 RELEASE_MODULE_LOCATION = "/g/data/vk83/modules/access-models"
 
 
@@ -211,7 +211,9 @@ def check_manifest_exes_in_spack_location(
     model_module_name, model_repo_name, control_path, config
 ):
     """This compares executable paths in the executable manifest, and checks
-    they match an install path in the spack.location release artefact.
+    they match an install path in the spack.location release artefact. The
+    version defined in the module configuration in config.yaml, is used
+    to find the relevant release version.
 
     This is called in model-specific config tests.
 
@@ -227,28 +229,24 @@ def check_manifest_exes_in_spack_location(
         The contents of the config.yaml file
     """
     help_msg = (
-        "Expected module for the model is added to loaded modules in config.yaml. E.g.\n"
+        "Expected module for the model is added to loaded modules in config.yaml. "
+        "The module also requires a released version. E.g.\n"
         "   modules:\n"
         "     use:\n"
         f"       - {RELEASE_MODULE_LOCATION}\n"
         "     load:\n"
-        f"       - {model_module_name}/<version>"
+        f"       - {model_module_name}/<version>\n"
         "Model executable paths can then be filenames that found in paths added by loaded module"
     )
 
     # Check module is defined in configuration file
     assert "modules" in config and "load" in config["modules"], help_msg
     loaded_modules = config["modules"]["load"]
-    modules = [m for m in loaded_modules if m.startswith(model_module_name)]
+    modules = [m for m in loaded_modules if m.startswith(f"{model_module_name}/")]
     assert len(modules) == 1, help_msg
 
     # Extract out the version
-    module = modules[0]
-    assert "/" in module, (
-        f"Expected {model_module_name} module version to be specified in config.yaml, "
-        f"e.g. {model_module_name}/<version>"
-    )
-    _, module_version = module.split("/")
+    _, module_version = modules[0].split("/")
 
     # Use the module version to download spack.location file
     url = (
@@ -270,13 +268,14 @@ def check_manifest_exes_in_spack_location(
     for exe_path in exe_paths:
         install_path, exe_name = exe_path.split("/bin/")
         assert install_path in str(spack_location), (
-            "Expected exe path in exe manifest to match an install path in released spack_location"
+            "Expected exe path in exe manifest to match an install path in released spack.location "
             f"for {model_module_name}/{module_version}.\n"
-            f"Executable path: {exe_path}"
+            f"Executable path: {exe_path}\n"
             f"----spack.location---\n{spack_location}"
         )
 
         assert exe_name in config_exes, (
-            "Expected model/submodel exe value in config.yaml to be the name of the executable,"
-            f"as the full path is determined using PATHs added by {model_module_name} module"
+            f"Expected 'exe: {exe_name}' for model/submodel in config.yaml. "
+            "Only the name of the executable is needed, as the full path is "
+            f"determined by payu (which searches PATHs added by {model_module_name} module)"
         )

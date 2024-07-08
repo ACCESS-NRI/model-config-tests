@@ -195,7 +195,7 @@ class TestAccessOM2:
             and metadata["nominal_resolution"] == expected
         ), f"Expected nominal_resolution field set to: {expected}"
 
-    def test_exe_in_manifest_equals_path_in_release_spack_location(
+    def test_access_om2_manifest_exe_in_release_spack_location(
         self, config, branch, control_path
     ):
         # Infer module and repository name from branch - as different for the BGC configuration
