@@ -10,7 +10,7 @@ from typing import Optional
 import pytest
 
 from model_config_tests.exp_test_helper import setup_exp
-from model_config_tests.util import SECONDS_IN_DAY, SECONDS_IN_HOUR
+from model_config_tests.util import DAY_IN_SECONDS, HOUR_IN_SECONDS
 
 
 def set_checksum_output_dir(output_path: Path):
@@ -104,7 +104,7 @@ class TestBitReproducibility:
         )
 
         # Set the checksum output filename using the model default runtime
-        runtime_hours = exp.model.default_runtime_seconds // SECONDS_IN_HOUR
+        runtime_hours = exp.model.default_runtime_seconds // HOUR_IN_SECONDS
         checksum_filename = f"historical-{runtime_hours}hr-checksum.json"
 
         # Read the historical checksum file
@@ -163,7 +163,7 @@ class TestBitReproducibility:
         exp_2x1day = setup_exp(control_path, output_path, "test_restart_repro_2x1day")
 
         # Reconfigure to a 1 day run.
-        exp_2x1day.model.set_model_runtime(seconds=SECONDS_IN_DAY)
+        exp_2x1day.model.set_model_runtime(seconds=DAY_IN_SECONDS)
 
         # Now run twice.
         exp_2x1day.setup_and_run()
@@ -172,7 +172,7 @@ class TestBitReproducibility:
         # Now do a single 2 day run
         exp_2day = setup_exp(control_path, output_path, "test_restart_repro_2day")
         # Reconfigure
-        exp_2day.model.set_model_runtime(seconds=(2 * SECONDS_IN_DAY))
+        exp_2day.model.set_model_runtime(seconds=(2 * DAY_IN_SECONDS))
 
         # Run once.
         exp_2day.setup_and_run()

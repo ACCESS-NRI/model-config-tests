@@ -7,10 +7,10 @@ import yaml
 
 from model_config_tests.models.model import SCHEMA_VERSION_1_0_0, Model
 from model_config_tests.models.mom5 import mom5_extract_checksums
-from model_config_tests.util import SECONDS_IN_DAY
+from model_config_tests.util import DAY_IN_SECONDS
 
 # Default model runtime (24 hrs)
-DEFAULT_RUNTIME_SECONDS = SECONDS_IN_DAY
+DEFAULT_RUNTIME_SECONDS = DAY_IN_SECONDS
 
 
 class AccessEsm1p5(Model):
@@ -30,7 +30,7 @@ class AccessEsm1p5(Model):
             doc = yaml.safe_load(f)
 
         assert (
-            seconds % SECONDS_IN_DAY == 0
+            seconds % DAY_IN_SECONDS == 0
         ), "Only days are supported in payu UM driver"
 
         # Set runtime in config.yaml

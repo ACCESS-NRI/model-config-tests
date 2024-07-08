@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from model_config_tests.util import SECONDS_IN_HOUR
+from model_config_tests.util import HOUR_IN_SECONDS
 
 # Default Schema values
 SCHEMA_VERSION_1_0_0 = "1-0-0"
@@ -11,7 +11,7 @@ SCHEMA_VERSION_TO_URL = {SCHEMA_VERSION_1_0_0: SCHEMA_1_0_0_URL}
 DEFAULT_SCHEMA_VERSION = "1-0-0"
 
 # Default model runtime (3 hrs)
-DEFAULT_RUNTIME_SECONDS = SECONDS_IN_HOUR * 3
+DEFAULT_RUNTIME_SECONDS = HOUR_IN_SECONDS * 3
 
 
 class Model:
