@@ -5,6 +5,7 @@
 
 import re
 from pathlib import Path
+from typing import Any
 
 import jsonschema
 import pytest
@@ -21,14 +22,8 @@ SCHEMA_COMMIT = "4b7207e47afe402a732c58741ff66acc5f93b8cf"
 LICENSE = "CC-BY-4.0"
 LICENSE_URL = "https://creativecommons.org/licenses/by/4.0/legalcode.txt"
 
-
-@pytest.fixture(scope="class")
-def exe_manifest_fullpaths(control_path: Path):
-    manifest_path = control_path / "manifests" / "exe.yaml"
-    with open(manifest_path) as f:
-        _, data = yaml.safe_load_all(f)
-    exe_fullpaths = {item["fullpath"] for item in data.values()}
-    return exe_fullpaths
+# Releaase modules location on NCI
+RELEASE_MODULE_LOCATION = "/g/data/vk83/modules/access-models"
 
 
 def insist_array(str_or_array):
@@ -74,39 +69,6 @@ class TestConfig:
         else:
             runlog_enabled = runlog_config.get("enable", True)
         assert runlog_enabled
-
-    def test_absolute_exe_path(self, config):
-        assert (
-            "exe" not in config or Path(config["exe"]).is_absolute()
-        ), f"Executable for model should be an absolute path: {config['exe']}"
-
-    def test_absolute_submodel_exe_path(self, config):
-        for model in config.get("submodels", []):
-            if "exe" not in model:
-                # Allow models such as couplers that have no executable
-                if "ncpus" in model and model["ncpus"] != 0:
-                    pytest.fail(f"No executable for submodel {model['name']}")
-                continue
-
-            assert Path(model["exe"]).is_absolute(), (
-                f"Executable for {model['name']} submodel should be "
-                + f"an absolute path: {config['exe']}"
-            )
-
-    def test_exe_paths_in_manifest(self, config, exe_manifest_fullpaths):
-        if "exe" in config:
-            assert config["exe"] in exe_manifest_fullpaths, (
-                "Model executable path should be in Manifest file "
-                + f"(e.g. manifests/exe.yaml): {config['exe']}"
-            )
-
-    def test_sub_model_exe_paths_in_manifest(self, config, exe_manifest_fullpaths):
-        for model in config.get("submodels", []):
-            if "exe" in model:
-                assert model["exe"] in exe_manifest_fullpaths, (
-                    f"Submodel {model['name']} executable path should be in "
-                    + f"Manifest file (e.g. manifests/exe.yaml): {config['exe']}"
-                )
 
     def test_restart_freq_is_date_based(self, config):
         assert "restart_freq" in config, "Restart frequency should be defined"
@@ -222,4 +184,99 @@ class TestConfig:
 
         assert content == license, (
             f"LICENSE file should be equal to {LICENSE} found here: " + LICENSE_URL
+        )
+
+
+def exe_manifest_fullpaths(control_path: Path):
+    """Return the full paths to the executables in the executable manifest file"""
+    manifest_path = control_path / "manifests" / "exe.yaml"
+    with open(manifest_path) as f:
+        _, data = yaml.safe_load_all(f)
+    exe_fullpaths = {item["fullpath"] for item in data.values()}
+    return exe_fullpaths
+
+
+def configured_model_exes(config: dict[str, Any]):
+    """Return the exe values of the model and submodel defined in config.yaml"""
+    exes = []
+    if "exe" in config:
+        exes.append(config["exe"])
+    for model in config.get("submodels", []):
+        if "exe" in model:
+            exes.append(model["exe"])
+    return exes
+
+
+def check_manifest_exes_in_spack_location(
+    model_module_name, model_repo_name, control_path, config
+):
+    """This compares executable paths in the executable manifest, and checks
+    they match an install path in the spack.location release artefact.
+
+    This is called in model-specific config tests.
+
+    Parameters
+    ----------
+    model_module_name: str
+        Expected module name in the config file. This is used to find the version of the model
+    model_repo_name: str
+        Name of the ACCESS-NRI model repository. This is used to retrieve released spack.location
+    control_path: Path
+        The path to configuration directory
+    config: Dict[str, Any]
+        The contents of the config.yaml file
+    """
+    help_msg = (
+        "Expected module for the model is added to loaded modules in config.yaml. E.g.\n"
+        "   modules:\n"
+        "     use:\n"
+        f"       - {RELEASE_MODULE_LOCATION}\n"
+        "     load:\n"
+        f"       - {model_module_name}/<version>"
+        "Model executable paths can then be filenames that found in paths added by loaded module"
+    )
+
+    # Check module is defined in configuration file
+    assert "modules" in config and "load" in config["modules"], help_msg
+    loaded_modules = config["modules"]["load"]
+    modules = [m for m in loaded_modules if m.startswith(model_module_name)]
+    assert len(modules) == 1, help_msg
+
+    # Extract out the version
+    module = modules[0]
+    assert "/" in module, (
+        f"Expected {model_module_name} module version to be specified in config.yaml, "
+        f"e.g. {model_module_name}/<version>"
+    )
+    _, module_version = module.split("/")
+
+    # Use the module version to download spack.location file
+    url = (
+        f"https://github.com/ACCESS-NRI/{model_repo_name}/"
+        f"releases/download/{module_version}/spack.location"
+    )
+
+    # Check there is a released spack.location file for the module version
+    response = requests.get(url)
+    assert response.status_code == 200, f"Failed to download spack.location from {url}"
+    spack_location = response.content
+
+    # Read exe full paths in the manifests
+    exe_paths = exe_manifest_fullpaths(control_path)
+
+    # Read exe values from the configuration file
+    config_exes = configured_model_exes(config)
+
+    for exe_path in exe_paths:
+        install_path, exe_name = exe_path.split("/bin/")
+        assert install_path in str(spack_location), (
+            "Expected exe path in exe manifest to match an install path in released spack_location"
+            f"for {model_module_name}/{module_version}.\n"
+            f"Executable path: {exe_path}"
+            f"----spack.location---\n{spack_location}"
+        )
+
+        assert exe_name in config_exes, (
+            "Expected model/submodel exe value in config.yaml to be the name of the executable,"
+            f"as the full path is determined using PATHs added by {model_module_name} module"
         )
