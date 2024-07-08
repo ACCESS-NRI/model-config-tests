@@ -8,7 +8,7 @@ RESOURCES_DIR = Path(f"{HERE}/resources")
 
 
 def test_test_config_access_om2():
-    """Test general config tests using an ACCESS-OM2 configuration"""
+    """Test general config tests using a skeleton ACCESS-OM2 configuration"""
     access_om2_configs = RESOURCES_DIR / "access-om2" / "configurations"
     test_config = access_om2_configs / "release-1deg_jra55_ryf"
 
@@ -16,7 +16,7 @@ def test_test_config_access_om2():
 
     test_cmd = (
         "model-config-tests -s "
-        # Use -k to select one test
+        # Run all general config tests
         "-m config "
         f"--control-path {test_config} "
     )
