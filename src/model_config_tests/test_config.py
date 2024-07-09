@@ -187,7 +187,7 @@ class TestConfig:
         )
 
 
-def exe_manifest_fullpaths(control_path: Path):
+def read_exe_manifest_fullpaths(control_path: Path):
     """Return the full paths to the executables in the executable manifest file"""
     manifest_path = control_path / "manifests" / "exe.yaml"
     with open(manifest_path) as f:
@@ -196,8 +196,8 @@ def exe_manifest_fullpaths(control_path: Path):
     return exe_fullpaths
 
 
-def configured_model_exes(config: dict[str, Any]):
-    """Return the exe values of the model and submodel defined in config.yaml"""
+def read_config_model_exes(config: dict[str, Any]):
+    """Return the exe values of the model and sub-model defined in config.yaml"""
     exes = []
     if "exe" in config:
         exes.append(config["exe"])
@@ -220,7 +220,7 @@ def check_manifest_exes_in_spack_location(
     Parameters
     ----------
     model_module_name: str
-        Expected module name in the config file. This is used to find the version of the model
+        Expected module name in the config.yaml file. This is used to find the version of the model
     model_repo_name: str
         Name of the ACCESS-NRI model repository. This is used to retrieve released spack.location
     control_path: Path
@@ -260,10 +260,10 @@ def check_manifest_exes_in_spack_location(
     spack_location = response.content
 
     # Read exe full paths in the manifests
-    exe_paths = exe_manifest_fullpaths(control_path)
+    exe_paths = read_exe_manifest_fullpaths(control_path)
 
     # Read exe values from the configuration file
-    config_exes = configured_model_exes(config)
+    config_exes = read_config_model_exes(config)
 
     for exe_path in exe_paths:
         install_path, exe_name = exe_path.split("/bin/")
