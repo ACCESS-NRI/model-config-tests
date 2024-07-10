@@ -104,6 +104,7 @@ jobs:
       pull-requests: write
     env:
       ARTIFACT_LOCAL_LOCATION: /opt/artifact
+      GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v4
         with:
