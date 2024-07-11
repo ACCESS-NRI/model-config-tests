@@ -40,6 +40,7 @@ jobs:
     environment: ${{ inputs.environment-name }}
     outputs:
       artifact-name: ${{ steps.artifact.outputs.name }}
+      artifact-url: ${{ steps.upload.outputs.artifact-url }}
       experiment-location: ${{ steps.run.outputs.experiment-location }}
     env:
       EXPERIMENT_LOCATION: ${{ vars.EXPERIMENTS_LOCATION }}/${{ github.event.repository.name }}/${{ inputs.config-tag }}
@@ -112,7 +113,8 @@ jobs:
         run: echo "name=${{ github.event.repository.name }}-${{ inputs.config-tag }}" >> $GITHUB_OUTPUT
 
       - name: Upload Test Output
-        uses: actions/upload-artifact@v3
+        id: upload
+        uses: actions/upload-artifact@v4
         with:
           name: ${{ steps.artifact.outputs.name }}
           if-no-files-found: error
