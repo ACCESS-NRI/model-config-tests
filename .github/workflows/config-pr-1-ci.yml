@@ -210,7 +210,7 @@ jobs:
       compared-checksum-version: ${{ steps.results.outputs.compared-checksum-version }}
     steps:
       - name: Download Newly Created Checksum
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: ${{ needs.repro-ci.outputs.artifact-name }}
           path: ${{ env.TESTING_LOCAL_LOCATION }}
@@ -285,21 +285,37 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       pull-requests: write
+    env:
+      COMPARED_CHECKSUM_STRING: ${{ needs.check-checksum.outputs.compared-checksum-version != '' && format('The checksums compared against are found here {0}/{1}/tree/{2}/testing/checksum', github.server_url, github.repository, needs.check-checksum.outputs.compared-checksum-version) || '' }}
     steps:
-      - name: Successful Release Comment
+      - name: Successful Repro Comment
         if: needs.check-checksum.outputs.result == 'pass'
         uses: access-nri/actions/.github/actions/pr-comment@main
         with:
           comment: |
-            :white_check_mark: The Bitwise Reproducibility check succeeded when comparing against `${{ needs.check-checksum.outputs.compared-checksum-version }}` for this `Release` config. :white_check_mark:
-            For further information, the experiment can be found on Gadi at ${{ needs.repro-ci.outputs.experiment-location }}, and the test results at ${{ needs.check-checksum.outputs.check-run-url }}.
+            :white_check_mark: The Bitwise Reproducibility check succeeded when comparing against `${{ needs.check-checksum.outputs.compared-checksum-version }}` :white_check_mark:
             You must bump the minor version of this configuration - to bump the version, comment `!bump minor` or modify the `version` in `metadata.yaml`. The meaning of these version bumps is explained in the README.md, under `Config Tags`.
 
-      - name: Failed Release Comment
+            <details>
+            <summary> Further information</summary>
+
+            The experiment can be found on Gadi at `${{ needs.repro-ci.outputs.experiment-location }}`, and the test results at ${{ needs.check-checksum.outputs.check-run-url }}.
+            The checksums generated in this PR are found in the `testing/checksum` directory of ${{ needs.repro-ci.outputs.artifact-url }}.
+            ${{ env.COMPARED_CHECKSUM_STRING }}
+            </details>
+
+      - name: Failed Repro Comment
         if: needs.check-checksum.outputs.result == 'fail'
         uses: access-nri/actions/.github/actions/pr-comment@main
         with:
           comment: |
-            :x: The Bitwise Reproducibility check failed when comparing against `${{ needs.check-checksum.outputs.compared-checksum-version }}` for this `Release` config. :x:
-            For further information, the experiment can be found on Gadi at ${{ needs.repro-ci.outputs.experiment-location }}, and the test results at ${{ needs.check-checksum.outputs.check-run-url }}.
-            You must bump the major version of this configuration before this PR is merged to account for this - to bump the version, comment `!bump major`or modify the `version` in `metadata.yaml`. The meaning of these version bumps is explained in the README.md, under `Config Tags`.
+            :x: The Bitwise Reproducibility check failed ${{ needs.check-checksum.outputs.compared-checksum-version != '' && format('when comparing against `{0}`', needs.check-checksum.outputs.compared-checksum-version) || 'as there is no earlier checksum to compare against' }} :x:
+            You must bump the major version of this configuration - to bump the version, comment `!bump major`or modify the `version` in `metadata.yaml`. The meaning of these version bumps is explained in the README.md, under `Config Tags`.
+
+            <details>
+            <summary> Further information</summary>
+
+            The experiment can be found on Gadi at `${{ needs.repro-ci.outputs.experiment-location }}`, and the test results at ${{ needs.check-checksum.outputs.check-run-url }}.
+            The checksums generated in this PR are found in the `testing/checksum` directory of ${{ needs.repro-ci.outputs.artifact-url }}.
+            ${{ env.COMPARED_CHECKSUM_STRING }}
+            </details>
