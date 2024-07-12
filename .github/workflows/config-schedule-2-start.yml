@@ -43,8 +43,10 @@ jobs:
       - config
     uses: access-nri/model-config-tests/.github/workflows/test-repro.yml@main
     with:
+      # FIXME: Make the environment name an input of some kind - what if we deploy to a different supercomputer?
       environment-name: Gadi
-      config-tag: ${{ inputs.config-tag }}
+      config-ref: ${{ inputs.config-tag }}
+      compared-config-ref: ${{ inputs.config-tag }}
       test-markers: ${{ needs.config.outputs.markers }}
       model-config-tests-version: ${{ needs.config.outputs.model-config-tests-version }}
       python-version: ${{ needs.config.outputs.python-version }}
