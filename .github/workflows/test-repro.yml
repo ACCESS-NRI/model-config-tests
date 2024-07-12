@@ -67,9 +67,9 @@ jobs:
         run: |
           ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} -i ${{ steps.ssh.outputs.private-key-path }} /bin/bash<<'EOT'
 
-          # Remove base experiment if it already exists
-          if [ -d "${{ env.BASE_EXPERIMENT_LOCATION }}" ]; then
-            rm -rf ${{ env.BASE_EXPERIMENT_LOCATION }}
+          # Remove base experiment (and everything else) if it exists
+          if [ -d "${{ env.EXPERIMENT_LOCATION }}" ]; then
+            rm -rf ${{ env.EXPERIMENT_LOCATION }}/*
           fi
 
           # Setup a base experiment
@@ -107,7 +107,6 @@ jobs:
           # Deactivate and remove the test virtual environment
           # TODO: Do we need to deactivate the venv if we are about to logout?
           deactivate
-          rm -rf ${{ env.TEST_VENV_LOCATION }}
 
           # We want the exit code post-`pytest` to be 0 so the overall `ssh` call succeeeds
           # after a potential `pytest` error.
