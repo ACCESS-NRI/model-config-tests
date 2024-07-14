@@ -300,8 +300,11 @@ jobs:
             <summary> Further information</summary>
 
             The experiment can be found on Gadi at `${{ needs.repro-ci.outputs.experiment-location }}`, and the test results at ${{ needs.check-checksum.outputs.check-run-url }}.
+
             The checksums generated in this PR are found in the `testing/checksum` directory of ${{ needs.repro-ci.outputs.artifact-url }}.
+
             ${{ env.COMPARED_CHECKSUM_STRING }}
+
             </details>
 
       - name: Failed Repro Comment
@@ -316,6 +319,9 @@ jobs:
             <summary> Further information</summary>
 
             The experiment can be found on Gadi at `${{ needs.repro-ci.outputs.experiment-location }}`, and the test results at ${{ needs.check-checksum.outputs.check-run-url }}.
+
             The checksums generated in this PR are found in the `testing/checksum` directory of ${{ needs.repro-ci.outputs.artifact-url }}.
+
             ${{ env.COMPARED_CHECKSUM_STRING }}
+
             </details>
