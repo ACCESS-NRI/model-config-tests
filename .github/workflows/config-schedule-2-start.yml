@@ -71,7 +71,7 @@ jobs:
       compared-checksum-version: ${{ steps.results.outputs.compared-checksum-version }}
     steps:
       - name: Download Newly Created Checksum
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: ${{ needs.repro-ci.outputs.artifact-name }}
           path: ${{ env.TESTING_LOCAL_LOCATION }}
@@ -129,13 +129,14 @@ jobs:
           GH_REPO: ${{ github.repository }}
           BODY: |
             There was a failure of a monthly reproducibility check on `${{ github.repository }}`.
-            Logs, checksums and other artifacts can be found at the Failed Run Log link below.
 
             Model: `${{ steps.variables.outputs.model }}`, found here: ${{ steps.variables.outputs.model-url }}
             Config Repo: `${{ steps.variables.outputs.config }}`, found here: ${{ steps.variables.outputs.config-url }}
             Config Tag Tested for Reproducibility: `${{ needs.check-checksum.outputs.compared-checksum-version }}`, found here: ${{ steps.variables.outputs.tag-url }}
             Failed Run Log: ${{ steps.variables.outputs.run-url }}
             Experiment Location (Gadi): `${{ needs.repro-ci.outputs.experiment-location }}`
+            Checksums created: In the `testing/checksum` directory of ${{ needs.repro-ci.outputs.artifact-url }}
+            Checksums compared against: ${{ format('{0}/{1}/tree/{2}/testing/checksum', github.server_url, github.repository, needs.check-checksum.outputs.compared-checksum-version) }}
 
             Tagging @ACCESS-NRI/model-release
         run: |
