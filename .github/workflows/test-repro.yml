@@ -105,8 +105,8 @@ jobs:
             --junitxml=${{ env.EXPERIMENT_LOCATION }}/checksum/test_report.xml
 
           # Deactivate and remove the test virtual environment
-          # TODO: Do we need to deactivate the venv if we are about to logout?
           deactivate
+          rm -rf ${{ env.TEST_VENV_LOCATION }}
 
           # We want the exit code post-`pytest` to be 0 so the overall `ssh` call succeeeds
           # after a potential `pytest` error.
