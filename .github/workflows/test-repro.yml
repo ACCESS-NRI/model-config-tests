@@ -80,6 +80,15 @@ jobs:
           if [ -n "${{ inputs.compared-config-ref }}" ]; then
             git clone ${{ github.event.repository.clone_url }} ${{ env.COMPARED_CHECKSUM_LOCATION }} -b ${{ inputs.compared-config-ref }}
             COMPARED_CHECKSUM_FILE=$(find ${{ env.COMPARED_CHECKSUM_LOCATION }} -type f -name 'historical-*hr-checksum.json')
+
+            # Error checking...
+            if [ -z "$COMPARED_CHECKSUM_FILE" ]; then
+              echo '::error::Did not find a `testing/checksum/historical-*hr-checksum.json` file in ${{ inputs.compared-config-ref }}. Exiting.'
+              exit 1
+            elif [ $(echo "$COMPARED_CHECKSUM_FILE" | wc -w) -gt 1 ]; then
+              echo '::error::Found more than one `testing/checksum/historical-*hr-checksum.json` file in ${{ inputs.compared-config-ref }}. Exiting.'
+              exit 2
+            fi
           fi
 
           # Load Python module
