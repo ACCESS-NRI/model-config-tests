@@ -2,10 +2,14 @@ name: Repro Checks
 on:
   workflow_call:
     inputs:
-      config-tag:
+      config-ref:
         type: string
         required: true
-        description: A tag on an associated config branch to use for the reproducibility run
+        description: A commit or tag on an associated config branch to use for the reproducibility run
+      compared-config-ref:
+        type: string
+        required: false
+        description: A commit or tag on an associated config branch to compare against
       environment-name:
         type: string
         required: true
@@ -35,7 +39,7 @@ jobs:
   repro:
     # NOTE: A lot of these `vars` and `secrets` are not found in this repository. Instead, they are inherited
     # from the calling workflow (for example, `ACCESS-NRI/access-om2-configs`)
-    name: Run ${{ inputs.config-tag }}
+    name: Run Config On ${{ inputs.config-ref }}
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment-name }}
     outputs:
@@ -43,7 +47,7 @@ jobs:
       artifact-url: ${{ steps.upload.outputs.artifact-url }}
       experiment-location: ${{ steps.run.outputs.experiment-location }}
     env:
-      EXPERIMENT_LOCATION: ${{ vars.EXPERIMENTS_LOCATION }}/${{ github.event.repository.name }}/${{ inputs.config-tag }}
+      EXPERIMENT_LOCATION: ${{ vars.EXPERIMENTS_LOCATION }}/${{ github.event.repository.name }}/${{ inputs.config-ref }}
     steps:
       - name: Setup SSH
         id: ssh
@@ -58,19 +62,34 @@ jobs:
         id: run
         env:
           BASE_EXPERIMENT_LOCATION: ${{ env.EXPERIMENT_LOCATION }}/base-experiment
+          COMPARED_CHECKSUM_LOCATION: ${{ env.EXPERIMENT_LOCATION }}/compared
           TEST_VENV_LOCATION: ${{ env.EXPERIMENT_LOCATION }}/test-venv
         run: |
           ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} -i ${{ steps.ssh.outputs.private-key-path }} /bin/bash<<'EOT'
 
-          # Remove base experiment if it already exists
-          if [ -d "${{ env.BASE_EXPERIMENT_LOCATION }}" ]; then
-            rm -rf ${{ env.BASE_EXPERIMENT_LOCATION }}
+          # Remove base experiment (and everything else) if it exists
+          if [ -d "${{ env.EXPERIMENT_LOCATION }}" ]; then
+            rm -rf ${{ env.EXPERIMENT_LOCATION }}/*
           fi
 
           # Setup a base experiment
-          git clone ${{ github.event.repository.clone_url }} ${{ env.BASE_EXPERIMENT_LOCATION }}
+          git clone ${{ github.event.repository.clone_url }} ${{ env.BASE_EXPERIMENT_LOCATION }} -b ${{ inputs.config-ref }}
           cd ${{ env.BASE_EXPERIMENT_LOCATION }}
-          git checkout ${{ inputs.config-tag }}
+
+          # Setup a compared checksum (if it exists)
+          if [ -n "${{ inputs.compared-config-ref }}" ]; then
+            git clone ${{ github.event.repository.clone_url }} ${{ env.COMPARED_CHECKSUM_LOCATION }} -b ${{ inputs.compared-config-ref }}
+            COMPARED_CHECKSUM_FILE=$(find ${{ env.COMPARED_CHECKSUM_LOCATION }} -type f -name 'historical-*hr-checksum.json')
+
+            # Error checking...
+            if [ -z "$COMPARED_CHECKSUM_FILE" ]; then
+              echo '::error::Did not find a `testing/checksum/historical-*hr-checksum.json` file in ${{ inputs.compared-config-ref }}. Exiting.'
+              exit 1
+            elif [ $(echo "$COMPARED_CHECKSUM_FILE" | wc -w) -gt 1 ]; then
+              echo '::error::Found more than one `testing/checksum/historical-*hr-checksum.json` file in ${{ inputs.compared-config-ref }}. Exiting.'
+              exit 2
+            fi
+          fi
 
           # Load Python module
           module load python3/${{ inputs.python-version }}
@@ -87,9 +106,11 @@ jobs:
           # after this step.
           set +e
 
-          # Run model-config-tests pytests - this also generates checksums files
+          # Run model-config-tests pytests - this also generates checksums files.
+          # If there is a checksum to compare against, add --checksum-path arg.
           model-config-tests -s -m "${{ inputs.test-markers }}" \
             --output-path ${{ env.EXPERIMENT_LOCATION }} \
+            ${{ inputs.compared-config-ref != '' && '--checksum-path $COMPARED_CHECKSUM_FILE \' || '\' }}
             --junitxml=${{ env.EXPERIMENT_LOCATION }}/checksum/test_report.xml
 
           # Deactivate and remove the test virtual environment
@@ -110,7 +131,7 @@ jobs:
 
       - name: Generate Test Output Artifact Name
         id: artifact
-        run: echo "name=${{ github.event.repository.name }}-${{ inputs.config-tag }}" >> $GITHUB_OUTPUT
+        run: echo "name=${{ github.event.repository.name }}-${{ inputs.config-ref }}" >> $GITHUB_OUTPUT
 
       - name: Upload Test Output
         id: upload

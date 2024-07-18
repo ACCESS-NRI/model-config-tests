@@ -74,17 +74,24 @@ jobs:
     name: Read CI Testing Configuration
     runs-on: ubuntu-latest
     outputs:
+      # QA Test Outputs
       qa-markers: ${{ steps.qa-config.outputs.markers }}
       qa-python-version: ${{ steps.qa-config.outputs.python-version }}
       qa-model-config-tests-version: ${{ steps.qa-config.outputs.model-config-tests-version }}
+      # Repro Test Outputs
       repro-markers: ${{ steps.repro-config.outputs.markers }}
       repro-python-version: ${{ steps.repro-config.outputs.python-version }}
       repro-model-config-tests-version: ${{ steps.repro-config.outputs.model-config-tests-version }}
+      compared-config-tag: ${{ steps.compared.outputs.tag }}
     steps:
       - name: Checkout main
+        # We fetch the repository history because in `steps.compared` we
+        # attempt to get the last config tag.
         uses: actions/checkout@v4
         with:
           ref: main
+          fetch-depth: 0
+          fetch-tags: true
 
       - name: Validate `config/ci.json`
         uses: access-nri/schema/.github/actions/validate-with-schema@main
@@ -109,6 +116,18 @@ jobs:
           check: reproducibility
           branch-or-tag: ${{ github.base_ref }}
           config-filepath: "config/ci.json"
+
+      - name: Get Config Tag to Compare Against
+        id: compared
+        # We checkout the base branch (the branch that will be merged into)
+        # to get the last tagged configuration checksums.
+        # We could also just take the HEAD of the base_ref, which would give
+        # the same result, but tags are human readable.
+        # In the case where there is no tag, `tag` will be an empty string,
+        # which is handled later.
+        run: |
+          git checkout ${{ github.base_ref }}
+          echo "tag=$(git describe --tags --abbrev=0)" >> $GITHUB_OUTPUT
 
   qa-ci:
     # Run quick, non-HPC tests on the runner.
@@ -180,8 +199,10 @@ jobs:
     if: needs.commit-check.outputs.authorship != vars.GH_ACTIONS_BOT_GIT_USER_NAME && needs.branch-check.result == 'success'
     uses: access-nri/model-config-tests/.github/workflows/test-repro.yml@main
     with:
+      # FIXME: Make the environment name an input of some kind - what if we deploy to a different supercomputer?
       environment-name: Gadi
-      config-tag: ${{ github.head_ref }}
+      config-ref: ${{ github.head_ref }}
+      compared-config-ref: ${{ needs.config.outputs.compared-config-tag }}
       test-markers: ${{ needs.config.outputs.repro-markers }}
       model-config-tests-version: ${{ needs.config.outputs.repro-model-config-tests-version }}
       python-version: ${{ needs.config.outputs.repro-python-version }}
@@ -196,8 +217,6 @@ jobs:
       - repro-ci
     runs-on: ubuntu-latest
     permissions:
-      contents: write
-      pull-requests: write
       checks: write
     env:
       TESTING_LOCAL_LOCATION: /opt/testing
@@ -206,20 +225,12 @@ jobs:
       check-run-url: ${{ steps.results.outputs.check-url }}
       # Overall result of the checksum repro CI - `pass` (if reproducible), `fail` otherwise
       result: ${{ steps.results.outputs.result }}
-      # Version of the checksum compared against the newly generated one
-      compared-checksum-version: ${{ steps.results.outputs.compared-checksum-version }}
     steps:
       - name: Download Newly Created Checksum
         uses: actions/download-artifact@v4
         with:
           name: ${{ needs.repro-ci.outputs.artifact-name }}
           path: ${{ env.TESTING_LOCAL_LOCATION }}
-
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.head_ref }}
-          fetch-depth: 0
-          fetch-tags: true
 
       - name: Parse Test Report
         id: tests
@@ -237,7 +248,6 @@ jobs:
         id: results
         run: |
           echo "check-url=${{ fromJson(steps.tests.outputs.json).check_url }}" >> $GITHUB_OUTPUT
-          echo "compared-checksum-version=$(git describe --tags --abbrev=0)" >> $GITHUB_OUTPUT
           if [ "${{ fromJson(steps.tests.outputs.json).stats.tests_fail }}" > 0 ]; then
             echo "result=fail" >> $GITHUB_OUTPUT
           else
@@ -280,6 +290,7 @@ jobs:
     name: Repro Result Notifier
     # Notify the PR of the result of the Repro check
     needs:
+      - config
       - repro-ci
       - check-checksum
     runs-on: ubuntu-latest
