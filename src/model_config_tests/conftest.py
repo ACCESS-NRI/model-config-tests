@@ -75,6 +75,12 @@ def keep_archive(request):
     return request.config.getoption("--keep-archive")
 
 
+@pytest.fixture(scope="session")
+def model_module_path(request):
+    """Set the path where released model module files are collected"""
+    return request.config.getoption("--model-module-path")
+
+
 # Set up command line options and default for directory paths
 def pytest_addoption(parser):
     """Attaches optional command line arguments"""
@@ -104,6 +110,12 @@ def pytest_addoption(parser):
         "--keep-archive",
         action="store_true",
         help="Keep archive from previous test run and disable running payu",
+    )
+
+    parser.addoption(
+        "--model-module-path",
+        action="store",
+        help="Specify the path to model module files",
     )
 
 

@@ -186,6 +186,29 @@ class TestConfig:
             f"LICENSE file should be equal to {LICENSE} found here: " + LICENSE_URL
         )
 
+    def test_model_module_path_is_defined(self, model_module_path, config):
+        """Check model modulepath is added to modules in config
+
+        Parameters (fixtures defined in conftest.py)
+        ----------
+        model_module_path: str
+            Path where model module files are collected
+        config: dict[str, any]
+            Contents of config.yaml file
+        """
+        if model_module_path:
+            assert (
+                "modules" in config
+                and "use" in config["modules"]
+                and model_module_path in config["modules"]["use"]
+            ), (
+                "Expected model module path is added to module config. E.g.\n"
+                "  modules:\n"
+                "   use:\n"
+                f"    - {model_module_path}\n"
+                "This path is used to find model modulefiles"
+            )
+
 
 def read_exe_manifest_fullpaths(control_path: Path):
     """Return the full paths to the executables in the executable manifest file"""
@@ -233,7 +256,7 @@ def check_manifest_exes_in_spack_location(
         "The module also requires a released version. E.g.\n"
         "   modules:\n"
         "     use:\n"
-        f"       - {RELEASE_MODULE_LOCATION}\n"
+        f"       - <model-module-path>\n"
         "     load:\n"
         f"       - {model_module_name}/<version>\n"
         "Model executable paths can then be filenames that found in paths added by loaded module"

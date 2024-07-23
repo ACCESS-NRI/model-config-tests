@@ -19,6 +19,7 @@ def test_test_config_access_om2():
         # Run all general config tests
         "-m config "
         f"--control-path {test_config} "
+        "--model-module-path /g/data/vk83/modules/access-models"
     )
 
     result = subprocess.run(shlex.split(test_cmd), capture_output=True, text=True)
