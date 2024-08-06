@@ -120,3 +120,6 @@ def pytest_configure(config):
     config.addinivalue_line(
         "markers", "access_om2: mark as access-om2 specific tests in quick QA CI checks"
     )
+    config.addinivalue_line(
+        "markers", "access_om3: mark as access-om3 specific tests in quick QA CI checks"
+    )
