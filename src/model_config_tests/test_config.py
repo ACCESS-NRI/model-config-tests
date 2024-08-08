@@ -186,6 +186,17 @@ class TestConfig:
             f"LICENSE file should be equal to {LICENSE} found here: " + LICENSE_URL
         )
 
+    def test_model_module_path_is_defined(self, config):
+        """Check model module path is added to modules in config"""
+        module_paths = config.get("modules", {}).get("use", {})
+        assert RELEASE_MODULE_LOCATION in module_paths, (
+            "Expected model module path is added to module config. E.g.\n"
+            "  modules:\n"
+            "   use:\n"
+            f"    - {RELEASE_MODULE_LOCATION}\n"
+            "This path is used to find model module files"
+        )
+
 
 def read_exe_manifest_fullpaths(control_path: Path):
     """Return the full paths to the executables in the executable manifest file"""
