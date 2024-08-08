@@ -9,6 +9,7 @@ import warnings
 import f90nml
 import pytest
 
+from model_config_tests.test_config import check_manifest_exes_in_spack_location
 from model_config_tests.util import get_git_branch_name
 
 # Mutually exclusive topic keywords
@@ -31,9 +32,17 @@ TOPIC_KEYWORDS = {
 # https://github.com/WCRP-CMIP/CMIP6_CVs/blob/main/CMIP6_nominal_resolution.json
 NOMINAL_RESOLUTION = {"025deg": "25 km", "01deg": "10 km", "1deg": "100 km"}
 
+# Name of modules on NCI
+ACCESS_OM2_MODULE_NAME = "access-om2"
+ACCESS_OM2_BGC_MODULE_NAME = "access-om2-bgc"
+
+# Name of Model Repositories - used for retrieving spack location files for released versions
+ACCESS_OM2_REPOSITORY_NAME = "ACCESS-OM2"
+ACCESS_OM2_BGC_REPOSITORY_NAME = "ACCESS-OM2-BGC"
+
 
 class AccessOM2Branch:
-    """Use the naming patterns of the branch name to infer informatiom of
+    """Use the naming patterns of the branch name to infer information of
     the ACCESS-OM2 config"""
 
     def __init__(self, branch_name):
@@ -42,6 +51,14 @@ class AccessOM2Branch:
 
         self.is_high_resolution = self.resolution in ["025deg", "01deg"]
         self.is_bgc = "bgc" in branch_name
+
+        # Set expected module and model repository names
+        if self.is_bgc:
+            self.module_name = ACCESS_OM2_BGC_MODULE_NAME
+            self.model_repository_name = ACCESS_OM2_BGC_REPOSITORY_NAME
+        else:
+            self.module_name = ACCESS_OM2_MODULE_NAME
+            self.model_repository_name = ACCESS_OM2_REPOSITORY_NAME
 
     def set_resolution(self):
         # Resolutions are ordered, so the start of the list are matched first
@@ -68,7 +85,7 @@ def branch(control_path, target_branch):
             branch_name is not None
         ), f"Failed getting git branch name of control path: {control_path}"
         warnings.warn(
-            "Target branch is not specifed, defaulting to current git branch: "
+            "Target branch is not specified, defaulting to current git branch: "
             f"{branch_name}. As some ACCESS-OM2 tests infer information, "
             "such as resolution, from the target branch name, some tests may "
             "not be run. To set use --target-branch flag in pytest call"
@@ -177,3 +194,14 @@ class TestAccessOM2:
             "nominal_resolution" in metadata
             and metadata["nominal_resolution"] == expected
         ), f"Expected nominal_resolution field set to: {expected}"
+
+    def test_access_om2_manifest_exe_in_release_spack_location(
+        self, config, branch, control_path
+    ):
+        # Infer module and repository name from branch - as different for the BGC configuration
+        check_manifest_exes_in_spack_location(
+            model_module_name=branch.module_name,
+            model_repo_name=branch.model_repository_name,
+            control_path=control_path,
+            config=config,
+        )

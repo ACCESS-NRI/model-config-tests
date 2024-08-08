@@ -6,6 +6,7 @@ import shutil
 import subprocess
 from pathlib import Path
 
+import f90nml
 import pytest
 import yaml
 
@@ -66,6 +67,7 @@ class CommonTestHelper:
     def write_config(self):
         """Create a minimal control directory"""
         self.control_path.mkdir()
+
         # Create a minimal config file in control directory
         config_file = self.control_path / "config.yaml"
         config_file.write_text(f"model: {self.model_name}")
@@ -291,3 +293,52 @@ def test_test_bit_repro_historical_access_no_model_output(tmp_dir):
 
     # Test no checksums are written out
     assert not test_checksum.exists()
+
+
+def test_test_bit_repro_historical_access_om2_pass(tmp_dir):
+    """Test ACCESS-OM2 class with historical repro test with
+    some mock output and configuration directory."""
+    test_name = "test_bit_repro_historical"
+    model_name = "access-om2"
+
+    # Setup test Helper
+    helper = CommonTestHelper(test_name, model_name, tmp_dir)
+
+    # Use config in resources dir
+    mock_config = helper.resources_path / "configurations" / "release-1deg_jra55_ryf"
+    shutil.copytree(mock_config, helper.control_path)
+
+    # Compare checksums against the existing checksums in resources folder
+    checksum_path = helper.resources_path / "checksums" / "1-0-0.json"
+
+    # Put some expected output in the archive directory (as we are skipping
+    # the actual payu run step)
+    helper.create_mock_output000()
+
+    # Build test command
+    test_cmd = (
+        f"{helper.base_test_command()} "
+        f"--checksum-path {checksum_path} "
+        f"--control-path {helper.control_path} "
+    )
+
+    # Run test in a subprocess call
+    result = subprocess.run(shlex.split(test_cmd), capture_output=True, text=True)
+
+    if result.returncode:
+        # Print out test logs if there are errors
+        print(f"Test stdout: {result.stdout}\nTest stderr: {result.stderr}")
+    assert result.returncode == 0
+
+    # Check runtime of 3 hours is set
+    with open(helper.test_control_path / "accessom2.nml") as f:
+        nml = f90nml.read(f)
+    years, months, seconds = nml["date_manager_nml"]["restart_period"]
+    assert years == 0
+    assert months == 0
+    assert seconds == 10800
+
+    # Check name of checksum file written out and contents
+    test_checksum = helper.output_path / "checksum" / "historical-3hr-checksum.json"
+    assert test_checksum.exists()
+    assert test_checksum.read_text() == checksum_path.read_text()
