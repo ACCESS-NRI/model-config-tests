@@ -5,7 +5,7 @@
 
 import pytest
 
-from model_config_tests.test_config import check_manifest_exes_in_spack_location
+from model_config_tests.qa.test_config import check_manifest_exes_in_spack_location
 
 # Name of module on NCI
 ACCESS_ESM1P5_MODULE_NAME = "access-esm1p5"
