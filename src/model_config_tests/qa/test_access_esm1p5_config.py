@@ -19,7 +19,8 @@ VALID_REFERENCE: str = "https://doi.org/10.1071/ES19035"
 VALID_PREINDUSTRIAL_START: dict[str, int] = {"year": 101, "month": 1, "day": 1}
 VALID_HISTORICAL_START: dict[str, int] = {"year": 1850, "month": 1, "day": 1}
 VALID_RUNTIME: dict[str, int] = {"year": 1, "month": 0, "day": 0}
-VALID_RESTART_FREQ: str = "20YS"
+VALID_RESTART_FREQ: str = "10YS"
+VALID_MPPNCCOMBINE_EXE: str = "mppnccombine.spack"
 
 
 ### Some functions to avoid copying assertion error text
@@ -42,11 +43,11 @@ class AccessEsm1p5Branch:
 
     def set_config_scenario(self) -> str:
         # Regex below is split into three sections:
-        # Config type start section: '^.+-' for 'release-', 'dev-'...
+        # Config type start section: '(?:release|dev)?-' for 'release-' or 'dev-'
         # Scenario section: '([^+]+)' for 'preindustrial', 'historical'...anything that isn't the '+' modifier sigil
         # Modifiers end section: '(?:\+.+)*' any amount of '+modifer' sections
         scenario_match = re.match(
-            r"^.+-(?P<scenario>[^+]+)(?:\+.+)*$", self.branch_name
+            r"^(?:release|dev)?-(?P<scenario>[^+]+)(?:\+.+)*$", self.branch_name
         )
         if not scenario_match or "scenario" not in scenario_match.groupdict():
             pytest.fail(
@@ -73,8 +74,8 @@ def branch(control_path, target_branch):
         warnings.warn(
             "Target branch is not specifed, defaulting to current git branch: "
             f"{branch_name}. As some ACCESS-ESM1.5 tests infer information, "
-            "such as resolution, from the target branch name, some tests may "
-            "not be run. To set use --target-branch flag in pytest call"
+            "such as scenario and modifiers, from the target branch name, some "
+            "tests may not be run. To set use --target-branch flag in pytest call"
         )
 
     return AccessEsm1p5Branch(branch_name)
@@ -154,14 +155,14 @@ class TestAccessEsm1p5:
             "restart_freq", "config.yaml", VALID_RESTART_FREQ
         )
 
-    def test_mppncombine_fast_collate_exe(self, config):
-        # TODO: We don't check for high resolution here like we do in the ACCESS-OM2 version of the test. Should we?
-        pattern = r"/g/data/vk83/apps/mppnccombine-fast/.*/bin/mppnccombine-fast"
+    def test_mppnccombine_fast_collate_exe(self, config):
         if "collate" in config:
-            assert re.match(
-                pattern, config["collate"]["exe"]
-            ), "Expect collate executable set to mppnccombine-fast"
+            assert (
+                config["collate"]["exe"] == VALID_MPPNCCOMBINE_EXE
+            ), error_field_incorrect(
+                "collate.exe", "config.yaml", VALID_MPPNCCOMBINE_EXE
+            )
 
-            assert config["collate"][
-                "mpi"
-            ], "Expect `mpi: true` when using mppnccombine-fast"
+            assert config["collate"]["mpi"], error_field_incorrect(
+                "collate.mpi", "config.yaml", "true"
+            )
