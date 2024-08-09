@@ -79,7 +79,7 @@ collate:
 # Modules
 modules:
   use:
-    - /g/data/vk83/modules/
+    - /g/data/vk83/modules
   load:
     # Exe paths are found on paths added by this model module
     - access-om2/2024.03.0
