@@ -43,11 +43,11 @@ class AccessEsm1p5Branch:
 
     def set_config_scenario(self) -> str:
         # Regex below is split into three sections:
-        # Config type start section: '(?:release|dev)?-' for 'release-' or 'dev-'
+        # Config type start section: '(?:release|dev)-' for 'release-' or 'dev-'
         # Scenario section: '([^+]+)' for 'preindustrial', 'historical'...anything that isn't the '+' modifier sigil
         # Modifiers end section: '(?:\+.+)*' any amount of '+modifer' sections
         scenario_match = re.match(
-            r"^(?:release|dev)?-(?P<scenario>[^+]+)(?:\+.+)*$", self.branch_name
+            r"^(?:release|dev)-(?P<scenario>[^+]+)(?:\+.+)*$", self.branch_name
         )
         if not scenario_match or "scenario" not in scenario_match.groupdict():
             pytest.fail(
