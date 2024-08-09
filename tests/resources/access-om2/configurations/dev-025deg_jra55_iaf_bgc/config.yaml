@@ -93,7 +93,7 @@ collate:
 # Modules
 modules:
   use:
-    - /g/data/vk83/modules/access-models
+    - /g/data/vk83/modules
   load:
     - access-om2-bgc/2024.03.0
 
