@@ -9,9 +9,17 @@ from typing import Any
 
 import pytest
 
+from model_config_tests.qa.test_config import check_manifest_exes_in_spack_location
 from model_config_tests.util import get_git_branch_name
 
-### Bunch of expected values for tests ###
+# Name of module on NCI
+ACCESS_ESM1P5_MODULE_NAME = "access-esm1p5"
+# Name of Model Repository - used for retrieving spack location files for released versions
+ACCESS_ESM1P5_REPOSITORY_NAME = "ACCESS-ESM1.5"
+
+######################################
+# Bunch of expected values for tests #
+######################################
 VALID_REALMS: set[str] = {"atmosphere", "land", "ocean", "ocnBgchm", "seaIce"}
 VALID_KEYWORDS: set[str] = {"global", "access-esm1.5"}
 VALID_NOMINAL_RESOLUTION: str = "100 km"
@@ -84,6 +92,16 @@ def branch(control_path, target_branch):
 @pytest.mark.access_esm1p5
 class TestAccessEsm1p5:
     """ACCESS-ESM1.5 Specific configuration and metadata tests"""
+
+    def test_access_esm1p5_manifest_exe_in_release_spack_location(
+        self, config, control_path
+    ):
+        check_manifest_exes_in_spack_location(
+            model_module_name=ACCESS_ESM1P5_MODULE_NAME,
+            model_repo_name=ACCESS_ESM1P5_REPOSITORY_NAME,
+            control_path=control_path,
+            config=config,
+        )
 
     @pytest.mark.parametrize(
         "field,expected", [("realm", VALID_REALMS), ("keyword", VALID_KEYWORDS)]
