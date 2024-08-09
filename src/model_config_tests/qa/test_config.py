@@ -23,7 +23,7 @@ LICENSE = "CC-BY-4.0"
 LICENSE_URL = "https://creativecommons.org/licenses/by/4.0/legalcode.txt"
 
 # Release modules location on NCI
-RELEASE_MODULE_LOCATION = "/g/data/vk83/modules/access-models"
+RELEASE_MODULE_LOCATION = "/g/data/vk83/modules"
 
 
 def insist_array(str_or_array):
