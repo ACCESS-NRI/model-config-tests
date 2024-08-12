@@ -24,9 +24,9 @@ VALID_REALMS: set[str] = {"atmosphere", "land", "ocean", "ocnBgchm", "seaIce"}
 VALID_KEYWORDS: set[str] = {"global", "access-esm1.5"}
 VALID_NOMINAL_RESOLUTION: str = "100 km"
 VALID_REFERENCE: str = "https://doi.org/10.1071/ES19035"
-VALID_PREINDUSTRIAL_START: dict[str, int] = {"year": 101, "month": 1, "day": 1}
-VALID_HISTORICAL_START: dict[str, int] = {"year": 1850, "month": 1, "day": 1}
-VALID_RUNTIME: dict[str, int] = {"year": 1, "month": 0, "day": 0}
+VALID_PREINDUSTRIAL_START: dict[str, int] = {"year": 101, "month": 1, "days": 1}
+VALID_HISTORICAL_START: dict[str, int] = {"year": 1850, "month": 1, "days": 1}
+VALID_RUNTIME: dict[str, int] = {"years": 1, "months": 0, "days": 0}
 VALID_RESTART_FREQ: str = "10YS"
 VALID_MPPNCCOMBINE_EXE: str = "mppnccombine.spack"
 
@@ -179,6 +179,10 @@ class TestAccessEsm1p5:
                 config["collate"]["exe"] == VALID_MPPNCCOMBINE_EXE
             ), error_field_incorrect(
                 "collate.exe", "config.yaml", VALID_MPPNCCOMBINE_EXE
+            )
+
+            assert "mpi" in config["collate"], error_field_nonexistence(
+                "collate.mpi", "config.yaml"
             )
 
             assert config["collate"]["mpi"], error_field_incorrect(
