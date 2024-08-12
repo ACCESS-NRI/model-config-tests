@@ -20,7 +20,7 @@ ACCESS_ESM1P5_REPOSITORY_NAME = "ACCESS-ESM1.5"
 ######################################
 # Bunch of expected values for tests #
 ######################################
-VALID_REALMS: set[str] = {"atmosphere", "land", "ocean", "ocnBgchm", "seaIce"}
+VALID_REALMS: set[str] = {"atmosphere", "land", "ocean", "ocnBgchem", "seaIce"}
 VALID_KEYWORDS: set[str] = {"global", "access-esm1.5"}
 VALID_NOMINAL_RESOLUTION: str = "100 km"
 VALID_REFERENCE: str = "https://doi.org/10.1071/ES19035"
