@@ -26,7 +26,7 @@ VALID_NOMINAL_RESOLUTION: str = "100 km"
 VALID_REFERENCE: str = "https://doi.org/10.1071/ES19035"
 VALID_PREINDUSTRIAL_START: dict[str, int] = {"year": 101, "month": 1, "days": 1}
 VALID_HISTORICAL_START: dict[str, int] = {"year": 1850, "month": 1, "days": 1}
-VALID_RUNTIME: dict[str, int] = {"year": 1, "month": 0, "day": 0}
+VALID_RUNTIME: dict[str, int] = {"years": 1, "months": 0, "days": 0}
 VALID_RESTART_FREQ: str = "10YS"
 VALID_MPPNCCOMBINE_EXE: str = "mppnccombine.spack"
 
