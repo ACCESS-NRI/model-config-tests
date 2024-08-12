@@ -181,6 +181,10 @@ class TestAccessEsm1p5:
                 "collate.exe", "config.yaml", VALID_MPPNCCOMBINE_EXE
             )
 
+            assert "mpi" in config["collate"], error_field_nonexistence(
+                "collate.mpi", "config.yaml"
+            )
+
             assert config["collate"]["mpi"], error_field_incorrect(
                 "collate.mpi", "config.yaml", "true"
             )
