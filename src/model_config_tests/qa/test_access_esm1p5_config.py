@@ -104,7 +104,7 @@ class TestAccessEsm1p5:
         )
 
     @pytest.mark.parametrize(
-        "field,expected", [("realm", VALID_REALMS), ("keyword", VALID_KEYWORDS)]
+        "field,expected", [("realm", VALID_REALMS), ("keywords", VALID_KEYWORDS)]
     )
     def test_metadata_field_equal_expected_sequence(self, field, expected, metadata):
 
