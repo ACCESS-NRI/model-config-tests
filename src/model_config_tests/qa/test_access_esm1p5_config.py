@@ -185,6 +185,9 @@ class TestAccessEsm1p5:
                 "collate.mpi", "config.yaml"
             )
 
-            assert config["collate"]["mpi"], error_field_incorrect(
-                "collate.mpi", "config.yaml", "true"
+            # Loading the yaml into a dict also converts
+            # `collate.mpi:true`/`collate.mpi:false` to `True`/`False` so we
+            # can assert if it is a `bool`.
+            assert isinstance(config["collate"]["mpi"], bool), error_field_incorrect(
+                "collate.mpi", "config.yaml", "true or false"
             )
