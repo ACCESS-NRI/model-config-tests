@@ -38,12 +38,11 @@ jobs:
             echo "version=$VERSION_TAG" >> $GITHUB_OUTPUT
           fi
 
+
+
       - name: Update Tag
         if: steps.tag.outputs.exists == 'false'
-        # NOTE: Regarding the config user.name/user.email, see https://github.com/actions/checkout/pull/1184
         run: |
-          git config user.name ${{ vars.GH_ACTIONS_BOT_GIT_USER_NAME }}
-          git config user.email ${{ vars.GH_ACTIONS_BOT_GIT_USER_EMAIL }}
           git tag ${{ steps.tag.outputs.version }}
           git push --tags
 
