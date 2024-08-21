@@ -16,7 +16,8 @@ This action parses the CI testing configuration file. The caller of the action n
 | ---- | ---- | ----------- | -------- |
 | markers | `string` | Markers used for the pytest checks, in the python format | `checksum` |
 | model-config-tests-version | `string` | The version of the model-config-tests | `0.0.1` |
-| python-version | `string` | The python version used to create test virtual environment | `3.11.0` |
+| python-version | `string` | The python version used to create local test virtual environment (e.g. QA tests) | `3.11.0` |
+| payu-version | `string` | The payu version used to create local remote test virtual environment (e.g. reproducibility tests) | `1.1.4` |
 
 ## Example usage
 
@@ -36,5 +37,3 @@ This action parses the CI testing configuration file. The caller of the action n
           branch-or-tag: "release-1deg_jra55_ryf-2.0"
           config-filepath: "config/ci.json"
 ```
-
-

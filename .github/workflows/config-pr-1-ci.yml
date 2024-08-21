@@ -80,7 +80,7 @@ jobs:
       qa-model-config-tests-version: ${{ steps.qa-config.outputs.model-config-tests-version }}
       # Repro Test Outputs
       repro-markers: ${{ steps.repro-config.outputs.markers }}
-      repro-python-version: ${{ steps.repro-config.outputs.python-version }}
+      repro-payu-version: ${{ steps.repro-config.outputs.payu-version }}
       repro-model-config-tests-version: ${{ steps.repro-config.outputs.model-config-tests-version }}
       compared-config-tag: ${{ steps.compared.outputs.tag }}
     steps:
@@ -205,7 +205,7 @@ jobs:
       compared-config-ref: ${{ needs.config.outputs.compared-config-tag }}
       test-markers: ${{ needs.config.outputs.repro-markers }}
       model-config-tests-version: ${{ needs.config.outputs.repro-model-config-tests-version }}
-      python-version: ${{ needs.config.outputs.repro-python-version }}
+      payu-version: ${{ needs.config.outputs.repro-payu-version }}
     secrets: inherit
     permissions:
       contents: write

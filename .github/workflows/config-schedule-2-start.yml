@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       markers: ${{ steps.scheduled-config.outputs.markers }}
-      python-version: ${{ steps.scheduled-config.outputs.python-version }}
+      payu-version: ${{ steps.scheduled-config.outputs.payu-version }}
       model-config-tests-version: ${{ steps.scheduled-config.outputs.model-config-tests-version }}
     steps:
       - name: Checkout main
@@ -49,7 +49,7 @@ jobs:
       compared-config-ref: ${{ inputs.config-tag }}
       test-markers: ${{ needs.config.outputs.markers }}
       model-config-tests-version: ${{ needs.config.outputs.model-config-tests-version }}
-      python-version: ${{ needs.config.outputs.python-version }}
+      payu-version: ${{ needs.config.outputs.payu-version }}
     secrets: inherit
     permissions:
       contents: write

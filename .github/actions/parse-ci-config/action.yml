@@ -16,10 +16,13 @@ outputs:
     description: A version of the model-config-tests package
   python-version:
     value: ${{ steps.read-config.outputs.python-version }}
-    description: The python version used to create test virtual environment
+    description: The python version used to create test virtual environment for local tests (e.g. QA tests)
   markers:
     value: ${{ steps.read-config.outputs.markers }}
     description: A python expression of markers to pass to model-config-tests pytests
+  payu-version:
+    value: ${{ steps.read-config.outputs.payu-version }}
+    description: The payu version used to create test virtual environment for remote tests (e.g. repro tests)
 runs:
   using: "composite" 
   steps:         
@@ -40,6 +43,11 @@ runs:
             .[$check].default["python-version"] // 
             .default["python-version"]
           ),
+          "payu-version": (
+            .[$check][$branch]["payu-version"] //
+            .[$check].default["payu-version"] //
+            .default["payu-version"]
+          ),
           "markers": (
             .[$check][$branch].markers // 
             .[$check].default.markers //
@@ -50,4 +58,5 @@ runs:
         
         echo "markers=$(echo "$output" | jq -r '.["markers"]')" >> $GITHUB_OUTPUT
         echo "python-version=$(echo "$output" | jq -r '.["python-version"]')" >> $GITHUB_OUTPUT
+        echo "payu-version=$(echo "$output" | jq -r '.["payu-version"]')" >> $GITHUB_OUTPUT
         echo "model-config-tests-version=$(echo "$output" | jq -r '.["model-config-tests-version"]')" >> $GITHUB_OUTPUT
