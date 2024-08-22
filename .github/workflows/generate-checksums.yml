@@ -27,10 +27,10 @@ on:
         type: string
         required: true
         description: A version of the model-config-tests package
-      python-version:
+      payu-version:
         type: string
         required: true
-        description: The python module version used to create test virtual environment
+        description: The payu module version used to create test virtual environment
     outputs:
       checksum-location:
         value: ${{ jobs.generate-checksum.outputs.checksum-location }}
@@ -78,11 +78,20 @@ jobs:
           cd ${{ env.BASE_EXPERIMENT_LOCATION }}
           git checkout ${{ inputs.config-branch-name }}
 
-           # Load Python module
-          module load python3/${{ inputs.python-version }}
+          # Load payu module
+          if [ "${{ inputs.payu-version }}" == "dev" ]; then
+            echo "::warning::Using the prerelease module payu/dev for testing"
+            module use ${{ vars.PRERELEASE_MODULE_LOCATION }}
+          else
+            module use ${{ vars.MODULE_LOCATION }}
+          fi
+          module load payu/${{ inputs.payu-version }}
 
-          # Create and activate virtual environment
-          python3 -m venv ${{ env.TEST_VENV_LOCATION }}
+          # Create testing virtual environment
+          # Note: --system-site-packages uses packages from payu modules
+          python3 -m venv ${{ env.TEST_VENV_LOCATION }} --system-site-packages
+
+          # Activate environment
           source ${{ env.TEST_VENV_LOCATION }}/bin/activate
 
           # Install model-config-tests

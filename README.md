@@ -11,24 +11,34 @@ bit reproducibility tests](https://github.com/COSIMA/access-om2/blob/master/test
 
 ### How to run pytests manually on NCI
 
-1. Create and activate a python virtual environment for installing and running tests
+1. Load payu module - this provides the dependencies needed to run the model
+
     ```sh
-    module load python3/3.11.0
-    python3 -m venv <path/to/test-venv>
+    module use /g/data/vk83/modules
+    module load payu/1.1.4
+    ```
+
+2. Create and activate a python virtual environment for installing and running tests
+
+    ```sh
+    python3 -m venv <path/to/test-venv> --system-site-packages
     source <path/to/test-venv>/bin/activate
     ```
 
-2. Either pip install a released version of `model-config-tests`,
+3. Either pip install a released version of `model-config-tests`,
+
     ```sh
     pip install model-config-tests==0.0.1
     ```
+
     Or to install `model-config-tests` in "editable" mode, first clone the repository, and then run pip install from the repository. This means any changes to the code are reflected in the installed package.
+
     ```sh
     git clone https://github.com/ACCESS-NRI/model-config-tests/ <path/to/model-config-tests>
     pip install -e <path/to/model-config-tests>
     ```
 
-3. Checkout an experiment (in this case it is using an ACCESS-OM2 config)
+4. Checkout an experiment (in this case it is using an ACCESS-OM2 config)
 
     ```sh
     git clone https://github.com/ACCESS-NRI/access-om2-configs/ <path/to/experiment>
@@ -36,12 +46,14 @@ bit reproducibility tests](https://github.com/COSIMA/access-om2/blob/master/test
     git checkout <branch/tag>
     ```
 
-4. Run the pytests
+5. Run the pytests
+
     ```sh
     model-config-tests
     ```
 
-5. Once done with testing, deactivate the virtual environment, and if the environment is no longer needed, remove the environment
+6. Once done with testing, deactivate the virtual environment, and if the environment is no longer needed, remove the environment
+
     ```sh
     deactivate
     rm -rf <path/to/test-venv> # Deletes the test environment
@@ -124,3 +136,5 @@ Using it has some requirements outside of just filling in the inputs: One must h
 - `secrets.SSH_KEY` - private key for access to the deployment target
 - `secrets.SSH_USER` - username for access to the deployment target
 - `vars.EXPERIMENTS_LOCATION` - directory on the deployment target that will contain all the experiments used during testing of reproducibility across multiple runs of this workflow (ex. `/scratch/some/directory/experiments`)
+- `vars.MODULE_LOCATION` - directory on the deployment target that contains module files for payu used during reproducibility testing (ex. `/g/data/vk83/modules`)
+- `vars.PRERELEASE_MODULE_LOCATION` - directory on the deployment target that contains module files for development version of payu (ex. `/g/data/vk83/prerelease/modules`)
