@@ -1,5 +1,4 @@
 import json
-import os
 from pathlib import Path
 from unittest.mock import Mock
 
@@ -8,10 +7,9 @@ import pytest
 import requests
 
 from model_config_tests.models import index as model_index
+from tests.common import RESOURCES_DIR
 
 MODEL_NAMES = model_index.keys()
-HERE = os.path.dirname(__file__)
-RESOURCES_DIR = Path(f"{HERE}/resources")
 
 
 @pytest.mark.parametrize("model_name", MODEL_NAMES)

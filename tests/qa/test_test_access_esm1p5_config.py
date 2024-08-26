@@ -1,10 +1,7 @@
-import os
 import shlex
 import subprocess
-from pathlib import Path
 
-HERE = os.path.dirname(__file__)
-RESOURCES_DIR = Path(f"{HERE}/resources")
+from tests.common import RESOURCES_DIR
 
 
 def test_test_access_esm1p5_config_release_release_preindustrial():

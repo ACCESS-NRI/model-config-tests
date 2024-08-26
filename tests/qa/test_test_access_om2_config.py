@@ -1,13 +1,10 @@
-import os
 import shlex
 import shutil
 import subprocess
-from pathlib import Path
 
 import yaml
 
-HERE = os.path.dirname(__file__)
-RESOURCES_DIR = Path(f"{HERE}/resources")
+from tests.common import RESOURCES_DIR
 
 
 def test_test_access_om2_config_release_1deg_jra55_ryf():
