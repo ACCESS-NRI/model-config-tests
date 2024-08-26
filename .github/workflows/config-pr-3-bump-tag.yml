@@ -56,7 +56,7 @@ jobs:
           TAG: ${{ steps.tag.outputs.version }}
           STATUS: ${{ endsWith(steps.tag.outputs.version, '.0') && 'breaking' || 'preserving' }}
         run: |
-          git tag ${{ env.TAG }} -m "Repro-${{ env.STATUS }} update to ${{ github.ref_name }} via model-config-tests '${{ github.workflow }}' workflow."
+          git tag ${{ env.TAG }} -m "Repro-${{ env.STATUS }} update to ${{ github.ref_name }} via model-config-tests 'config-pr-3-bump-tag.yml' workflow."
           git push --tags
 
       - name: Create Release
