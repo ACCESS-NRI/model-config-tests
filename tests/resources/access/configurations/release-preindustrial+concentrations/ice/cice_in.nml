@@ -1,0 +1,3 @@
+&setup_nml
+    mock_field  = 365
+/

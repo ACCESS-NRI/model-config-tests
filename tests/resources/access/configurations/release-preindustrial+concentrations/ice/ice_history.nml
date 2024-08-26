@@ -1,0 +1,3 @@
+&icefields_nml
+    mock_field = .true.
+/
