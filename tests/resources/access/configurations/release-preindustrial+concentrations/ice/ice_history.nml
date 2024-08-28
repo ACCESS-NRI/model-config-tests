@@ -1,3 +1,9 @@
+&setup_nml
+  , histfreq       = 'd','m','x','x','x'
+  , histfreq_n     = 1, 1, 1, 1, 1
+  , hist_avg       = .true.
+/
+
 &icefields_nml
     mock_field = .true.
 /

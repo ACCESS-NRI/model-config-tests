@@ -228,3 +228,13 @@ class TestAccessEsm1p5:
         assert cice_in_path.is_file()
         cice_in = f90nml.read(cice_in_path)
         assert ICEFIELDS_NML_NAME not in cice_in, icefields_nml_error_msg
+
+        # Check no repeated fields between the two namelist files
+        common_nmls = set(cice_in) & set(ice_history_nml)
+        for nml in common_nmls:
+            repeated_fields = set(cice_in[nml]) & set(ice_history_nml[nml])
+            assert repeated_fields == set(), (
+                f"Found repeated fields for '{nml}' namelist"
+                f" in {CICE_IN_NML_FNAME} and {ICE_HISTORY_NML_FNAME}"
+                f": {repeated_fields}"
+            )
