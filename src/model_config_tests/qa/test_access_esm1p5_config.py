@@ -210,9 +210,9 @@ class TestAccessEsm1p5:
         cice_control_path = control_path / model_name
 
         icefields_nml_error_msg = (
-            "Expected CICE configuration to have ice_history.nml that "
-            "contains an icefields_nml namelist. This is to keep icefields "
-            "namelist separate from the cice_in.nml to allow simpler changes."
+            f"Expected CICE configuration to have {ICE_HISTORY_NML_FNAME} that "
+            f"contains an {ICEFIELDS_NML_NAME} namelist. This is to keep icefields "
+            f"namelist separate from the {CICE_IN_NML_FNAME} to allow simpler changes."
         )
 
         # Check ice_history.nml exists
@@ -225,9 +225,15 @@ class TestAccessEsm1p5:
 
         # Check icefields_nml not in cice_in.nml
         cice_in_path = cice_control_path / CICE_IN_NML_FNAME
-        assert cice_in_path.is_file()
+        assert cice_in_path.is_file(), (
+            f"No {CICE_IN_NML_FNAME} file found. This is a required "
+            "configuration file for the CICE model component."
+        )
         cice_in = f90nml.read(cice_in_path)
-        assert ICEFIELDS_NML_NAME not in cice_in, icefields_nml_error_msg
+        assert ICEFIELDS_NML_NAME not in cice_in, (
+            f"{ICEFIELDS_NML_NAME} namelist found in {CICE_IN_NML_FNAME}. "
+            f"This should only be in {ICE_HISTORY_NML_FNAME} to prevent duplication."
+        )
 
         # Check no repeated fields between the two namelist files
         common_nmls = set(cice_in) & set(ice_history_nml)
