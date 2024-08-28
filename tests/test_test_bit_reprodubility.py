@@ -1,6 +1,5 @@
 """Test for bit reproducibility tests"""
 
-import os
 import shlex
 import shutil
 import subprocess
@@ -10,9 +9,7 @@ import f90nml
 import pytest
 import yaml
 
-# Resources of pre-generated output and checksums for tests
-HERE = os.path.dirname(__file__)
-RESOURCES_DIR = Path(f"{HERE}/resources")
+from tests.common import RESOURCES_DIR
 
 # Importing the test file test_bit_reproducibility.py, will run all the
 # tests in the current pytest session. So to run only one test, and to

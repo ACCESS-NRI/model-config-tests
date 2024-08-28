@@ -1,0 +1,5 @@
+&setup_nml
+    days_per_year  = 365
+  , year_init      = 0001
+  , istep0         = 0
+/

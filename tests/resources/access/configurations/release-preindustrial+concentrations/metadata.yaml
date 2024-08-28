@@ -1,0 +1,28 @@
+contact: Add your name here
+email: Add your email address here
+created: Add the date you started the experiment here (YYYY-MM-DD)
+description: |-
+  ACCESS-ESM1.5 global coupled model configuration running in co2 concentration driven mode under pre-industrial forcings, as described in Ziehn et al. (2020), https://doi.org/10.1071/ES19035.
+  Pre-industrial forcing data including atmospheric co2 concentrations are primarily sourced from UKMO versions of CMIP6 inputs, with additional atmospheric forcings sourced from CMIP5 and land cover data adapted from Lawrence et al. (2012), https://doi.org/10.1175/JCLI-D-11-00256.1.
+notes: |-
+  The developers of ACCESS-ESM1.5 request that users of these model configurations:
+   (a) Cite https://doi.org/10.1071/ES19035
+   (b) Include an acknowledgment such as the following:
+   "The authors thank CSIRO for developing the ACCESS-ESM1.5 model configuration and making it freely available to researchers."
+   ACCESS-NRI requests users follow the guidelines for acknowledging ACCESS-NRI and include a statement such as:
+   "This research used the ACCESS-ESM1.5 model infrastructure provided by ACCESS-NRI, which is enabled by the Australian Government's National Collaborative Research Infrastructure Strategy (NCRIS)."
+keywords:
+  - global
+  - access-esm1.5
+realm:
+  - atmos
+  - land
+  - ocean
+  - ocnBgchem
+  - seaIce
+nominal_resolution: 100 km
+reference: https://doi.org/10.1071/ES19035
+license: CC-BY-4.0
+model: ACCESS-ESM1.5
+version: '1.0'
+url: https://github.com/ACCESS-NRI/access-esm1.5-configs.git
