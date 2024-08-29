@@ -69,7 +69,7 @@ jobs:
         run: |
           version=$(yq '.version' metadata.yaml)
 
-          if [[ "${version}" == "null" ]]; then
+          if [[ "${version}" == "null" || "${version}" == "" ]]; then
             echo "before=null" >> $GITHUB_OUTPUT
             echo "after=1.0" >> $GITHUB_OUTPUT
             exit 0
