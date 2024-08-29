@@ -276,12 +276,15 @@ jobs:
           path: source
 
       - name: Modification Check
+        # If the PR branch version is different to the target branch (but isn't null or empty) then allow merging
         run: |
           target=$(yq e '.version' ./target/metadata.yaml)
           source=$(yq e '.version' ./source/metadata.yaml)
 
-          if [[ "${source}" != "${target}" && "${source}" != "null" ]]; then
-            echo "::notice::The version has been modified to ${target}. Merging is now availible"
+          echo "Comparing version target '$target' against source '$source'"
+
+          if [[ "${source}" != "${target}" && "${source}" != "null" && "${source}" != "" ]]; then
+            echo "::notice::The version has been modified to ${source}. Merging is now availible"
           else
             echo "::error::The version has not been modified in this PR. Merging is disallowed until an appropriate '!bump' is issued"
             exit 1
