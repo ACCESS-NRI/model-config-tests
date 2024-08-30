@@ -301,14 +301,15 @@ jobs:
     permissions:
       pull-requests: write
     env:
-      COMPARED_CHECKSUM_STRING: ${{ needs.check-checksum.outputs.compared-checksum-version != '' && format('The checksums compared against are found here {0}/{1}/tree/{2}/testing/checksum', github.server_url, github.repository, needs.check-checksum.outputs.compared-checksum-version) || '' }}
+      COMPARED_TAG: ${{ needs.config.outputs.compared-config-tag }}
+      COMPARED_CHECKSUM_STRING: ${{ needs.config.outputs.compared-config-tag != '' && format('The checksums compared against are found here {0}/{1}/tree/{2}/testing/checksum', github.server_url, github.repository, needs.config.outputs.compared-config-tag) || '' }}
     steps:
       - name: Successful Repro Comment
         if: needs.check-checksum.outputs.result == 'pass'
         uses: access-nri/actions/.github/actions/pr-comment@main
         with:
           comment: |
-            :white_check_mark: The Bitwise Reproducibility check succeeded when comparing against `${{ needs.check-checksum.outputs.compared-checksum-version }}` :white_check_mark:
+            :white_check_mark: The Bitwise Reproducibility check succeeded when comparing against `${{ env.COMPARED_TAG }}` :white_check_mark:
             You must bump the minor version of this configuration - to bump the version, comment `!bump minor` or modify the `version` in `metadata.yaml`. The meaning of these version bumps is explained in the README.md, under `Config Tags`.
 
             <details>
@@ -327,7 +328,7 @@ jobs:
         uses: access-nri/actions/.github/actions/pr-comment@main
         with:
           comment: |
-            :x: The Bitwise Reproducibility check failed ${{ needs.check-checksum.outputs.compared-checksum-version != '' && format('when comparing against `{0}`', needs.check-checksum.outputs.compared-checksum-version) || 'as there is no earlier checksum to compare against' }} :x:
+            :x: The Bitwise Reproducibility check failed ${{ env.COMPARED_TAG != '' && format('when comparing against `{0}`', env.COMPARED_TAG) || 'as there is no earlier checksum to compare against' }} :x:
             You must bump the major version of this configuration - to bump the version, comment `!bump major`or modify the `version` in `metadata.yaml`. The meaning of these version bumps is explained in the README.md, under `Config Tags`.
 
             <details>
