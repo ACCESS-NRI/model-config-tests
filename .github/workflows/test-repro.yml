@@ -30,6 +30,9 @@ on:
       artifact-name:
         value: ${{ jobs.repro.outputs.artifact-name }}
         description: Name of the artifact containing the checksums and test report for this repro run
+      artifact-url:
+        value: ${{ jobs.repro.outputs.artifact-url }}
+        description: URL to the artifact containing the checksums and test report for this repro run
       experiment-location:
         value: ${{ jobs.repro.outputs.experiment-location }}
         description: Location of the experiment on the target environment
