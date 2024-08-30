@@ -69,8 +69,6 @@ jobs:
       check-run-url: ${{ steps.results.outputs.check-url }}
       # Overall result of the checksum repro CI - `pass` (if reproducible), `fail` otherwise
       result: ${{ steps.results.outputs.result }}
-      # Version of the checksum compared against the newly generated one
-      compared-checksum-version: ${{ steps.results.outputs.compared-checksum-version }}
     steps:
       - name: Download Newly Created Checksum
         uses: actions/download-artifact@v4
@@ -93,7 +91,6 @@ jobs:
         id: results
         run: |
           echo "check-url=${{ fromJson(steps.tests.outputs.json).check_url }}" >> $GITHUB_OUTPUT
-          echo "compared-checksum-version=${{ inputs.config-tag }}" >> $GITHUB_OUTPUT
 
           if (( ${{ fromJson(steps.tests.outputs.json).stats.tests_fail }} > 0 )); then
             echo "result=fail" >> $GITHUB_OUTPUT
@@ -121,7 +118,7 @@ jobs:
           model=${config%-*}
           echo "model=$model" >> $GITHUB_OUTPUT
           echo "model-url=https://github.com/ACCESS-NRI/$model" >> $GITHUB_OUTPUT
-          echo "tag-url=https://github.com/ACCESS-NRI/$config/releases/tag/${{ needs.check-checksum.outputs.compared-checksum-version }}" >> GITHUB_OUTPUT
+          echo "tag-url=https://github.com/ACCESS-NRI/$config/releases/tag/${{ inputs.config-tag }}" >> GITHUB_OUTPUT
           echo "run-url=${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" >> $GITHUB_OUTPUT
 
           cat $GITHUB_OUTPUT
@@ -135,15 +132,15 @@ jobs:
 
             Model: `${{ steps.variables.outputs.model }}`, found here: ${{ steps.variables.outputs.model-url }}
             Config Repo: `${{ steps.variables.outputs.config }}`, found here: ${{ steps.variables.outputs.config-url }}
-            Config Tag Tested for Reproducibility: `${{ needs.check-checksum.outputs.compared-checksum-version }}`, found here: ${{ steps.variables.outputs.tag-url }}
+            Config Tag Tested for Reproducibility: `${{ inputs.config-tag }}`, found here: ${{ steps.variables.outputs.tag-url }}
             Failed Run Log: ${{ steps.variables.outputs.run-url }}
             Experiment Location (Gadi): `${{ needs.repro-ci.outputs.experiment-location }}`
             Checksums created: In the `testing/checksum` directory of ${{ needs.repro-ci.outputs.artifact-url }}
-            Checksums compared against: ${{ format('{0}/{1}/tree/{2}/testing/checksum', github.server_url, github.repository, needs.check-checksum.outputs.compared-checksum-version) }}
+            Checksums compared against: ${{ format('{0}/{1}/tree/{2}/testing/checksum', github.server_url, github.repository, inputs.config-tag) }}
 
             Tagging @ACCESS-NRI/model-release
         run: |
           gh issue create \
-            --title 'Scheduled Repro Check Failed for Config `${{ needs.check-checksum.outputs.compared-checksum-version }}`' \
+            --title 'Scheduled Repro Check Failed for Config `${{ inputs.config-tag }}`' \
             --label "type:repro-fail,priority:blocker" \
             --body '${{ env.BODY }}'
