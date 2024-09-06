@@ -106,6 +106,16 @@ The `.github` directory contains many different workflows and actions. This sect
 
 The `config-*.yml`, `generate-checksums.yml` and `test-repro.yml` workflows are called by `model-configs`-style repositories to test model configurations. They are stored in this repository to allow a central place to update generic CI used by all model configuration repositories.
 
+#### Repos That Use Reusable CI
+
+Currently, these repositories make use of the reusable CI:
+
+* [access-om2-configs](https://github.com/ACCESS-NRI/access-om2-configs)
+* [access-esm1.5-configs](https://github.com/ACCESS-NRI/access-esm1.5-configs)
+* [access-esm1.6-configs](https://github.com/ACCESS-NRI/access-esm1.6-configs)
+* [access-om3-configs](https://github.com/ACCESS-NRI/access-om3-configs)
+* [access-om3-wav-configs](https://github.com/ACCESS-NRI/access-om3-wav-configs)
+
 Below is information on the use of these workflows.
 
 #### `config-pr-*.yml` Pipeline
