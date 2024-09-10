@@ -102,6 +102,10 @@ The `.github` directory contains many different workflows and actions. This sect
 
 `CI.yml` and `CD.yml` are used to test, package and upload the `model-config-tests` package that is used by `model-configs`-style repositories across the ACCESS-NRI. These are the only workflows that run on this repository. The others are reusable workflows called by `model-configs`-style repositories, among others.
 
+### Dispatchable CI
+
+The `inputs-remote-copy.yml` dispatchable workflow allows the copying of model configuration input files/folders on the target environment (such as Gadi) as our service user, and optionally set ACLs.
+
 ### Reusable CI
 
 The `config-*.yml`, `generate-checksums.yml` and `test-repro.yml` workflows are called by `model-configs`-style repositories to test model configurations. They are stored in this repository to allow a central place to update generic CI used by all model configuration repositories.
