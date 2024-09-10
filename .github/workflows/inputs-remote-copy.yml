@@ -1,0 +1,89 @@
+name: Config Inputs Remote Copy
+run-name: "${{ inputs.remote-environment }} Config Input Copy to ${{ inputs.target }}"
+on:
+  workflow_dispatch:
+    inputs:
+      remote-environment:
+        type: choice
+        required: true
+        description: The Github Environment for the given remote
+        options:
+          - Gadi
+      source:
+        type: string
+        required: true
+        description: Remote absolute path to configuration input file/folder
+      target:
+        type: string
+        required: true
+        description: Remote absolute path for the copied configuration input file/folder
+      overwrite-target:
+        type: boolean
+        required: true
+        description: Overwrite the remote target if it already exists
+      target-acl-spec:
+        type: string
+        required: true
+        # Default to no write for everyone except tm70_ci
+        default: >-
+          u::rwx,
+          u:tm70_ci:rwx,
+          g::r-x,
+          m::rwx,
+          o::---,
+          d:u::rwx,
+          d:u:tm70_ci:rwx,
+          d:g::r-x,
+          d:m::rwx,
+          d:o::---
+        description: ACL spec to be passed to `setfacl -m` for the given target
+jobs:
+  setup:
+    name: Setup
+    runs-on: ubuntu-latest
+    steps:
+      - name: Log inputs
+        run: |
+          echo ""::notice::Copy on ${{ inputs.remote-environment }} from '${{ inputs.source }}' to '${{ inputs.target }}' with ACLs '${{ inputs.target-acl-spec }}'"
+          echo "::${{ inputs.overwrite-target && 'warning' || 'notice' }}::This operation ${{ inputs.overwrite-target && 'WILL' || 'will not' }} overwrite ${{ inputs.target }}"
+
+      - name: Verify Remote Target
+        run: |
+          if [[ "${{ contains(inputs.target, '/g/data/vk83/configurations/inputs') }}" == "true" ]]; then
+            echo "::error::Remote target '${{ inputs.target }}' doesn't look like a configurations input directory."
+            exit 1
+          fi
+
+      - name: Verify Valid ACL Spec
+        if: inputs.target-acl-spec != ''
+        env:
+          TEST_DIR: ./test
+        run: |
+          mkdir ${{ env.TEST_DIR }}
+          setfacl --test --recursive --modify "${{ inputs.target-acl-spec }}" ${{ env.TEST_DIR }}
+
+  remote:
+    name: Remote
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.remote-environment }}
+    steps:
+      - name: Setup SSH
+        id: ssh
+        uses: access-nri/actions/.github/actions/setup-ssh@main
+        with:
+          private-key: ${{ secrets.SSH_KEY }}
+          hosts: |
+            ${{ secrets.SSH_HOST }}
+            ${{ secrets.SSH_HOST_DATA }}
+
+      - name: Rsync Source to Target
+        run: |
+          rsync --recursive --verbose -e 'ssh -i ${{ steps.ssh.outputs.private-key-path }}' \
+            ${{ ! inputs.overwrite-target && '--ignore-existing' || '--update' }} \
+            '${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST_DATA }}:${{ inputs.source }}' \
+            '${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST_DATA }}:${{ inputs.target }}'
+
+      - name: Set ACLs on Target
+        if: inputs.target-acl-spec != ''
+        run: |
+          setfacl --recursive --modify "${{ inputs.target-acl-spec }}" ${{ inputs.target }}
