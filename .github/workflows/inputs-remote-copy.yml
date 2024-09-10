@@ -25,6 +25,7 @@ on:
         type: string
         required: true
         # Default to no write for everyone except tm70_ci
+        # TODO: This default will probably not work for other `remote-environment`s
         default: >-
           u::rwx,
           u:tm70_ci:rwx,
