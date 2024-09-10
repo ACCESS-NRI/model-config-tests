@@ -50,7 +50,7 @@ jobs:
 
       - name: Verify Remote Target
         run: |
-          if [[ "${{ contains(inputs.target, '/g/data/vk83/configurations/inputs') }}" == "true" ]]; then
+          if [[ "${{ contains(inputs.target, vars.CONFIGS_INPUT_DIR) }}" == "true" ]]; then
             echo "::error::Remote target '${{ inputs.target }}' doesn't look like a configurations input directory."
             exit 1
           fi
