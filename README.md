@@ -104,7 +104,7 @@ The `.github` directory contains many different workflows and actions. This sect
 
 ### Dispatchable CI
 
-The `inputs-remote-copy.yml` dispatchable workflow allows the copying of model configuration input files/folders on the target environment (such as Gadi) as our service user, and optionally set ACLs.
+The `inputs-remote-copy.yml` dispatchable workflow allows the copying of model configuration input files/folders on the target environment (such as Gadi) as our service user. ACLs are set by default to only allow access to the service user, but this can be overridden by specifying `target-acl-spec`.
 
 ### Reusable CI
 
