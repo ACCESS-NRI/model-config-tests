@@ -13,6 +13,26 @@ on:
   #     - doc/**
   #     - .*
   #     - README.md
+    inputs:
+      additional-artifact-content-paths:
+        type: string
+        required: false
+        # For example, the value of 'checksum' will expand to something like
+        # '/scratch/tm70/repro-ci/experiments/MODEL-configs/dev-CONFIG/checksum'
+        # on the remote.
+        description: |
+          Newline-separated paths for inclusion in the release artifact.
+          Note that all paths given have 'env.EXPERIMENT_LOCATION/' prepended.
+    outputs:
+      repro-ci-artifact-name:
+        value: ${{ jobs.repro-ci.outputs.artifact-name }}
+        description: Name of the repro-ci artifact
+      repro-ci-artifact-url:
+        value: ${{ jobs.repro-ci.outputs.artifact-url }}
+        description: URL to the repro-ci artifact
+      repro-ci-experiment-location:
+        value: ${{ jobs.repro-ci.outputs.experiment-location }}
+        description: Location of the experiment on the target environment
 jobs:
   commit-check:
     name: Commit Check
@@ -206,6 +226,7 @@ jobs:
       test-markers: ${{ needs.config.outputs.repro-markers }}
       model-config-tests-version: ${{ needs.config.outputs.repro-model-config-tests-version }}
       payu-version: ${{ needs.config.outputs.repro-payu-version }}
+      additional-artifact-content-paths: ${{ inputs.additional-artifact-content-paths }}
     secrets: inherit
     permissions:
       contents: write
