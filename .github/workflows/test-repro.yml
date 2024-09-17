@@ -157,8 +157,8 @@ jobs:
         run: |
           while IFS= read -r content_path; do
             if [[ -n "$content_path" ]]; then
-              rsync --recursive --verbose -e 'ssh -i ${{ steps.ssh.outputs.private-key-path }}' \
-                "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST_DATA }}:${{ env.EXPERIMENT_LOCATION }}/$content_path" \
+              rsync --recursive --relative --verbose -e 'ssh -i ${{ steps.ssh.outputs.private-key-path }}' \
+                "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST_DATA }}:${{ env.EXPERIMENT_LOCATION }}/./$content_path" \
                 ${{ env.ARTIFACT_LOCAL_LOCATION }}
             fi
           done <<< "${{ inputs.additional-artifact-content-paths }}"
