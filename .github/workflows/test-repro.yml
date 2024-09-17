@@ -46,7 +46,7 @@ on:
         value: ${{ jobs.repro.outputs.experiment-location }}
         description: Location of the experiment on the target environment
 env:
-  TEST_OUTPUT_LOCAL_LOCATION: /opt/test-output
+  ARTIFACT_LOCAL_LOCATION: /opt/artifact
 jobs:
   repro:
     # NOTE: A lot of these `vars` and `secrets` are not found in this repository. Instead, they are inherited
@@ -148,17 +148,20 @@ jobs:
         run: |
           rsync --recursive --verbose -e 'ssh -i ${{ steps.ssh.outputs.private-key-path }}' \
             '${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST_DATA }}:${{ env.EXPERIMENT_LOCATION }}/checksum' \
-            ${{ env.TEST_OUTPUT_LOCAL_LOCATION }}
+            ${{ env.ARTIFACT_LOCAL_LOCATION }}
 
       - name: Copy Back Additional Artifact Content
         if: inputs.additional-artifact-content-paths != ''
+        # For each of the additional artifact content paths, rsync the data
+        # from the target into our runner for upload as an artifact
         run: |
-          FIXME: Verify that this works!
-          for path in ${{ inputs.additional-artifact-content-paths }}; do
-            rsync --recursive --verbose -e 'ssh -i ${{ steps.ssh.outputs.private-key-path }}' \
-              "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST_DATA }}:${{ env.EXPERIMENT_LOCATION }}/$path" \
-              ${{ env.TEST_OUTPUT_LOCAL_LOCATION }}
-          done
+          while IFS= read -r content_path; do
+            if [[ -n "$content_path" ]]; then
+              rsync --recursive --verbose -e 'ssh -i ${{ steps.ssh.outputs.private-key-path }}' \
+                "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST_DATA }}:${{ env.EXPERIMENT_LOCATION }}/$content_path" \
+                ${{ env.ARTIFACT_LOCAL_LOCATION }}
+            fi
+          done <<< "${{ inputs.additional-artifact-content-paths }}"
 
       - name: Generate Test Output Artifact Name
         id: artifact
@@ -170,4 +173,4 @@ jobs:
         with:
           name: ${{ steps.artifact.outputs.name }}
           if-no-files-found: error
-          path: ${{ env.TEST_OUTPUT_LOCAL_LOCATION }}
+          path: ${{ env.ARTIFACT_LOCAL_LOCATION }}
