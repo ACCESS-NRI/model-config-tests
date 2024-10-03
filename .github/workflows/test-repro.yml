@@ -61,6 +61,28 @@ jobs:
     env:
       EXPERIMENT_LOCATION: ${{ vars.EXPERIMENTS_LOCATION }}/${{ github.event.repository.name }}/${{ inputs.config-ref }}
     steps:
+      - name: Validate ${{ inputs.environment-name }} Variables
+        run: |
+          vars_unset=false
+
+          if [ -z "${{ vars.EXPERIMENTS_LOCATION }}" ]; then
+            echo "::error::vars.EXPERIMENTS_LOCATION is unset."
+            vars_unset=true
+          fi
+          if [ -z "${{ vars.PRERELEASE_MODULE_LOCATION }}" ]; then
+            echo "::error::vars.PRERELEASE_MODULE_LOCATION is unset."
+            vars_unset=true
+          fi
+          if [ -z "${{ vars.MODULE_LOCATION }}" ]; then
+            echo "::error::vars.MODULE_LOCATION is unset."
+            vars_unset=true
+          fi
+
+          if [ "$vars_unset" == "true" ]; then
+            echo "::error::Required vars in ${{ inputs.environment-name }} are unset. Repro cannot be run."
+            exit 1
+          fi
+
       - name: Setup SSH
         id: ssh
         uses: access-nri/actions/.github/actions/setup-ssh@main
@@ -81,17 +103,17 @@ jobs:
 
           # Remove base experiment (and everything else) if it exists
           if [ -d "${{ env.EXPERIMENT_LOCATION }}" ]; then
-            rm -rf ${{ env.EXPERIMENT_LOCATION }}/*
+            rm -rf "${{ env.EXPERIMENT_LOCATION }}/*"
           fi
 
           # Setup a base experiment
-          git clone ${{ github.event.repository.clone_url }} ${{ env.BASE_EXPERIMENT_LOCATION }} -b ${{ inputs.config-ref }}
-          cd ${{ env.BASE_EXPERIMENT_LOCATION }}
+          git clone ${{ github.event.repository.clone_url }} "${{ env.BASE_EXPERIMENT_LOCATION }}" -b ${{ inputs.config-ref }}
+          cd "${{ env.BASE_EXPERIMENT_LOCATION }}"
 
           # Setup a compared checksum (if it exists)
           if [ -n "${{ inputs.compared-config-ref }}" ]; then
-            git clone ${{ github.event.repository.clone_url }} ${{ env.COMPARED_CHECKSUM_LOCATION }} -b ${{ inputs.compared-config-ref }}
-            COMPARED_CHECKSUM_FILE=$(find ${{ env.COMPARED_CHECKSUM_LOCATION }} -type f -name 'historical-*hr-checksum.json')
+            git clone ${{ github.event.repository.clone_url }} "${{ env.COMPARED_CHECKSUM_LOCATION }}" -b ${{ inputs.compared-config-ref }}
+            COMPARED_CHECKSUM_FILE=$(find "${{ env.COMPARED_CHECKSUM_LOCATION }}" -type f -name 'historical-*hr-checksum.json')
 
             # Error checking...
             if [ -z "$COMPARED_CHECKSUM_FILE" ]; then
@@ -114,10 +136,10 @@ jobs:
 
           # Create testing virtual environment
           # Note: --system-site-packages uses packages from payu modules
-          python3 -m venv ${{ env.TEST_VENV_LOCATION }} --system-site-packages
+          python3 -m venv "${{ env.TEST_VENV_LOCATION }}" --system-site-packages
 
           # Activate environment
-          source ${{ env.TEST_VENV_LOCATION }}/bin/activate
+          source "${{ env.TEST_VENV_LOCATION }}/bin/activate"
 
           # Install model-config-tests
           pip install model-config-tests==${{ inputs.model-config-tests-version }}
@@ -130,13 +152,13 @@ jobs:
           # Run model-config-tests pytests - this also generates checksums files.
           # If there is a checksum to compare against, add --checksum-path arg.
           model-config-tests -s -m "${{ inputs.test-markers }}" \
-            --output-path ${{ env.EXPERIMENT_LOCATION }} \
+            --output-path "${{ env.EXPERIMENT_LOCATION }}" \
             ${{ inputs.compared-config-ref != '' && '--checksum-path $COMPARED_CHECKSUM_FILE \' || '\' }}
-            --junitxml=${{ env.EXPERIMENT_LOCATION }}/checksum/test_report.xml
+            --junitxml="${{ env.EXPERIMENT_LOCATION }}/checksum/test_report.xml"
 
           # Deactivate and remove the test virtual environment
           deactivate
-          rm -rf ${{ env.TEST_VENV_LOCATION }}
+          rm -rf "${{ env.TEST_VENV_LOCATION }}"
 
           # We want the exit code post-`pytest` to be 0 so the overall `ssh` call succeeeds
           # after a potential `pytest` error.

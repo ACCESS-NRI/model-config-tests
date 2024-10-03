@@ -51,6 +51,32 @@ jobs:
       artifact-name: ${{ steps.artifact.outputs.name }}
       checksum-location: ${{ steps.run.outputs.checksum-location }}
     steps:
+      - name: Validate ${{ inputs.environment-name }} Variables
+        run: |
+          vars_unset=false
+
+          if [ -z "${{ vars.EXPERIMENTS_LOCATION }}" ]; then
+            echo "::error::vars.EXPERIMENTS_LOCATION is unset."
+            vars_unset=true
+          fi
+          if [ -z "${{ vars.PRERELEASE_MODULE_LOCATION }}" ]; then
+            echo "::error::vars.PRERELEASE_MODULE_LOCATION is unset."
+            vars_unset=true
+          fi
+          if [ -z "${{ vars.MODULE_LOCATION }}" ]; then
+            echo "::error::vars.MODULE_LOCATION is unset."
+            vars_unset=true
+          fi
+          if [ -z "${{ vars.DEPLOYMENT_TARGET }}" ]; then
+            echo "::error::vars.DEPLOYMENT_TARGET is unset."
+            vars_unset=true
+          fi
+
+          if [ "$vars_unset" == "true" ]; then
+            echo "::error::Required vars in ${{ inputs.environment-name }} are unset. Repro cannot be run."
+            exit 1
+          fi
+
       - name: Setup SSH
         id: ssh
         uses: access-nri/actions/.github/actions/setup-ssh@main
@@ -70,7 +96,7 @@ jobs:
 
           # Remove base experiment if it already exists
           if [ -d "${{ env.BASE_EXPERIMENT_LOCATION }}" ]; then
-            rm -rf ${{ env.BASE_EXPERIMENT_LOCATION }}
+            rm -rf "${{ env.BASE_EXPERIMENT_LOCATION }}"
           fi
 
           # Setup a base experiment
@@ -89,10 +115,10 @@ jobs:
 
           # Create testing virtual environment
           # Note: --system-site-packages uses packages from payu modules
-          python3 -m venv ${{ env.TEST_VENV_LOCATION }} --system-site-packages
+          python3 -m venv "${{ env.TEST_VENV_LOCATION }}" --system-site-packages
 
           # Activate environment
-          source ${{ env.TEST_VENV_LOCATION }}/bin/activate
+          source "${{ env.TEST_VENV_LOCATION }}/bin/activate"
 
           # Install model-config-tests
           pip install model-config-tests==${{ inputs.model-config-tests-version }}
@@ -109,7 +135,7 @@ jobs:
 
           # Deactivate and remove the test virtual environment
           deactivate
-          rm -rf ${{ env.TEST_VENV_LOCATION }}
+          rm -rf "${{ env.TEST_VENV_LOCATION }}"
 
           # In this case, we want the exit code post-`pytest` to be 0 so the overall `ssh` call succeeeds
           # after the expected `pytest` error.
