@@ -51,6 +51,32 @@ jobs:
       artifact-name: ${{ steps.artifact.outputs.name }}
       checksum-location: ${{ steps.run.outputs.checksum-location }}
     steps:
+      - name: Validate ${{ inputs.environment-name }} Variables
+        run: |
+          vars_unset=false
+
+          if [ -z "${{ vars.EXPERIMENTS_LOCATION }}" ]; then
+            echo "::error::vars.EXPERIMENTS_LOCATION is unset."
+            vars_unset=true
+          fi
+          if [ -z "${{ vars.PRERELEASE_MODULE_LOCATION }}" ]; then
+            echo "::error::vars.PRERELEASE_MODULE_LOCATION is unset."
+            vars_unset=true
+          fi
+          if [ -z "${{ vars.MODULE_LOCATION }}" ]; then
+            echo "::error::vars.MODULE_LOCATION is unset."
+            vars_unset=true
+          fi
+          if [ -z "${{ vars.DEPLOYMENT_TARGET }}" ]; then
+            echo "::error::vars.DEPLOYMENT_TARGET is unset."
+            vars_unset=true
+          fi
+
+          if [ "$vars_unset" == "true" ]; then
+            echo "::error::Required vars in ${{ inputs.environment-name }} are unset. Repro cannot be run."
+            exit 1
+          fi
+
       - name: Setup SSH
         id: ssh
         uses: access-nri/actions/.github/actions/setup-ssh@main
