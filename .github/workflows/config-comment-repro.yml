@@ -1,0 +1,201 @@
+name: 'Comment Command: !repro'
+run-name: '!repro on ${{ github.repository }}'
+on:
+  workflow_call:
+  # Triggered by:
+  # on:
+  #   issue_comment:
+  #     - edited
+  #     - created
+env:
+  USAGE: '!repro [against COMMITISH]'
+jobs:
+  ci-config:
+    name: Read CI Testing Configuration
+    runs-on: ubuntu-latest
+    outputs:
+      markers: ${{ steps.repro-config.outputs.markers }}
+      payu-version: ${{ steps.repro-config.outputs.payu-version }}
+      model-config-tests-version: ${{ steps.repro-config.outputs.model-config-tests-version }}
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Validate `config/ci.json`
+        uses: access-nri/schema/.github/actions/validate-with-schema@main
+        with:
+          # As with a lot of the `vars`/`secrets` in this repo, this will be defined in the caller repo
+          schema-version: ${{ vars.CI_JSON_SCHEMA_VERSION }}
+          meta-schema-version: draft-2020-12
+          schema-location: au.org.access-nri/model/configuration/ci
+          data-location: config/ci.json
+
+      - name: Get base branch for PR
+        id: base
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh pr checkout ${{ github.event.issue.number }}
+          echo "branch=$(gh pr view --json baseRefName --jq '.baseRefName')"
+
+      - name: Read reproducibility tests config
+        id: repro-config
+        uses: access-nri/model-config-tests/.github/actions/parse-ci-config@main
+        with:
+          check: reproducibility
+          branch-or-tag: ${{ steps.base.outputs.branch }}
+          config-filepath: "config/ci.json"
+
+  prepare-command:
+    name: Prepare Command
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+    outputs:
+      config-hash: ${{ steps.pr.outputs.hash }}
+      config-ref: ${{ steps.pr.outputs.ref }}
+      compared-config-hash: ${{ steps.compared.outputs.hash }}
+      compared-config-ref: ${{ steps.compared.outputs.ref }}
+      # TODO: Make this an input to the command when we start deploying to multiple targets
+      environment-name: Gadi
+    permissions:
+      pull-requests: write
+    steps:
+      - name: React to '!repro'
+        uses: access-nri/actions/.github/actions/react-to-comment@main
+        with:
+          reaction: rocket
+          token: ${{ github.token }}
+
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Get config ref from PR comment
+        id: pr
+        run: |
+          gh pr checkout ${{ github.event.issue.number }}
+          echo "hash=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
+          echo "ref=$(git rev-parse --abbrev-ref HEAD)" >> $GITHUB_OUTPUT
+
+      - name: Get compared config ref from PR comment
+        id: compared
+        run: |
+          command='${{ github.event.issue.comment.body }}'
+          read -ra command_tokens <<< "$command"
+          # Remove the leading '!repro'
+          read -ra command_args <<< "${command_tokens[@]:1}"
+
+          # Set up a default ref
+          gh repo checkout ${{ github.event.issue.number }}
+          ref=$(gh pr view --json baseRefName --jq '.baseRefName')
+          hash=$(git merge-base --fork-point "$ref")
+
+          is_explicit_comparison=false
+
+          # Go through all the tokens...
+          for token in "${command_args[@]}"; do
+            if [[ "$token" == "against" ]]; then
+              is_explicit_comparison=true
+              continue
+            fi
+
+            if [[ "$is_explicit_comparison" == "true" ]]; then
+              hash=$token
+              is_explicit_comparison=false
+            fi
+          done
+
+          # Do some error checking...
+          if [[ "$is_explicit_comparison" == "true" ]]; then
+            echo "::error::Used 'against' without specifying a commit hash. Usage: ${{ env.USAGE }}"
+            exit 1
+          fi
+
+          echo "hash=$hash" >> $GITHUB_OUTPUT
+          echo "ref=$ref" >> $GITHUB_OUTPUT
+
+  repro:
+    name: Compare ${{ needs.prepare-command.outputs.config-ref }} against ${{ needs.prepare-command.outputs.compared-config-ref }}
+    needs:
+      - prepare-command
+      - ci-config
+    uses: access-nri/model-config-tests/.github/workflows/test-repro.yml@main
+    with:
+      config-ref: ${{ needs.prepare-command.outputs.config-hash }}
+      compared-config-ref: ${{ needs.prepare-command.outputs.compared-config-hash }}
+      environment-name: ${{ needs.prepare-command.outputs.environment-name }}
+      payu-version: ${{ needs.ci-config.outputs.payu-version }}
+      model-config-tests-version: ${{ needs.ci-config.outputs.model-config-tests-version }}
+      test-markers: ${{ needs.ci-config.outputs.markers }}
+    secrets: inherit
+    permissions:
+      contents: write
+
+  check-repro:
+    # Parse the test report and return pass/fail result
+    name: Results
+    needs:
+      - prepare-command
+      - repro
+    runs-on: ubuntu-latest
+    env:
+      TESTING_LOCAL_LOCATION: /opt/testing
+    permissions:
+      checks: write
+    steps:
+      - name: Download Newly Created Checksum
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.repro.outputs.artifact-name }}
+          path: ${{ env.TESTING_LOCAL_LOCATION }}
+
+      - name: Parse Test Report
+        id: tests
+        uses: EnricoMi/publish-unit-test-result-action/composite@e780361cd1fc1b1a170624547b3ffda64787d365  #v2.12.0
+        with:
+          files: ${{ env.TESTING_LOCAL_LOCATION }}/checksum/test_report.xml
+          comment_mode: off
+          check_run: true
+          compare_to_earlier_commit: false
+          report_individual_runs: true
+          report_suite_logs: any
+
+      - name: Repro results
+        id: results
+        run: |
+          echo "check-url=${{ fromJson(steps.tests.outputs.json).check_url }}" >> $GITHUB_OUTPUT
+
+          if (( ${{ fromJson(steps.tests.outputs.json).stats.tests_fail }} > 0 )); then
+            echo "result=fail" >> $GITHUB_OUTPUT
+          else
+            echo "result=pass" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Comment result
+        env:
+          RESULT: |-
+            ${{ steps.results.outputs.result == 'pass' && ':white_check_mark: The Bitwise Reproducibility Check Succeeded :white_check_mark:' || ':x: The Bitwise Reproducibility Check Failed :x:' }}
+          COMPARED_REF: ${{ needs.prepare-command.outputs.compared-config-ref != '' && format('(on branch `{0}`)', needs.prepare-command.outputs.compared-config-ref) || '' }}
+        uses: access-nri/actions/.github/actions/pr-comment@main
+        with:
+          comment: |
+            ${{ env.RESULT }}
+            When comparing:
+
+            - `${{ needs.prepare-command.outputs.config-hash }}` (on branch `${{ needs.prepare-command.outputs.config-ref }}`), against
+            - `${{ needs.prepare-command.outputs.compared-config-hash }}` ${{ env.COMPARED_REF }}
+
+            <details>
+            <summary> Further information</summary>
+
+            The experiment can be found on Gadi at `${{ needs.repro.outputs.experiment-location }}`, and the test results at ${{ steps.results.outputs.check-run-url }}.
+
+            The checksums generated by this `!repro` command are found in the `testing/checksum` directory of ${{ needs.repro.outputs.artifact-url }}.
+
+            The checksums compared against are found here ${{ github.server_url }}/${{ github.repository }}/tree/${{ needs.prepare-command.outputs.compared-config-hash }}/testing/checksum
+
+            </details>
