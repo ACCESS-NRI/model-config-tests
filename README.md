@@ -148,3 +148,31 @@ Using it has some requirements outside of just filling in the inputs: One must h
 - `vars.EXPERIMENTS_LOCATION` - directory on the deployment target that will contain all the experiments used during testing of reproducibility across multiple runs of this workflow (ex. `/scratch/some/directory/experiments`)
 - `vars.MODULE_LOCATION` - directory on the deployment target that contains module files for payu used during reproducibility testing (ex. `/g/data/vk83/modules`)
 - `vars.PRERELEASE_MODULE_LOCATION` - directory on the deployment target that contains module files for development version of payu (ex. `/g/data/vk83/prerelease/modules`)
+
+#### `config-comment-repro` Reusable Workflow
+
+This comment command allows a repro check from any branch, rather than just the `dev-*` -> `release-*` PR pipeline.
+
+It requires all the `secrets`/`vars` defined on the caller (as above), as well as `vars.CONFIG_CI_SCHEMA_VERSION`.
+
+Usage is as follows:
+
+```txt
+!repro [compare COMMITISH]
+```
+
+ Which gives two main variations:
+
+`!repro`: will compare the `HEAD` of the current PR source branch against the common ancestor on the target branch. For example, in the below diagram we would be comparing `C` against `A`:
+
+```txt
+D   (PR Target Branch)
+|
+| C (PR Source Branch)
+| |
+| B
+|/
+A   (Common Ancestor)
+```
+
+`!repro compare COMMITISH` will compare the `HEAD` of the current PR source branch against `COMMITISH` (provided there is a `testing/checksum` directory at that point to compare against!)

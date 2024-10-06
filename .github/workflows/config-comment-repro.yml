@@ -8,7 +8,7 @@ on:
   #     - edited
   #     - created
 env:
-  USAGE: '!repro [against COMMITISH]'
+  USAGE: '!repro [compare COMMITISH]'
 jobs:
   ci-config:
     name: Read CI Testing Configuration
@@ -98,7 +98,7 @@ jobs:
 
           # Go through all the tokens...
           for token in "${command_args[@]}"; do
-            if [[ "$token" == "against" ]]; then
+            if [[ "$token" == "compare" ]]; then
               is_explicit_comparison=true
               continue
             fi
@@ -111,7 +111,7 @@ jobs:
 
           # Do some error checking...
           if [[ "$is_explicit_comparison" == "true" ]]; then
-            echo "::error::Used 'against' without specifying a commit hash. Usage: ${{ env.USAGE }}"
+            echo "::error::Used 'compare' without specifying a commit hash. Usage: ${{ env.USAGE }}"
             exit 1
           fi
 
