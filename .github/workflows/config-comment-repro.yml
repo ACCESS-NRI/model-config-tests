@@ -9,6 +9,7 @@ on:
   #     - created
 env:
   USAGE: '!repro [commit] [compare COMMITISH]'
+  RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
 jobs:
   ci-config:
     name: Read CI Testing Configuration
@@ -254,11 +255,8 @@ jobs:
 
       - name: Checkout Associated PR ${{ github.event.issue.number }}
         # Since the trigger for this workflow was on.issue_comment, we need
-        # to do a bit more wrangling to checkout the pull request and get the branch name
-        id: pr
-        run: |
-          gh pr checkout ${{ github.event.issue.number }}
-          echo "branch=$(git rev-parse --abbrev-ref HEAD)" >> $GITHUB_OUTPUT
+        # to do a bit more wrangling to checkout the pull request
+        run: gh pr checkout ${{ github.event.issue.number }}
 
       - name: Download Newly Created Checksum
         uses: actions/download-artifact@v4
@@ -284,5 +282,5 @@ jobs:
 
       - name: Commit and Push Updates
         run: |
-          git commit -am "Updated checksums and bumped version to ${{ needs.bump-version.outputs.after }} as part of ${{ env.RUN_URL }}"
+          git commit -am "Updated checksums as part of ${{ env.RUN_URL }}"
           git push
