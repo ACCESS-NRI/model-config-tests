@@ -4,8 +4,7 @@ This repository houses pytests that are used as part CI checks for model configu
 
 The checksum pytests are used for reproducibility CI checks in this repository. The quick configuration tests are used in any repository that calls `config-pr-1-ci.yml` or is templated by [`ACCESS-NRI/model-configs-template](https://github.com/ACCESS-NRI/model-configs-template). For example, [ACCESS-NRI/access-om2-configs](https://github.com/ACCESS-NRI/access-om2-configs).
 
-Code from these pytests is adapted from COSIMAS's ACCESS-OM2's [
-bit reproducibility tests](https://github.com/COSIMA/access-om2/blob/master/test/test_bit_reproducibility.py).
+Code from these pytests is adapted from COSIMAS's ACCESS-OM2's [bit reproducibility tests](https://github.com/COSIMA/access-om2/blob/master/test/test_bit_reproducibility.py).
 
 ## Pytests
 
@@ -110,11 +109,11 @@ The `config-*.yml`, `generate-checksums.yml` and `test-repro.yml` workflows are 
 
 Currently, these repositories make use of the reusable CI:
 
-* [access-om2-configs](https://github.com/ACCESS-NRI/access-om2-configs)
-* [access-esm1.5-configs](https://github.com/ACCESS-NRI/access-esm1.5-configs)
-* [access-esm1.6-configs](https://github.com/ACCESS-NRI/access-esm1.6-configs)
-* [access-om3-configs](https://github.com/ACCESS-NRI/access-om3-configs)
-* [access-om3-wav-configs](https://github.com/ACCESS-NRI/access-om3-wav-configs)
+- [access-om2-configs](https://github.com/ACCESS-NRI/access-om2-configs)
+- [access-esm1.5-configs](https://github.com/ACCESS-NRI/access-esm1.5-configs)
+- [access-esm1.6-configs](https://github.com/ACCESS-NRI/access-esm1.6-configs)
+- [access-om3-configs](https://github.com/ACCESS-NRI/access-om3-configs)
+- [access-om3-wav-configs](https://github.com/ACCESS-NRI/access-om3-wav-configs)
 
 Below is information on the use of these workflows.
 
@@ -158,10 +157,12 @@ It requires all the `secrets`/`vars` defined on the caller (as above), as well a
 Usage is as follows:
 
 ```txt
-!repro [compare COMMITISH]
+!repro [commit] [compare COMMITISH]
 ```
 
- Which gives two main variations:
+Using `commit` as an option will commit the result of the repro test to the PR, provided the commenter has at least `write` permission, and the checksums differ.
+
+`[compare COMMITISH]` gives two main variations on the compared configuration:
 
 `!repro`: will compare the `HEAD` of the current PR source branch against the common ancestor on the target branch. For example, in the below diagram we would be comparing `C` against `A`:
 
