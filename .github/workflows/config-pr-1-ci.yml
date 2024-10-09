@@ -257,7 +257,7 @@ jobs:
         id: tests
         uses: EnricoMi/publish-unit-test-result-action/composite@e780361cd1fc1b1a170624547b3ffda64787d365  #v2.12.0
         with:
-          files: ${{ env.TESTING_LOCAL_LOCATION }}/checksum/test_report.xml
+          files: ${{ env.TESTING_LOCAL_LOCATION }}/testing/checksum/test_report.xml
           comment_mode: off
           check_run: true
           check_name: Repro Test Results
