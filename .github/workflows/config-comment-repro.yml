@@ -174,7 +174,7 @@ jobs:
         id: tests
         uses: EnricoMi/publish-unit-test-result-action/composite@e780361cd1fc1b1a170624547b3ffda64787d365  #v2.12.0
         with:
-          files: ${{ env.TESTING_LOCAL_LOCATION }}/checksum/test_report.xml
+          files: ${{ env.TESTING_LOCAL_LOCATION }}/testing/checksum/test_report.xml
           comment_mode: off
           check_run: true
           compare_to_earlier_commit: false
@@ -252,9 +252,10 @@ jobs:
           name: ${{ needs.repro.outputs.artifact-name }}
           path: ${{ env.ARTIFACT_LOCAL_LOCATION }}
 
-      - name: Update checksum files
+      - name: Update files
+        # This will copy checksums, as well as any other files specified by inputs.additional-artifact-content-paths
         run: |
-          cp --recursive --verbose ${{ env.ARTIFACT_LOCAL_LOCATION }}/*/* testing
+          cp --recursive --verbose ${{ env.ARTIFACT_LOCAL_LOCATION }} .
 
       - name: Import Commit-Signing Key
         uses: crazy-max/ghaction-import-gpg@01dd5d3ca463c7f10f7f4f7b4f177225ac661ee4  # v6.1.0
@@ -270,5 +271,5 @@ jobs:
 
       - name: Commit and Push Updates
         run: |
-          git commit -am "Updated checksums as part of ${{ env.RUN_URL }}"
+          git commit -am "Updated files as part of ${{ env.RUN_URL }}"
           git push
