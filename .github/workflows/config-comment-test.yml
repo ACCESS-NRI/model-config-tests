@@ -1,5 +1,5 @@
-name: 'Comment Command: !repro'
-run-name: '!repro on ${{ github.repository }}'
+name: 'Comment Command: !test'
+run-name: '!test on ${{ github.repository }}'
 on:
   workflow_call:
     inputs:
@@ -18,7 +18,8 @@ on:
   #     - edited
   #     - created
 env:
-  USAGE: '!test repro [commit]'
+  USAGE: '!test TYPE [commit]'
+  USAGE_TYPES: repro
   RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
 jobs:
   ci-config:
@@ -65,6 +66,7 @@ jobs:
     env:
       GH_TOKEN: ${{ github.token }}
     outputs:
+      test-type: ${{ steps.test.outputs.type }}
       # the git hash of the configuration being tested
       config-hash: ${{ steps.pr.outputs.hash }}
       # the git ref (branch or tag) of the configuration being tested
@@ -80,7 +82,7 @@ jobs:
     permissions:
       pull-requests: write
     steps:
-      - name: React to '!repro'
+      - name: React to '!test'
         uses: access-nri/actions/.github/actions/react-to-comment@main
         with:
           reaction: rocket
@@ -90,6 +92,28 @@ jobs:
         with:
           fetch-depth: 0
           fetch-tags: true
+
+      - name: Get test type
+        id: test
+        run: |
+          command="${{ github.event.issue.comment.body }}"
+          read -ra command_tokens <<< "$command"
+          type_in_comment="${command_tokens[1]}"
+          type_in_comment_valid=false
+
+          for type in ${{ env.USAGE_TYPES }}; do
+            if [[ "$type_in_command" == "$type" ]]; then
+              type_in_comment_valid=true
+              break
+            fi
+          done
+
+          if [[ "$type_in_comment_valid" == "false" ]]; then
+            echo "::error::The command '${{ github.event.issue.comment.body }}' doesn't have a valid TYPE. Was given '$type_in_command', but needed to be one of: ${{ env.USAGE_TYPES }}."
+            exit 1
+          fi
+
+          echo "type=$type_in_command" >> $GITHUB_OUTPUT
 
       - name: Get config ref from PR comment
         id: pr
@@ -139,6 +163,7 @@ jobs:
     needs:
       - prepare-command
       - ci-config
+    if: needs.prepare-command.outputs.test-type == 'repro'
     uses: access-nri/model-config-tests/.github/workflows/test-repro.yml@main
     with:
       config-ref: ${{ needs.prepare-command.outputs.config-hash }}
@@ -273,3 +298,13 @@ jobs:
         run: |
           git commit -am "Updated files as part of ${{ env.RUN_URL }}"
           git push
+
+  failure-notifier:
+    name: Notify PR of Workflow Failure
+    if: failure()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: access-nri/actions/.github/actions/pr-comment@main
+        with:
+          comment: |
+            :x: `!test` Command Failed. See ${{ env.RUN_URL }} :x:
