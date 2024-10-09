@@ -18,7 +18,7 @@ on:
   #     - edited
   #     - created
 env:
-  USAGE: '!repro [commit] [compare COMMITISH]'
+  USAGE: '!test repro [commit]'
   RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
 jobs:
   ci-config:
@@ -98,39 +98,15 @@ jobs:
           echo "hash=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
           echo "ref=$(git rev-parse --abbrev-ref HEAD)" >> $GITHUB_OUTPUT
 
-      - name: Get compared config ref from PR comment
+      - name: Get compared config ref
         id: compared
+        # Set up a default ref
         run: |
-          command='${{ github.event.issue.comment.body }}'
-          read -ra command_tokens <<< "$command"
-          # Remove the leading '!repro'
-          read -ra command_args <<< "${command_tokens[@]:1}"
-
-          # Set up a default ref
           gh repo checkout ${{ github.event.issue.number }}
           ref=$(gh pr view --json baseRefName --jq '.baseRefName')
           hash=$(git merge-base --fork-point "$ref")
 
-          is_explicit_comparison=false
-
-          # Go through all the tokens...
-          for token in "${command_args[@]}"; do
-            if [[ "$token" == "compare" ]]; then
-              is_explicit_comparison=true
-              continue
-            fi
-
-            if [[ "$is_explicit_comparison" == "true" ]]; then
-              hash=$token
-              is_explicit_comparison=false
-            fi
-          done
-
-          # Do some error checking...
-          if [[ "$is_explicit_comparison" == "true" ]]; then
-            echo "::error::Used 'compare' without specifying a commit hash. Usage: ${{ env.USAGE }}"
-            exit 1
-          fi
+          echo "Using $hash (on $ref)"
 
           echo "hash=$hash" >> $GITHUB_OUTPUT
           echo "ref=$ref" >> $GITHUB_OUTPUT
@@ -139,6 +115,7 @@ jobs:
         id: commit
         # Determine whether the commenter can actually commit something to the repo if they write 'commit'
         # by getting their repo permissions.
+        # TODO: The permissions-checking section seems ripe for turning into an action!
         run: |
           if [[ "${{ contains(github.event.comment.body, 'commit') }}" == "false" ]]; then
             echo "'commit' option not given"
