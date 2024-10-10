@@ -17,18 +17,18 @@ on:
       additional-artifact-content-paths:
         type: string
         required: false
-        # For example, the value of 'checksum' will expand to something like
-        # '/scratch/tm70/repro-ci/experiments/MODEL-configs/dev-CONFIG/checksum'
+        # For example, the value of 'testing/checksum' will expand to something like
+        # '/scratch/tm70/repro-ci/experiments/MODEL-configs/dev-CONFIG/testing/checksum'
         # on the remote.
         description: |
-          Newline-separated paths for inclusion in the release artifact.
+          Newline-separated paths for inclusion in an 'additional-*' artifact.
           Note that all paths given have 'env.EXPERIMENT_LOCATION/' prepended.
       additional-artifact-content-paths-root:
         type: string
         required: false
         # default: technically '.', but we don't want a broken rsync recieve path like 'some/dir/.'
         description: |
-          If additional content paths are being included in the artifact.
+          If content paths are being included in an additional artifact.
           A path relative to the artifact root to store the given additional artifact content paths.
           Defaults to the root (`.`) of the artifact.
     outputs:
