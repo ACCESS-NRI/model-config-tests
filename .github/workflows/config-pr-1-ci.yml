@@ -23,6 +23,14 @@ on:
         description: |
           Newline-separated paths for inclusion in the release artifact.
           Note that all paths given have 'env.EXPERIMENT_LOCATION/' prepended.
+      additional-artifact-content-paths-root:
+        type: string
+        required: false
+        # default: technically '.', but we don't want a broken rsync recieve path like 'some/dir/.'
+        description: |
+          If additional content paths are being included in the artifact.
+          A path relative to the artifact root to store the given additional artifact content paths.
+          Defaults to the root (`.`) of the artifact.
     outputs:
       repro-ci-artifact-name:
         value: ${{ jobs.repro-ci.outputs.artifact-name }}
@@ -30,6 +38,12 @@ on:
       repro-ci-artifact-url:
         value: ${{ jobs.repro-ci.outputs.artifact-url }}
         description: URL to the repro-ci artifact
+      repro-ci-additional-artifact-name:
+        value: ${{ jobs.repro-ci.outputs.additional-artifact-name }}
+        description: Name of the additional content repro-ci artifact
+      repro-ci-additional-artifact-url:
+        value: ${{ jobs.repro-ci.outputs.additional-artifact-url }}
+        description: URL to the additional content repro-ci artifact
       repro-ci-experiment-location:
         value: ${{ jobs.repro-ci.outputs.experiment-location }}
         description: Location of the experiment on the target environment
@@ -227,6 +241,7 @@ jobs:
       model-config-tests-version: ${{ needs.config.outputs.repro-model-config-tests-version }}
       payu-version: ${{ needs.config.outputs.repro-payu-version }}
       additional-artifact-content-paths: ${{ inputs.additional-artifact-content-paths }}
+      additional-artifact-content-paths-root: ${{ inputs.additional-artifact-content-paths-root }}
     secrets: inherit
     permissions:
       contents: write
