@@ -35,6 +35,14 @@ on:
         description: |
           Newline-separated paths for inclusion in the release artifact.
           Note that all paths given have 'env.EXPERIMENT_LOCATION/' prepended.
+      additional-artifact-content-paths-root:
+        type: string
+        required: false
+        # default: technically '.', but we don't want a broken rsync recieve path like 'some/dir/.'
+        description: |
+          If additional content paths are being included in the artifact.
+          A path relative to the artifact root to store the given additional artifact content paths.
+          Defaults to the root (`.`) of the artifact.
     outputs:
       artifact-name:
         value: ${{ jobs.repro.outputs.artifact-name }}
@@ -42,6 +50,12 @@ on:
       artifact-url:
         value: ${{ jobs.repro.outputs.artifact-url }}
         description: URL to the artifact containing the checksums and test report for this repro run
+      additional-artifact-name:
+        value: ${{ jobs.additional-artifact.outputs.artifact-name }}
+        description: If inputs.additional-artifact-content was specified - Name of the artifact containing additional content for this repro run
+      additional-artifact-url:
+        value: ${{ jobs.additional-artifact.outputs.artifact-url }}
+        description: If inputs.additional-artifact-content was specified - URL to the artifact containing additional content for this repro run
       experiment-location:
         value: ${{ jobs.repro.outputs.experiment-location }}
         description: Location of the experiment on the target environment
@@ -174,24 +188,55 @@ jobs:
             '${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST_DATA }}:${{ steps.run.outputs.checksum-location }}' \
             ${{ env.ARTIFACT_LOCAL_LOCATION }}
 
-      - name: Copy Back Additional Artifact Content
-        if: inputs.additional-artifact-content-paths != ''
-        # For each of the additional artifact content paths, rsync the data
-        # from the target into our runner for upload as an artifact
-        run: |
-          while IFS= read -r content_path; do
-            if [[ -n "$content_path" ]]; then
-              rsync --recursive --relative --verbose -e 'ssh -i ${{ steps.ssh.outputs.private-key-path }}' \
-                "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST_DATA }}:${{ env.EXPERIMENT_LOCATION }}/./$content_path" \
-                ${{ env.ARTIFACT_LOCAL_LOCATION }}
-            fi
-          done <<< "${{ inputs.additional-artifact-content-paths }}"
-
       - name: Generate Test Output Artifact Name
         id: artifact
         run: echo "name=${{ github.event.repository.name }}-${{ inputs.config-ref }}" >> $GITHUB_OUTPUT
 
       - name: Upload Test Output
+        id: upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.artifact.outputs.name }}
+          if-no-files-found: error
+          path: ${{ env.ARTIFACT_LOCAL_LOCATION }}
+
+  additional-artifact:
+    name: Additional Content Artifact Upload
+    needs:
+      - repro
+    if: inputs.additional-artifact-content-paths != ''
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment-name }}
+    outputs:
+      artifact-name: ${{ steps.artifact.outputs.name }}
+      artifact-url: ${{ steps.upload.outputs.artifact-url }}
+    steps:
+      - name: Setup SSH
+        id: ssh
+        uses: access-nri/actions/.github/actions/setup-ssh@main
+        with:
+          hosts: |
+            ${{ secrets.SSH_HOST }}
+            ${{ secrets.SSH_HOST_DATA }}
+          private-key: ${{ secrets.SSH_KEY }}
+
+      - name: Copy Back Additional Artifact Content
+        # For each of the additional artifact content paths, rsync the data
+        # from the target into our runner for upload as an artifact
+        run: |
+          while IFS= read -r content_path; do
+            if [[ -n "$content_path" ]]; then
+              rsync --recursive --relative --mkpath --verbose -e 'ssh -i ${{ steps.ssh.outputs.private-key-path }}' \
+                "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST_DATA }}:${{ needs.repro.outputs.experiment-location }}/./$content_path" \
+                ${{ env.ARTIFACT_LOCAL_LOCATION }}/${{ inputs.additional-artifact-content-paths-root }}
+            fi
+          done <<< "${{ inputs.additional-artifact-content-paths }}"
+
+      - name: Generate Additional Content Artifact Name
+        id: artifact
+        run: echo "name=additional-${{ github.event.repository.name }}-${{ inputs.config-ref }}" >> $GITHUB_OUTPUT
+
+      - name: Additional Content Artifact
         id: upload
         uses: actions/upload-artifact@v4
         with:
