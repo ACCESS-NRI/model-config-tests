@@ -163,12 +163,19 @@ jobs:
           git_tag_gpgsign: true
 
       - name: Commit and Push Updates
+        # In this, we add various sections to the commit message depending if
+        # checksums or additional content  are added, along with the version bump.
+        env:
+          # We interleave the optional bits between the 'Bumped version...' bit
+          # because stripped block scalars (>-) put in a newline if there are two newlines.
+          COMMIT_MSG: >-
+            ${{ needs.bump-version.outputs.type == 'major' && 'Updated checksums, ' || '' }}
+            Bumped version to ${{ needs.bump-version.outputs.after }}
+            ${{ inputs.additional-artifact-content-paths-commit && ', and updated files' || '' }}
+            as part of ${{ env.RUN_URL }}
         run: |
-          if [[ "${{ needs.bump-version.outputs.type }}" == "minor" ]]; then
-            git commit -am "Bumped version to ${{ needs.bump-version.outputs.after }} as part of ${{ env.RUN_URL }}"
-          elif [[ "${{ needs.bump-version.outputs.type }}" == "major" ]]; then
-            git commit -am "Updated checksums and bumped version to ${{ needs.bump-version.outputs.after }} as part of ${{ env.RUN_URL }}"
-          fi
+          git add .
+          git commit -m "${{ env.COMMIT_MSG }}"
           git push
 
       - name: Comment Success
