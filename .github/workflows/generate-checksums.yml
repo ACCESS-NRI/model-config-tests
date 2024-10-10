@@ -10,11 +10,6 @@ on:
         type: boolean
         required: true
         description: Whether to commit the checksums to the config branch once generated.
-      committed-checksum-location:
-        type: string
-        required: false
-        default: ./testing/checksum
-        description: "If checksums are committed: Where in the repository the generated checksums should be committed to."
       committed-checksum-tag:
         type: string
         required: false
@@ -90,6 +85,7 @@ jobs:
         id: run
         env:
           BASE_EXPERIMENT_LOCATION: ${{ env.EXPERIMENT_LOCATION }}/base-experiment
+          CHECKSUM_LOCATION: ${{ env.EXPERIMENT_LOCATION }}/testing
           TEST_VENV_LOCATION: ${{ env.EXPERIMENT_LOCATION }}/test-venv
         run: |
           ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} -i ${{ steps.ssh.outputs.private-key-path }} /bin/bash<<EOT
@@ -131,7 +127,7 @@ jobs:
           # Run pytests - this also generates checksums files
           model-config-tests -s \
             -m "checksum" \
-            --output-path ${{ env.EXPERIMENT_LOCATION }}
+            --output-path "${{ env.CHECKSUM_LOCATION }}"
 
           # Deactivate and remove the test virtual environment
           deactivate
@@ -143,12 +139,13 @@ jobs:
           EOT
 
           echo "experiment-location=${{ env.EXPERIMENT_LOCATION }}" >> $GITHUB_OUTPUT
+          echo "checksum-location=${{ env.CHECKSUM_LOCATION }}" >> $GITHUB_OUTPUT
           echo "::notice::Checksums generated on ${{ vars.DEPLOYMENT_TARGET }} at ${{ env.EXPERIMENT_LOCATION }}"
 
       - name: Copy Back Checksums
         run: |
           rsync --recursive -e 'ssh -i ${{ steps.ssh.outputs.private-key-path }}' \
-              '${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST_DATA }}:${{ env.EXPERIMENT_LOCATION }}/checksum' \
+              '${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST_DATA }}:${{ steps.run.outputs.checksum-location }}' \
               ${{ env.OUTPUT_LOCAL_LOCATION }}
 
       - name: Generate Output Artifact Name
@@ -181,10 +178,8 @@ jobs:
           name: ${{ needs.generate-checksum.outputs.artifact-name }}
           path: ${{ env.OUTPUT_LOCAL_LOCATION }}
 
-      - name: Move Checksums to Repo
-        run: |
-          mkdir -p ${{ inputs.committed-checksum-location }}
-          mv ${{ env.OUTPUT_LOCAL_LOCATION }}/checksum/* ${{ inputs.committed-checksum-location }}
+      - name: Move Outputs to Repo
+        run: mv ${{ env.OUTPUT_LOCAL_LOCATION }} .
 
       - name: Update version in metadata.yaml
         if: inputs.committed-checksum-tag != ''

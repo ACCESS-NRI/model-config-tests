@@ -17,12 +17,20 @@ on:
       additional-artifact-content-paths:
         type: string
         required: false
-        # For example, the value of 'checksum' will expand to something like
-        # '/scratch/tm70/repro-ci/experiments/MODEL-configs/dev-CONFIG/checksum'
+        # For example, the value of 'testing/checksum' will expand to something like
+        # '/scratch/tm70/repro-ci/experiments/MODEL-configs/dev-CONFIG/testing/checksum'
         # on the remote.
         description: |
-          Newline-separated paths for inclusion in the release artifact.
+          Newline-separated paths for inclusion in an 'additional-*' artifact.
           Note that all paths given have 'env.EXPERIMENT_LOCATION/' prepended.
+      additional-artifact-content-paths-root:
+        type: string
+        required: false
+        # default: technically '.', but we don't want a broken rsync recieve path like 'some/dir/.'
+        description: |
+          If content paths are being included in an additional artifact.
+          A path relative to the artifact root to store the given additional artifact content paths.
+          Defaults to the root (`.`) of the artifact.
     outputs:
       repro-ci-artifact-name:
         value: ${{ jobs.repro-ci.outputs.artifact-name }}
@@ -30,6 +38,12 @@ on:
       repro-ci-artifact-url:
         value: ${{ jobs.repro-ci.outputs.artifact-url }}
         description: URL to the repro-ci artifact
+      repro-ci-additional-artifact-name:
+        value: ${{ jobs.repro-ci.outputs.additional-artifact-name }}
+        description: Name of the additional content repro-ci artifact
+      repro-ci-additional-artifact-url:
+        value: ${{ jobs.repro-ci.outputs.additional-artifact-url }}
+        description: URL to the additional content repro-ci artifact
       repro-ci-experiment-location:
         value: ${{ jobs.repro-ci.outputs.experiment-location }}
         description: Location of the experiment on the target environment
@@ -227,6 +241,7 @@ jobs:
       model-config-tests-version: ${{ needs.config.outputs.repro-model-config-tests-version }}
       payu-version: ${{ needs.config.outputs.repro-payu-version }}
       additional-artifact-content-paths: ${{ inputs.additional-artifact-content-paths }}
+      additional-artifact-content-paths-root: ${{ inputs.additional-artifact-content-paths-root }}
     secrets: inherit
     permissions:
       contents: write
@@ -257,7 +272,7 @@ jobs:
         id: tests
         uses: EnricoMi/publish-unit-test-result-action/composite@e780361cd1fc1b1a170624547b3ffda64787d365  #v2.12.0
         with:
-          files: ${{ env.TESTING_LOCAL_LOCATION }}/checksum/test_report.xml
+          files: ${{ env.TESTING_LOCAL_LOCATION }}/testing/checksum/test_report.xml
           comment_mode: off
           check_run: true
           check_name: Repro Test Results
