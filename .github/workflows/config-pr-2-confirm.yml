@@ -6,6 +6,14 @@
 name: Confirm
 on:
   workflow_call:
+    inputs:
+      additional-artifact-content-paths-commit:
+        type: boolean
+        required: false
+        default: false
+        description: |
+          If additional content paths have been included in an artifact.
+          Whether to commit the additional content.
   # Workflows that call this workflow use the following triggers:
   # issue_comment:
   #   types:
@@ -128,14 +136,19 @@ jobs:
             --jq='[.[] | select(.headBranch == "${{ steps.pr.outputs.branch }}" and .status == "completed")] | sort_by(.updatedAt) | last | .databaseId')
           gh run download $associated_run -D ${{ env.ARTIFACT_LOCAL_LOCATION }}
 
-      - name: Update metadata.yaml, add checksums and optional files
-        # Note: This copies over (and therefore commits) files that are
-        # specified by config-pr-1-ci.ymls inputs.additional-artifact-content-paths
-        # Also, we have the strange double asterix in the `cp` because
+      - name: Update metadata.yaml and add checksums
+        # We have the strange double asterix in the `cp` because
         # `gh run download` may download multiple artifacts if they exist.
         run: |
           yq -i '.version = "${{ needs.bump-version.outputs.after }}"' metadata.yaml
-          cp --recursive --verbose ${{ env.ARTIFACT_LOCAL_LOCATION }}/*/* .
+          rsync --recursive --verbose --exclude 'additional-*' ${{ env.ARTIFACT_LOCAL_LOCATION }} .
+
+      - name: Add additional files
+        if: inputs.additional-artifact-content-paths-commit
+        # Note: This copies over (and commits) files that are
+        # specified by config-pr-1-ci.ymls inputs.additional-artifact-content-paths
+        run: |
+          rsync --recursive --verbose ${{ env.ARTIFACT_LOCAL_LOCATION }}/additional-*/* .
 
       - name: Import Commit-Signing Key
         uses: crazy-max/ghaction-import-gpg@01dd5d3ca463c7f10f7f4f7b4f177225ac661ee4  # v6.1.0
