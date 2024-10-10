@@ -10,11 +10,6 @@ on:
         type: boolean
         required: true
         description: Whether to commit the checksums to the config branch once generated.
-      committed-checksum-location:
-        type: string
-        required: false
-        default: ./testing/checksum
-        description: "If checksums are committed: Where in the repository the generated checksums should be committed to."
       committed-checksum-tag:
         type: string
         required: false
@@ -184,9 +179,7 @@ jobs:
           path: ${{ env.OUTPUT_LOCAL_LOCATION }}
 
       - name: Move Outputs to Repo
-        run: |
-          mkdir -p ${{ inputs.committed-checksum-location }}
-          mv ${{ env.OUTPUT_LOCAL_LOCATION }} .
+        run: mv ${{ env.OUTPUT_LOCAL_LOCATION }} .
 
       - name: Update version in metadata.yaml
         if: inputs.committed-checksum-tag != ''
