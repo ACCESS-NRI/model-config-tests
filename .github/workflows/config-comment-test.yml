@@ -15,6 +15,10 @@ jobs:
   permission-check:
     name: Permission Check
     runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+    permissions:
+      pull-requests: write
     steps:
       - name: Determine if commenter has permission to run the command
         id: commenter
@@ -24,7 +28,7 @@ jobs:
               repos/${{ github.repository }}/collaborators/${{ github.event.comment.user.login }}/permission \
               --jq '.permission'
           )
-          if [[ "$commenter_permission" == "admin" || "$commenter_permission" == "write" ]]; then
+          if [[ "$commenter_permissions" == "admin" || "$commenter_permissions" == "write" ]]; then
             echo "Commenter has at least write permission"
             echo "permission=true" >> $GITHUB_OUTPUT
           else
@@ -132,7 +136,7 @@ jobs:
 
           if [[ "$type_in_comment_valid" == "false" ]]; then
             echo "::error::Usage: ${{ env.USAGE }}"
-            echo "::error::The command '${{ github.event.comment.body }}' doesn't have a valid TYPE. Was given '$type_in_command', but needed to be one of: ${{ env.USAGE_TYPES }}."
+            echo "::error::The command '${{ github.event.comment.body }}' doesn't have a valid TYPE. Was given '$type_in_comment', but needed to be one of: ${{ env.USAGE_TYPES }}."
             exit 1
           fi
 
@@ -203,6 +207,8 @@ jobs:
     permissions:
       pull-requests: write
       checks: write
+    outputs:
+      result: ${{ steps.results.outputs.result }}
     steps:
       - name: Download Newly Created Checksum
         uses: actions/download-artifact@v4
@@ -248,7 +254,7 @@ jobs:
             - `${{ needs.prepare-command.outputs.config-ref }}` (checksums created using commit ${{ env.CONFIG_REF_URL }}), against
             - `${{ needs.prepare-command.outputs.compared-config-ref }}` (checksums in commit ${{ env.COMPARED_CONFIG_REF_URL }})
 
-            ${{ needs.prepare-command.outputs.commit-requested == 'true' && ':wrench: This result has been committed to this PR, if it differs from the current `HEAD`' || '' }}
+            ${{ needs.prepare-command.outputs.commit-requested == 'true' && ':wrench: This result will be committed to this PR, if it differs from the current `HEAD`' || '' }}
 
             <details>
             <summary> Further information</summary>
@@ -263,7 +269,7 @@ jobs:
 
   commit:
     name: Commit Result
-    if: needs.prepare-command.outputs.commit-requested != 'true'
+    if: needs.prepare-command.outputs.commit-requested == 'true' && needs.check-repro.outputs.result == 'fail'
     needs:
       - prepare-command
       - repro
@@ -295,6 +301,7 @@ jobs:
       - name: Update files
         # This will copy checksums from the artifact to the repo
         run: |
+          mkdir testing
           cp --recursive --verbose ${{ env.ARTIFACT_LOCAL_LOCATION }}/*/* testing
 
       - name: Import Commit-Signing Key
@@ -311,7 +318,8 @@ jobs:
 
       - name: Commit and Push Updates
         run: |
-          git commit -am "Updated checksums as part of ${{ env.RUN_URL }}"
+          git add .
+          git commit -m "Updated checksums as part of ${{ env.RUN_URL }}"
           git push
 
   failure-notifier:
