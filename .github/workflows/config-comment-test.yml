@@ -12,8 +12,40 @@ env:
   USAGE_TYPES: repro
   RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
 jobs:
+  permission-check:
+    name: Permission Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Determine if commenter has permission to run the command
+        id: commenter
+        # TODO: The permissions-checking section seems ripe for turning into an action!
+        run: |
+          commenter_permissions=$(gh api \
+              repos/${{ github.repository }}/collaborators/${{ github.event.comment.user.login }}/permission \
+              --jq '.permission'
+          )
+          if [[ "$commenter_permission" == "admin" || "$commenter_permission" == "write" ]]; then
+            echo "Commenter has at least write permission"
+            echo "permission=true" >> $GITHUB_OUTPUT
+          else
+            echo "Commenter does not have at least write permission"
+            echo "permission=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: React to '!test'
+        uses: access-nri/actions/.github/actions/react-to-comment@main
+        with:
+          reaction: ${{ steps.commenter.outputs.permission == 'true' && 'rocket' || 'confused' }}
+          token: ${{ github.token }}
+
+      - name: Fail if no permissions
+        if: steps.commenter.outputs.permission == 'false'
+        run: exit 1
+
   ci-config:
     name: Read CI Testing Configuration
+    needs:
+      - permission-check
     runs-on: ubuntu-latest
     outputs:
       markers: ${{ steps.repro-config.outputs.markers }}
@@ -52,32 +84,32 @@ jobs:
 
   prepare-command:
     name: Prepare Command
+    needs:
+      - permission-check
     runs-on: ubuntu-latest
     env:
       GH_TOKEN: ${{ github.token }}
     outputs:
       test-type: ${{ steps.test.outputs.type }}
-      # the git hash of the configuration being tested
+      # the full git hash of the configuration being tested
       config-hash: ${{ steps.pr.outputs.hash }}
+      # the short git hash of the configuration being tested
+      config-short-hash: ${{ steps.pr.outputs.short-hash }}
       # the git ref (branch or tag) of the configuration being tested
       config-ref: ${{ steps.pr.outputs.ref }}
-      # the git hash of the configuration being compared against
+      # the full git hash of the configuration being compared against
       compared-config-hash: ${{ steps.compared.outputs.hash }}
+      # the short git hash of the configuration being compared against
+      compared-config-short-hash: ${{ steps.compared.outputs.short-hash }}
       # the git ref (branch or tag) of the configuration being compared against
       compared-config-ref: ${{ steps.compared.outputs.ref }}
       # whether the commenter can commit to the repo (either 'true', 'false' or '' (when no 'commit' option given))
-      has-commit-permission: ${{ steps.commit.outputs.permission }}
+      commit-requested: ${{ steps.commit.outputs.requested }}
       # TODO: Make this an input to the command when we start deploying to multiple targets
       environment-name: Gadi
     permissions:
       pull-requests: write
     steps:
-      - name: React to '!test'
-        uses: access-nri/actions/.github/actions/react-to-comment@main
-        with:
-          reaction: rocket
-          token: ${{ github.token }}
-
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
@@ -92,62 +124,55 @@ jobs:
           type_in_comment_valid=false
 
           for type in ${{ env.USAGE_TYPES }}; do
-            if [[ "$type_in_command" == "$type" ]]; then
+            if [[ "$type_in_comment" == "$type" ]]; then
               type_in_comment_valid=true
               break
             fi
           done
 
           if [[ "$type_in_comment_valid" == "false" ]]; then
+            echo "::error::Usage: ${{ env.USAGE }}"
             echo "::error::The command '${{ github.event.comment.body }}' doesn't have a valid TYPE. Was given '$type_in_command', but needed to be one of: ${{ env.USAGE_TYPES }}."
             exit 1
           fi
 
-          echo "type=$type_in_command" >> $GITHUB_OUTPUT
+          echo "type=$type_in_comment" >> $GITHUB_OUTPUT
 
       - name: Get config ref from PR comment
         id: pr
         run: |
           gh pr checkout ${{ github.event.issue.number }}
           echo "hash=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
+          echo "short-hash=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
           echo "ref=$(git rev-parse --abbrev-ref HEAD)" >> $GITHUB_OUTPUT
 
       - name: Get compared config ref
         id: compared
         # Set up a default ref
+        # We need to do this roundabout way to get the source branch commit because
+        # We can't access github.base_ref as this trigger is on.issue_comment
         run: |
-          gh repo checkout ${{ github.event.issue.number }}
-          ref=$(gh pr view --json baseRefName --jq '.baseRefName')
-          hash=$(git merge-base --fork-point "$ref")
-
-          echo "Using $hash (on $ref)"
+          ref=$(gh pr view ${{ github.event.issue.number }} --json baseRefName --jq '.baseRefName')
+          echo "Using $ref"
+          hash=$(git show-branch --merge-base origin/$ref origin/${{ steps.pr.outputs.ref }})
+          short_hash=$(git rev-parse --short $hash)
+          echo "AKA $hash (shortened as $short_hash)"
 
           echo "hash=$hash" >> $GITHUB_OUTPUT
+          echo "short-hash=$short_hash" >> $GITHUB_OUTPUT
           echo "ref=$ref" >> $GITHUB_OUTPUT
 
       - name: Determine whether to commit
         id: commit
-        # Determine whether the commenter can actually commit something to the repo if they write 'commit'
-        # by getting their repo permissions.
-        # TODO: The permissions-checking section seems ripe for turning into an action!
+        # Determine whether the commenter wants to commit something to the repository
         run: |
           if [[ "${{ contains(github.event.comment.body, 'commit') }}" == "false" ]]; then
             echo "'commit' option not given"
-            exit 0
-          fi
-
-          commenter_permissions=$(gh api /
-              repos/${{ github.repository }}/collaborators/${{ github.event.comment.user.login }}/permission
-              --jq '.permission'
-          )
-          if [[ "$commenter_permission" == "admin" || "$commenter_permission" == "write" ]]; then
-            echo "'commit' option given and commenter has at least write permission"
-            echo "permission=true" >> $GITHUB_OUTPUT
+            echo "requested=false" >> $GITHUB_OUTPUT
           else
-            echo "'commit' option given but commenter does not have at least write permission"
-            echo "permission=false" >> $GITHUB_OUTPUT
+            echo "'commit' option given"
+            echo "requested=true" >> $GITHUB_OUTPUT
           fi
-
   repro:
     name: Compare ${{ needs.prepare-command.outputs.config-ref }} against ${{ needs.prepare-command.outputs.compared-config-ref }}
     needs:
@@ -176,6 +201,7 @@ jobs:
     env:
       TESTING_LOCAL_LOCATION: /opt/testing
     permissions:
+      pull-requests: write
       checks: write
     steps:
       - name: Download Newly Created Checksum
@@ -186,7 +212,7 @@ jobs:
 
       - name: Parse Test Report
         id: tests
-        uses: EnricoMi/publish-unit-test-result-action/composite@e780361cd1fc1b1a170624547b3ffda64787d365  #v2.12.0
+        uses: EnricoMi/publish-unit-test-result-action/composite@82082dac68ad6a19d980f8ce817e108b9f496c2a  #v2.17.1
         with:
           files: ${{ env.TESTING_LOCAL_LOCATION }}/checksum/test_report.xml
           comment_mode: off
@@ -208,28 +234,28 @@ jobs:
 
       - name: Comment result
         env:
-          COMPARED_REF: ${{ needs.prepare-command.outputs.compared-config-ref != '' && format('(on branch `{0}`)', needs.prepare-command.outputs.compared-config-ref) || '' }}
           RESULT: |-
             ${{ steps.results.outputs.result == 'pass' && ':white_check_mark: The Bitwise Reproducibility Check Succeeded :white_check_mark:' || ':x: The Bitwise Reproducibility Check Failed :x:' }}
-          COMMIT_RESULT: |-
-            ${{ needs.prepare-command.outputs.has-commit-permission == 'true' && ':wrench: This result has been committed to this PR, if it differs from the current `HEAD`' || ':warning: This result is not being committed to this PR, as the commenter does not have `write` permissions' }}
+          CONFIG_REF_URL: '[${{ needs.prepare-command.outputs.config-short-hash }}](${{ github.server_url}}/${{ github.repository }}/tree/${{ needs.prepare-command.outputs.config-hash }})'
+          COMPARED_CONFIG_REF_URL: '[${{ needs.prepare-command.outputs.compared-config-short-hash }}](${{ github.server_url }}/${{ github.repository }}/tree/${{ needs.prepare-command.outputs.compared-config-hash }})'
         uses: access-nri/actions/.github/actions/pr-comment@main
         with:
           comment: |
             ${{ env.RESULT }}
+
             When comparing:
 
-            - `${{ needs.prepare-command.outputs.config-hash }}` (on branch `${{ needs.prepare-command.outputs.config-ref }}`), against
-            - `${{ needs.prepare-command.outputs.compared-config-hash }}` ${{ env.COMPARED_REF }}
+            - `${{ needs.prepare-command.outputs.config-ref }}` (checksums created using commit ${{ env.CONFIG_REF_URL }}), against
+            - `${{ needs.prepare-command.outputs.compared-config-ref }}` (checksums in commit ${{ env.COMPARED_CONFIG_REF_URL }})
 
-            ${{ needs.prepare-command.outputs.has-commit-permission != '' && env.COMMIT_RESULT || '' }}
+            ${{ needs.prepare-command.outputs.commit-requested == 'true' && ':wrench: This result has been committed to this PR, if it differs from the current `HEAD`' || '' }}
 
             <details>
             <summary> Further information</summary>
 
             The experiment can be found on Gadi at `${{ needs.repro.outputs.experiment-location }}`, and the test results at ${{ steps.results.outputs.check-run-url }}.
 
-            The checksums generated by this `!repro` command are found in the `testing/checksum` directory of ${{ needs.repro.outputs.artifact-url }}.
+            The checksums generated by this `!test` command are found in the `testing/checksum` directory of ${{ needs.repro.outputs.artifact-url }}.
 
             The checksums compared against are found here ${{ github.server_url }}/${{ github.repository }}/tree/${{ needs.prepare-command.outputs.compared-config-hash }}/testing/checksum
 
@@ -237,7 +263,7 @@ jobs:
 
   commit:
     name: Commit Result
-    if: needs.prepare-command.outputs.has-commit-permission == 'true'
+    if: needs.prepare-command.outputs.commit-requested != 'true'
     needs:
       - prepare-command
       - repro
@@ -290,10 +316,18 @@ jobs:
 
   failure-notifier:
     name: Notify PR of Workflow Failure
+    # We need the last jobs as 'needs' on the failure notifier so
+    # any of the dependent jobs that fail are covered here
+    needs:
+      - permission-check
+      - check-repro
+      - commit
     if: failure()
     runs-on: ubuntu-latest
     steps:
       - uses: access-nri/actions/.github/actions/pr-comment@main
         with:
-          comment: |
-            :x: `!test` Command Failed. See ${{ env.RUN_URL }} :x:
+          comment: >-
+            :x: `!test` Command Failed. :x:
+            ${{ needs.permission-check.result == 'failure' && 'You do not have at least write permissions on this repository.' || '' }}
+            See ${{ env.RUN_URL }}
