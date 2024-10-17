@@ -210,8 +210,8 @@ jobs:
           report_suite_logs: any
 
   repro-ci:
-    # Run the given config on the deployment GitHub Environment (`environment-name`) and
-    # upload the checksums and test details
+    # Run the given config on the deployment GitHub Environment (`environment-name`),
+    # upload the checksums and test details, and return the result of the test.
     needs:
       - commit-check
       - branch-check
@@ -230,51 +230,7 @@ jobs:
     secrets: inherit
     permissions:
       contents: write
-
-  check-checksum:
-    # Parse the test report and return pass/fail result
-    name: Check and Update Checksum
-    needs:
-      - repro-ci
-    runs-on: ubuntu-latest
-    permissions:
       checks: write
-    env:
-      TESTING_LOCAL_LOCATION: /opt/testing
-    outputs:
-      # URL for the parsed test results
-      check-run-url: ${{ steps.results.outputs.check-url }}
-      # Overall result of the checksum repro CI - `pass` (if reproducible), `fail` otherwise
-      result: ${{ steps.results.outputs.result }}
-    steps:
-      - name: Download Newly Created Checksum
-        uses: actions/download-artifact@v4
-        with:
-          name: ${{ needs.repro-ci.outputs.artifact-name }}
-          path: ${{ env.TESTING_LOCAL_LOCATION }}
-
-      - name: Parse Test Report
-        id: tests
-        uses: EnricoMi/publish-unit-test-result-action/composite@e780361cd1fc1b1a170624547b3ffda64787d365  #v2.12.0
-        with:
-          files: ${{ env.TESTING_LOCAL_LOCATION }}/checksum/test_report.xml
-          comment_mode: off
-          check_run: true
-          check_name: Repro Test Results
-          compare_to_earlier_commit: false
-          report_individual_runs: true
-          report_suite_logs: any
-
-      - name: Checksum Tests Results
-        id: results
-        run: |
-          echo "check-url=${{ fromJson(steps.tests.outputs.json).check_url }}" >> $GITHUB_OUTPUT
-
-          if (( ${{ fromJson(steps.tests.outputs.json).stats.tests_fail }} > 0 )); then
-            echo "result=fail" >> $GITHUB_OUTPUT
-          else
-            echo "result=pass" >> $GITHUB_OUTPUT
-          fi
 
   bump-check:
     name: Version Bump Check
@@ -317,7 +273,6 @@ jobs:
     needs:
       - config
       - repro-ci
-      - check-checksum
     runs-on: ubuntu-latest
     permissions:
       pull-requests: write
@@ -326,7 +281,7 @@ jobs:
       COMPARED_CHECKSUM_STRING: ${{ needs.config.outputs.compared-config-tag != '' && format('The checksums compared against are found here {0}/{1}/tree/{2}/testing/checksum', github.server_url, github.repository, needs.config.outputs.compared-config-tag) || '' }}
     steps:
       - name: Successful Repro Comment
-        if: needs.check-checksum.outputs.result == 'pass'
+        if: needs.repro-ci.outputs.result == 'pass'
         uses: access-nri/actions/.github/actions/pr-comment@main
         with:
           comment: |
@@ -336,7 +291,7 @@ jobs:
             <details>
             <summary> Further information</summary>
 
-            The experiment can be found on Gadi at `${{ needs.repro-ci.outputs.experiment-location }}`, and the test results at ${{ needs.check-checksum.outputs.check-run-url }}.
+            The experiment can be found on Gadi at `${{ needs.repro-ci.outputs.experiment-location }}`, and the test results at ${{ needs.repro-ci.outputs.check-run-url }}.
 
             The checksums generated in this PR are found in the `testing/checksum` directory of ${{ needs.repro-ci.outputs.artifact-url }}.
 
@@ -345,7 +300,7 @@ jobs:
             </details>
 
       - name: Failed Repro Comment
-        if: needs.check-checksum.outputs.result == 'fail'
+        if: needs.repro-ci.outputs.result == 'fail'
         uses: access-nri/actions/.github/actions/pr-comment@main
         with:
           comment: |
@@ -355,7 +310,7 @@ jobs:
             <details>
             <summary> Further information</summary>
 
-            The experiment can be found on Gadi at `${{ needs.repro-ci.outputs.experiment-location }}`, and the test results at ${{ needs.check-checksum.outputs.check-run-url }}.
+            The experiment can be found on Gadi at `${{ needs.repro-ci.outputs.experiment-location }}`, and the test results at ${{ needs.repro-ci.outputs.check-run-url }}.
 
             The checksums generated in this PR are found in the `testing/checksum` directory of ${{ needs.repro-ci.outputs.artifact-url }}.
 
