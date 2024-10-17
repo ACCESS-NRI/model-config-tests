@@ -276,7 +276,7 @@ jobs:
             - `${{ needs.prepare-command.outputs.config-ref }}` (checksums created using commit ${{ env.CONFIG_REF_URL }}), against
             - `${{ needs.prepare-command.outputs.compared-config-ref }}` (checksums in commit ${{ env.COMPARED_CONFIG_REF_URL }})
 
-            ${{ needs.prepare-command.outputs.commit-requested == 'true' && ':wrench: This result will be committed to this PR, if it differs from the current `HEAD`' || '' }}
+            ${{ (needs.prepare-command.outputs.commit-requested == 'true' && steps.results.outputs.result == 'fail') && ':wrench: The checksums will be committed to this PR, as they differ.' || '' }}
 
             <details>
             <summary> Further information</summary>
@@ -350,6 +350,7 @@ jobs:
     # any of the dependent jobs that fail are covered here
     needs:
       - permission-check
+      - prepare-command
       - check-repro
       - commit
     if: failure()
@@ -358,6 +359,8 @@ jobs:
       - uses: access-nri/actions/.github/actions/pr-comment@main
         with:
           comment: >-
-            :x: `!test` Command Failed. :x:
+            :x: `!test` Command Failed :x:
+            ${{ needs.prepare-command.result == 'failure' && format('The command given could not be parsed correctly. Usage: {0}', env.USAGE) || '' }}
             ${{ needs.permission-check.result == 'failure' && 'You do not have at least write permissions on this repository.' || '' }}
+            ${{ needs.commit.result == 'failure' && 'There was a problem committing the result of the reproducibility run.' || '' }}
             See ${{ env.RUN_URL }}
