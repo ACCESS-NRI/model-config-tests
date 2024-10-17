@@ -148,7 +148,7 @@ Using it has some requirements outside of just filling in the inputs: One must h
 - `vars.MODULE_LOCATION` - directory on the deployment target that contains module files for payu used during reproducibility testing (ex. `/g/data/vk83/modules`)
 - `vars.PRERELEASE_MODULE_LOCATION` - directory on the deployment target that contains module files for development version of payu (ex. `/g/data/vk83/prerelease/modules`)
 
-#### `config-comment-repro` Reusable Workflow
+#### `config-comment-test` Reusable Workflow
 
 This comment command allows a repro check from any branch, rather than just the `dev-*` -> `release-*` PR pipeline.
 
@@ -157,14 +157,16 @@ It requires all the `secrets`/`vars` defined on the caller (as above), as well a
 Usage is as follows:
 
 ```txt
-!repro [commit] [compare COMMITISH]
+!test TYPE [commit]
 ```
 
-Using `commit` as an option will commit the result of the repro test to the PR, provided the commenter has at least `write` permission, and the checksums differ.
+Where `TYPE` is a test suite that we support. Currently, this consists of `repro`.
 
-`[compare COMMITISH]` gives two main variations on the compared configuration:
+Using `commit` as an option will commit the result of the test to the PR, provided the commenter has at least `write` permission, and the checksums differ.
 
-`!repro`: will compare the `HEAD` of the current PR source branch against the common ancestor on the target branch. For example, in the below diagram we would be comparing `C` against `A`:
+##### `!test repro`
+
+`!test repro`: will compare the `HEAD` of the current PR source branch against the common ancestor on the target branch. For example, in the below diagram we would be comparing generated checksums in `C` against checksums already stored at `A`:
 
 ```txt
 D   (PR Target Branch)
@@ -175,5 +177,3 @@ D   (PR Target Branch)
 |/
 A   (Common Ancestor)
 ```
-
-`!repro compare COMMITISH` will compare the `HEAD` of the current PR source branch against `COMMITISH` (provided there is a `testing/checksum` directory at that point to compare against!)
