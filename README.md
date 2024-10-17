@@ -162,6 +162,8 @@ Usage is as follows:
 
 Where `TYPE` is a test suite that we support. Currently, this consists of `repro`.
 
+The commands are all case sensitive and require lower case.
+
 Using `commit` as an option will commit the result of the test to the PR, provided the commenter has at least `write` permission, and the checksums differ.
 
 ##### `!test repro`
