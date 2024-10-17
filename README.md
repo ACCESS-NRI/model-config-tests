@@ -4,8 +4,7 @@ This repository houses pytests that are used as part CI checks for model configu
 
 The checksum pytests are used for reproducibility CI checks in this repository. The quick configuration tests are used in any repository that calls `config-pr-1-ci.yml` or is templated by [`ACCESS-NRI/model-configs-template](https://github.com/ACCESS-NRI/model-configs-template). For example, [ACCESS-NRI/access-om2-configs](https://github.com/ACCESS-NRI/access-om2-configs).
 
-Code from these pytests is adapted from COSIMAS's ACCESS-OM2's [
-bit reproducibility tests](https://github.com/COSIMA/access-om2/blob/master/test/test_bit_reproducibility.py).
+Code from these pytests is adapted from COSIMAS's ACCESS-OM2's [bit reproducibility tests](https://github.com/COSIMA/access-om2/blob/master/test/test_bit_reproducibility.py).
 
 ## Pytests
 
@@ -110,11 +109,11 @@ The `config-*.yml`, `generate-checksums.yml` and `test-repro.yml` workflows are 
 
 Currently, these repositories make use of the reusable CI:
 
-* [access-om2-configs](https://github.com/ACCESS-NRI/access-om2-configs)
-* [access-esm1.5-configs](https://github.com/ACCESS-NRI/access-esm1.5-configs)
-* [access-esm1.6-configs](https://github.com/ACCESS-NRI/access-esm1.6-configs)
-* [access-om3-configs](https://github.com/ACCESS-NRI/access-om3-configs)
-* [access-om3-wav-configs](https://github.com/ACCESS-NRI/access-om3-wav-configs)
+- [access-om2-configs](https://github.com/ACCESS-NRI/access-om2-configs)
+- [access-esm1.5-configs](https://github.com/ACCESS-NRI/access-esm1.5-configs)
+- [access-esm1.6-configs](https://github.com/ACCESS-NRI/access-esm1.6-configs)
+- [access-om3-configs](https://github.com/ACCESS-NRI/access-om3-configs)
+- [access-om3-wav-configs](https://github.com/ACCESS-NRI/access-om3-wav-configs)
 
 Below is information on the use of these workflows.
 
@@ -148,3 +147,35 @@ Using it has some requirements outside of just filling in the inputs: One must h
 - `vars.EXPERIMENTS_LOCATION` - directory on the deployment target that will contain all the experiments used during testing of reproducibility across multiple runs of this workflow (ex. `/scratch/some/directory/experiments`)
 - `vars.MODULE_LOCATION` - directory on the deployment target that contains module files for payu used during reproducibility testing (ex. `/g/data/vk83/modules`)
 - `vars.PRERELEASE_MODULE_LOCATION` - directory on the deployment target that contains module files for development version of payu (ex. `/g/data/vk83/prerelease/modules`)
+
+#### `config-comment-test` Reusable Workflow
+
+This comment command allows a repro check from any branch, rather than just the `dev-*` -> `release-*` PR pipeline.
+
+It requires all the `secrets`/`vars` defined on the caller (as above), as well as `vars.CONFIG_CI_SCHEMA_VERSION`.
+
+Usage is as follows:
+
+```txt
+!test TYPE [commit]
+```
+
+Where `TYPE` is a test suite that we support. Currently, this consists of `repro`.
+
+The commands are all case sensitive and require lower case.
+
+Using `commit` as an option will commit the result of the test to the PR, provided the commenter has at least `write` permission, and the checksums differ.
+
+##### `!test repro`
+
+`!test repro`: will compare the `HEAD` of the current PR source branch against the common ancestor on the target branch. For example, in the below diagram we would be comparing generated checksums in `C` against checksums already stored at `A`:
+
+```txt
+D   (PR Target Branch)
+|
+| C (PR Source Branch)
+| |
+| B
+|/
+A   (Common Ancestor)
+```
