@@ -2,7 +2,7 @@ name: 'Comment Command: !test'
 run-name: '!test on ${{ github.repository }}'
 on:
   workflow_call:
-  # Triggered by:
+  # Triggered in calling workflow by:
   # on:
   #   issue_comment:
   #     - edited
