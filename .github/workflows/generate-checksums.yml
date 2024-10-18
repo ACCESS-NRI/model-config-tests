@@ -1,4 +1,5 @@
 name: Initial Checksums
+run-name: Initial Checksums for ${{ inputs.config-branch-name }}
 on:
   workflow_call:
     inputs:
@@ -32,142 +33,35 @@ on:
         required: true
         description: The payu module version used to create test virtual environment
     outputs:
-      checksum-location:
-        value: ${{ jobs.generate-checksum.outputs.checksum-location }}
-        description: Location of the checksums on the deployment target (deployment target given by the `environment-name` input).
       artifact-name:
-        value: ${{ jobs.generate-checksum.outputs.artifact-name }}
+        value: ${{ jobs.repro-ci.outputs.artifact-name }}
         description: Name of the artifact containing the checksums and test report for this repro run
-env:
-  OUTPUT_LOCAL_LOCATION: /opt/checksum-output
+      artifact-url:
+        value: ${{ jobs.repro-ci.outputs.artifact-url }}
+        description: URL to the artifact containing the checksums and test report for this repro run
+      experiment-location:
+        value: ${{ jobs.repro-ci.outputs.experiment-location }}
+        description: Location of the experiment on the target environment
 jobs:
-  generate-checksum:
-    name: Generate
-    runs-on: ubuntu-latest
-    environment: ${{ inputs.environment-name }}
-    env:
-      EXPERIMENT_LOCATION: ${{ vars.EXPERIMENTS_LOCATION }}/${{ github.event.repository.name }}/${{ inputs.config-branch-name }}
-    outputs:
-      artifact-name: ${{ steps.artifact.outputs.name }}
-      checksum-location: ${{ steps.run.outputs.checksum-location }}
-    steps:
-      - name: Validate ${{ inputs.environment-name }} Variables
-        run: |
-          vars_unset=false
-
-          if [ -z "${{ vars.EXPERIMENTS_LOCATION }}" ]; then
-            echo "::error::vars.EXPERIMENTS_LOCATION is unset."
-            vars_unset=true
-          fi
-          if [ -z "${{ vars.PRERELEASE_MODULE_LOCATION }}" ]; then
-            echo "::error::vars.PRERELEASE_MODULE_LOCATION is unset."
-            vars_unset=true
-          fi
-          if [ -z "${{ vars.MODULE_LOCATION }}" ]; then
-            echo "::error::vars.MODULE_LOCATION is unset."
-            vars_unset=true
-          fi
-          if [ -z "${{ vars.DEPLOYMENT_TARGET }}" ]; then
-            echo "::error::vars.DEPLOYMENT_TARGET is unset."
-            vars_unset=true
-          fi
-
-          if [ "$vars_unset" == "true" ]; then
-            echo "::error::Required vars in ${{ inputs.environment-name }} are unset. Repro cannot be run."
-            exit 1
-          fi
-
-      - name: Setup SSH
-        id: ssh
-        uses: access-nri/actions/.github/actions/setup-ssh@main
-        with:
-          hosts: |
-            ${{ secrets.SSH_HOST }}
-            ${{ secrets.SSH_HOST_DATA }}
-          private-key: ${{ secrets.SSH_KEY }}
-
-      - name: Run model on ${{ inputs.environment-name }}
-        id: run
-        env:
-          BASE_EXPERIMENT_LOCATION: ${{ env.EXPERIMENT_LOCATION }}/base-experiment
-          TEST_VENV_LOCATION: ${{ env.EXPERIMENT_LOCATION }}/test-venv
-        run: |
-          ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} -i ${{ steps.ssh.outputs.private-key-path }} /bin/bash<<EOT
-
-          # Remove base experiment if it already exists
-          if [ -d "${{ env.BASE_EXPERIMENT_LOCATION }}" ]; then
-            rm -rf "${{ env.BASE_EXPERIMENT_LOCATION }}"
-          fi
-
-          # Setup a base experiment
-          git clone ${{ github.event.repository.clone_url }} ${{ env.BASE_EXPERIMENT_LOCATION }}
-          cd ${{ env.BASE_EXPERIMENT_LOCATION }}
-          git checkout ${{ inputs.config-branch-name }}
-
-          # Load payu module
-          if [ "${{ inputs.payu-version }}" == "dev" ]; then
-            echo "::warning::Using the prerelease module payu/dev for testing"
-            module use ${{ vars.PRERELEASE_MODULE_LOCATION }}
-          else
-            module use ${{ vars.MODULE_LOCATION }}
-          fi
-          module load payu/${{ inputs.payu-version }}
-
-          # Create testing virtual environment
-          # Note: --system-site-packages uses packages from payu modules
-          python3 -m venv "${{ env.TEST_VENV_LOCATION }}" --system-site-packages
-
-          # Activate environment
-          source "${{ env.TEST_VENV_LOCATION }}/bin/activate"
-
-          # Install model-config-tests
-          pip install model-config-tests==${{ inputs.model-config-tests-version }}
-
-          # In this case, we expect the pytests in model-config-tests
-          # to fail because there are no checksums to compare
-          # against. But we still want the side-effect of creating the initial checksums.
-          set +e
-
-          # Run pytests - this also generates checksums files
-          model-config-tests -s \
-            -m "checksum" \
-            --output-path ${{ env.EXPERIMENT_LOCATION }}
-
-          # Deactivate and remove the test virtual environment
-          deactivate
-          rm -rf "${{ env.TEST_VENV_LOCATION }}"
-
-          # In this case, we want the exit code post-`pytest` to be 0 so the overall `ssh` call succeeeds
-          # after the expected `pytest` error.
-          exit 0
-          EOT
-
-          echo "experiment-location=${{ env.EXPERIMENT_LOCATION }}" >> $GITHUB_OUTPUT
-          echo "::notice::Checksums generated on ${{ vars.DEPLOYMENT_TARGET }} at ${{ env.EXPERIMENT_LOCATION }}"
-
-      - name: Copy Back Checksums
-        run: |
-          rsync --recursive -e 'ssh -i ${{ steps.ssh.outputs.private-key-path }}' \
-              '${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST_DATA }}:${{ env.EXPERIMENT_LOCATION }}/checksum' \
-              ${{ env.OUTPUT_LOCAL_LOCATION }}
-
-      - name: Generate Output Artifact Name
-        id: artifact
-        run: echo "name=${{ github.event.repository.name }}-${{ inputs.config-branch-name }}" >> $GITHUB_OUTPUT
-
-      - name: Upload Output
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ steps.artifact.outputs.name }}
-          if-no-files-found: error
-          path: ${{ env.OUTPUT_LOCAL_LOCATION }}
+  repro-ci:
+    name: Repro CI
+    uses: access-nri/model-config-tests/.github/workflows/test-repro.yml@main
+    with:
+      config-ref: ${{ inputs.config-branch-name }}
+      environment-name: ${{ inputs.environment-name }}
+      test-markers: checksum
+      model-config-tests-version: ${{ inputs.model-config-tests-version }}
+      payu-version: ${{ inputs.payu-version }}
+    secrets: inherit
 
   commit-checksum-to-branch:
     name: Commit Checksum To ${{ inputs.config-branch-name }}
     needs:
-      - generate-checksum
+      - repro-ci
     if: inputs.commit-checksums
     runs-on: ubuntu-latest
+    env:
+      ARTIFACT_LOCAL_LOCATION: /opt/artifact
     steps:
       - uses: actions/checkout@v4
         with:
@@ -178,13 +72,13 @@ jobs:
       - name: Download Checksums
         uses: actions/download-artifact@v4
         with:
-          name: ${{ needs.generate-checksum.outputs.artifact-name }}
-          path: ${{ env.OUTPUT_LOCAL_LOCATION }}
+          name: ${{ needs.repro-ci.outputs.artifact-name }}
+          path: ${{ env.ARTIFACT_LOCAL_LOCATION }}
 
       - name: Move Checksums to Repo
         run: |
           mkdir -p ${{ inputs.committed-checksum-location }}
-          mv ${{ env.OUTPUT_LOCAL_LOCATION }}/checksum/* ${{ inputs.committed-checksum-location }}
+          cp --recursive --verbose ${{ env.ARTIFACT_LOCAL_LOCATION }}/*/* ${{ inputs.committed-checksum-location }}
 
       - name: Update version in metadata.yaml
         if: inputs.committed-checksum-tag != ''
@@ -214,8 +108,10 @@ jobs:
 
       - name: Tag Checksums in Repo
         if: inputs.committed-checksum-tag != ''
+        env:
+          STATUS: ${{ endsWith(inputs.committed-checksum-tag, '.0') && 'breaking' || 'preserving' }}
         run: |
-          git tag ${{ inputs.committed-checksum-tag }}
+          git tag ${{ inputs.committed-checksum-tag }} -m "Repro-${{ env.STATUS }} update to ${{ inputs.config-branch-name }} via model-config-tests 'generate-checksums.yml' workflow."
           git push --tags
           echo "::notice::Pushed new tag ${{ inputs.committed-checksum-tag }}"
 
