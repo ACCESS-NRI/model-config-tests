@@ -127,6 +127,7 @@ jobs:
             echo "::error::Usage: ${{ env.USAGE }}"
             echo "::error::Command must start with !test to invoke model-config-tests' config-comment-test.yml."
             exit 1
+          fi
 
       - name: Get !test type
         id: test
