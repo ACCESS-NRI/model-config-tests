@@ -107,12 +107,14 @@ jobs:
           fi
 
           # Setup a base experiment
-          git clone ${{ github.event.repository.clone_url }} "${{ env.BASE_EXPERIMENT_LOCATION }}" -b ${{ inputs.config-ref }}
+          git clone ${{ github.event.repository.clone_url }} "${{ env.BASE_EXPERIMENT_LOCATION }}"
+          git -C "${{ env.BASE_EXPERIMENT_LOCATION }}" checkout ${{ inputs.config-ref }}
           cd "${{ env.BASE_EXPERIMENT_LOCATION }}"
 
           # Setup a compared checksum (if it exists)
           if [ -n "${{ inputs.compared-config-ref }}" ]; then
-            git clone ${{ github.event.repository.clone_url }} "${{ env.COMPARED_CHECKSUM_LOCATION }}" -b ${{ inputs.compared-config-ref }}
+            git clone ${{ github.event.repository.clone_url }} "${{ env.COMPARED_CHECKSUM_LOCATION }}"
+            git -C "${{ env.COMPARED_CHECKSUM_LOCATION }}" checkout ${{ inputs.compared-config-ref }}
             COMPARED_CHECKSUM_FILE=$(find "${{ env.COMPARED_CHECKSUM_LOCATION }}" -type f -name 'historical-*hr-checksum.json')
 
             # Error checking...
