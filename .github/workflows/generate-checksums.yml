@@ -53,6 +53,9 @@ jobs:
       model-config-tests-version: ${{ inputs.model-config-tests-version }}
       payu-version: ${{ inputs.payu-version }}
     secrets: inherit
+    permissions:
+      contents: write
+      checks: write
 
   commit-checksum-to-branch:
     name: Commit Checksum To ${{ inputs.config-branch-name }}
