@@ -53,8 +53,20 @@ class AccessEsm1p6Branch:
 
     def __init__(self, branch_name):
         self.branch_name = branch_name
+        self.config_type = self.set_config_type()
         self.config_scenario = self.set_config_scenario()
         self.config_modifiers = self.set_config_modifiers()
+
+    def set_config_type(self) -> str:
+        type_match = re.match(r"^(?P<type>release|dev)-.*", self.branch_name)
+
+        if not type_match or "type" not in type_match.groupdict():
+            pytest.fail(
+                f"Could not find a type in the branch {self.branch_name}. "
+                + "Branches must be of the form 'type-scenario[+modifier...]'. "
+                + "See README.md for more information."
+            )
+        return type_match.group("type")
 
     def set_config_scenario(self) -> str:
         # Regex below is split into three sections:
@@ -87,7 +99,7 @@ def branch(control_path, target_branch):
             branch_name is not None
         ), f"Failed getting git branch name of control path: {control_path}"
         warnings.warn(
-            "Target branch is not specifed, defaulting to current git branch: "
+            "Target branch is not specified, defaulting to current git branch: "
             f"{branch_name}. As some ACCESS-ESM1.6 tests infer information, "
             "such as scenario and modifiers, from the target branch name, some "
             "tests may not be run. To set use --target-branch flag in pytest call"
@@ -101,14 +113,19 @@ class TestAccessEsm1p6:
     """ACCESS-ESM1.6 Specific configuration and metadata tests"""
 
     def test_access_esm1p6_manifest_exe_in_release_spack_location(
-        self, config, control_path
+        self, branch, config, control_path
     ):
-        check_manifest_exes_in_spack_location(
-            model_module_name=ACCESS_ESM1P6_MODULE_NAME,
-            model_repo_name=ACCESS_ESM1P6_REPOSITORY_NAME,
-            control_path=control_path,
-            config=config,
-        )
+        if branch.config_type == "release":
+            check_manifest_exes_in_spack_location(
+                model_module_name=ACCESS_ESM1P6_MODULE_NAME,
+                model_repo_name=ACCESS_ESM1P6_REPOSITORY_NAME,
+                control_path=control_path,
+                config=config,
+            )
+        else:
+            pytest.skip(
+                f"Target branch '{branch.branch_name}' is a development version and doesn't require a stable model"
+            )
 
     @pytest.mark.parametrize(
         "field,expected", [("realm", VALID_REALMS), ("keywords", VALID_KEYWORDS)]
