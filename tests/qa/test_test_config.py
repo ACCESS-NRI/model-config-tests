@@ -6,8 +6,9 @@ from tests.common import RESOURCES_DIR
 
 def test_test_config_access_om2():
     """Test general config tests using a skeleton ACCESS-OM2 configuration"""
+    branch_name = "release-1deg_jra55_ryf"
     access_om2_configs = RESOURCES_DIR / "access-om2" / "configurations"
-    test_config = access_om2_configs / "release-1deg_jra55_ryf"
+    test_config = access_om2_configs / branch_name
 
     assert test_config.exists()
 
@@ -16,6 +17,7 @@ def test_test_config_access_om2():
         # Run all general config tests
         "-m config "
         f"--control-path {test_config} "
+        f"--target-branch {branch_name}"
     )
 
     result = subprocess.run(shlex.split(test_cmd), capture_output=True, text=True)
