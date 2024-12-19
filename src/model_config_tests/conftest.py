@@ -129,5 +129,5 @@ def pytest_configure(config):
     )
     config.addinivalue_line(
         "markers",
-        "access_esm1p5: mark as access-esm1.5 specific tests in quick QA CI checks",
+        "access_esm1p6: mark as access-esm1.6 specific tests in quick QA CI checks",
     )
