@@ -4,6 +4,7 @@
 """Tests for checking configs and valid metadata files"""
 
 import re
+import warnings
 from pathlib import Path
 from typing import Any
 
@@ -11,6 +12,8 @@ import jsonschema
 import pytest
 import requests
 import yaml
+
+from model_config_tests.util import get_git_branch_name
 
 # Experiment Metadata Schema
 BASE_SCHEMA_URL = "https://raw.githubusercontent.com/ACCESS-NRI/schema"
@@ -32,6 +35,33 @@ def insist_array(str_or_array):
             str_or_array,
         ]
     return str_or_array
+
+
+@pytest.fixture(scope="class")
+def branch_type(control_path, target_branch):
+    branch_name = target_branch
+
+    if branch_name is None:
+        # Default to current branch name
+        branch_name = get_git_branch_name(control_path)
+        assert (
+            branch_name is not None
+        ), f"Failed getting git branch name of control path: {control_path}"
+        warnings.warn(
+            "Target branch is not specified, defaulting to current git branch: "
+            f"{branch_name}. As some config tests infer config type information "
+            "from the target branch name, some tests may not be run. To set use "
+            "--target-branch flag in pytest call"
+        )
+
+    type_match = re.match(r"^(?P<type>release|dev)-.*", branch_name)
+    if not type_match or "type" not in type_match.groupdict():
+        pytest.fail(
+            f"Could not find a type in the branch {branch_name}. "
+            + "Branches must be of the form 'type-*'. "
+            + "See README.md for more information."
+        )
+    return type_match.group("type")
 
 
 @pytest.mark.config
@@ -186,16 +216,21 @@ class TestConfig:
             f"LICENSE file should be equal to {LICENSE} found here: " + LICENSE_URL
         )
 
-    def test_model_module_path_is_defined(self, config):
+    def test_model_module_path_is_defined(self, branch_type, config):
         """Check model module path is added to modules in config"""
-        module_paths = config.get("modules", {}).get("use", {})
-        assert RELEASE_MODULE_LOCATION in module_paths, (
-            "Expected model module path is added to module config. E.g.\n"
-            "  modules:\n"
-            "   use:\n"
-            f"    - {RELEASE_MODULE_LOCATION}\n"
-            "This path is used to find model module files"
-        )
+        if branch_type == "release":
+            module_paths = config.get("modules", {}).get("use", {})
+            assert RELEASE_MODULE_LOCATION in module_paths, (
+                "Expected model module path is added to module config. E.g.\n"
+                "  modules:\n"
+                "   use:\n"
+                f"    - {RELEASE_MODULE_LOCATION}\n"
+                "This path is used to find model module files"
+            )
+        else:
+            pytest.skip(
+                "The target branch is a dev version and doesn't require a stable module location"
+            )
 
 
 def read_exe_manifest_fullpaths(control_path: Path):
