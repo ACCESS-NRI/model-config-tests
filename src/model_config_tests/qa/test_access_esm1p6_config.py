@@ -139,7 +139,7 @@ class TestAccessEsm1p6:
         field_set: set[str] = set(metadata[field])
 
         assert field_set == expected, error_field_incorrect(
-            field, "metadata.yaml", "sequence", expected
+            field, "metadata.yaml", expected
         )
 
     @pytest.mark.parametrize(
