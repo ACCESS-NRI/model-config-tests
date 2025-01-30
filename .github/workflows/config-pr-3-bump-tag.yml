@@ -9,7 +9,6 @@ on:
   #     - 'release-*'
   #   paths:
   #     - 'metadata.yaml'
-  # create: (specifically, a branch of the form 'release-*')
 jobs:
   tag-update:
     name: Check and Update Tag
