@@ -131,7 +131,8 @@ jobs:
       - name: Get !test type
         id: test
         run: |
-          command="${{ github.event.comment.body }}"
+          # Only get the first line of the comment for processing as a command.
+          command=$(head -n 1 <<< "${{ github.event.comment.body }}")
           read -ra command_tokens <<< "$command"
           type_in_comment="${command_tokens[1]}"
           type_in_comment_valid=false
@@ -145,7 +146,7 @@ jobs:
 
           if [[ "$type_in_comment_valid" == "false" ]]; then
             echo "::error::Usage: ${{ env.USAGE }}"
-            echo "::error::The command '${{ github.event.comment.body }}' doesn't have a valid TYPE. Was given '$type_in_comment', but needed to be one of: ${{ env.USAGE_TYPES }}."
+            echo "::error::The command '$command' doesn't have a valid TYPE. Was given '$type_in_comment', but needed to be one of: ${{ env.USAGE_TYPES }}."
             exit 1
           fi
 
@@ -179,7 +180,8 @@ jobs:
         id: commit
         # Determine whether the commenter wants to commit something to the repository
         run: |
-          command="${{ github.event.comment.body }}"
+          # Again only taking the first line as the command
+          command=$(head -n 1 <<< "${{ github.event.comment.body }}")
           read -ra command_tokens <<< "$command"
           potential_commit_token="${command_tokens[2]}"
 
@@ -198,7 +200,8 @@ jobs:
         # If commit is given, any tokens after the 3rd are considered erroneous - otherwise it is after the 2nd
         # TODO: This will need to be made more robust if there are other options added
         run: |
-          command="${{ github.event.comment.body }}"
+          # Again only taking the first line as the command
+          command=$(head -n 1 <<< "${{ github.event.comment.body }}")
           read -ra command_tokens <<< "$command"
 
           max_tokens_allowed=$([[ "${{ steps.commit.outputs.requested }}" == "true" ]] && echo "3" || echo "2")
