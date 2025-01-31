@@ -22,28 +22,18 @@ jobs:
     steps:
       - name: Determine if commenter has permission to run the command
         id: commenter
-        # TODO: The permissions-checking section seems ripe for turning into an action!
-        run: |
-          commenter_permissions=$(gh api \
-              repos/${{ github.repository }}/collaborators/${{ github.event.comment.user.login }}/permission \
-              --jq '.permission'
-          )
-          if [[ "$commenter_permissions" == "admin" || "$commenter_permissions" == "write" ]]; then
-            echo "Commenter has at least write permission"
-            echo "permission=true" >> $GITHUB_OUTPUT
-          else
-            echo "Commenter does not have at least write permission"
-            echo "permission=false" >> $GITHUB_OUTPUT
-          fi
+        uses: access-nri/actions/.github/actions/commenter-permission-check@main
+        with:
+          minimum-permission: write
 
       - name: React to '!test'
         uses: access-nri/actions/.github/actions/react-to-comment@main
         with:
-          reaction: ${{ steps.commenter.outputs.permission == 'true' && 'rocket' || 'confused' }}
+          reaction: ${{ steps.commenter.outputs.has-permission == 'true' && 'rocket' || 'confused' }}
           token: ${{ github.token }}
 
       - name: Fail if no permissions
-        if: steps.commenter.outputs.permission == 'false'
+        if: steps.commenter.outputs.has-permission == 'false'
         run: exit 1
 
   ci-config:
