@@ -111,7 +111,8 @@ jobs:
 
           # Remove base experiment (and everything else) if it exists
           if [ -d "${{ env.EXPERIMENT_LOCATION }}" ]; then
-            rm -rf "${{ env.EXPERIMENT_LOCATION }}/*"
+            rm -rf "${{ env.EXPERIMENT_LOCATION }}"
+            mkdir -p "${{ env.EXPERIMENT_LOCATION }}"
           fi
 
           # Setup a base experiment
