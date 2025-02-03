@@ -111,8 +111,9 @@ jobs:
 
           # Remove base experiment (and everything else) if it exists
           if [ -d "${{ env.EXPERIMENT_LOCATION }}" ]; then
-            rm -rf "${{ env.EXPERIMENT_LOCATION }}/*"
+            rm -rf "${{ env.EXPERIMENT_LOCATION }}"
           fi
+          mkdir -p "${{ env.EXPERIMENT_LOCATION }}"
 
           # Setup a base experiment
           git clone ${{ github.event.repository.clone_url }} "${{ env.BASE_EXPERIMENT_LOCATION }}"
