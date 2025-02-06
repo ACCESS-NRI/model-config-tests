@@ -28,6 +28,7 @@ VALID_NOMINAL_RESOLUTION: str = "100 km"
 VALID_REFERENCE: str = "https://doi.org/10.1071/ES19035"
 VALID_PREINDUSTRIAL_START: dict[str, int] = {"year": 101, "month": 1, "days": 1}
 VALID_HISTORICAL_START: dict[str, int] = {"year": 1850, "month": 1, "days": 1}
+VALID_AMIP_START: dict[str, int] = {"year": 1978, "month": 1, "days": 1}
 VALID_RUNTIME: dict[str, int] = {"years": 1, "months": 0, "days": 0}
 VALID_RESTART_FREQ: str = "10YS"
 VALID_MPPNCCOMBINE_EXE: str = "mppnccombine.spack"
@@ -154,6 +155,10 @@ class TestAccessEsm1p5:
             assert start == VALID_HISTORICAL_START, error_field_incorrect(
                 "calendar.start", "config.yaml", VALID_HISTORICAL_START
             )
+        elif branch.config_scenario == "amip":
+            assert start == VALID_AMIP_START, error_field_incorrect(
+                "calendar.start", "config.yaml", VALID_AMIP_START
+            )
         else:
             pytest.fail(f"Cannot test unknown scenario {branch.config_scenario}.")
 
@@ -199,8 +204,13 @@ class TestAccessEsm1p5:
             )
 
     def test_cice_configuration_icefields_nml_in_ice_history_nml(
-        self, config, control_path
+        self, branch, config, control_path
     ):
+        if branch.config_scenario == "amip":
+            pytest.skip(
+                "amip scenarios do not contain the CICE sub-model."
+            )
+
         # Find CICE sub-model control path
         model_name = None
         for sub_model in config["submodels"]:
