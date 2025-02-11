@@ -1,6 +1,6 @@
 [project]
 name = "model_config_tests"
-version = "0.0.10"
+version = "0.0.11"
 authors = [
   { name = "ACCESS-NRI" },
 ]
