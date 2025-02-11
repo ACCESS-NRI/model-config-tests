@@ -207,9 +207,7 @@ class TestAccessEsm1p5:
         self, branch, config, control_path
     ):
         if branch.config_scenario == "amip":
-            pytest.skip(
-                "amip scenarios do not contain the CICE sub-model."
-            )
+            pytest.skip("amip scenarios do not contain the CICE sub-model.")
 
         # Find CICE sub-model control path
         model_name = None
