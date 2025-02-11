@@ -12,6 +12,7 @@ from model_config_tests.models.model import (
     SCHEMA_VERSION_1_0_0,
     Model,
 )
+from model_config_tests.util import DAY_IN_SECONDS
 
 
 class AccessOm3(Model):
@@ -20,6 +21,7 @@ class AccessOm3(Model):
         self.output_file = self.experiment.output000 / "ocean.stats"
 
         self.runconfig = experiment.control_path / "nuopc.runconfig"
+        self.mom_override = experiment.control_path / "MOM_override"
         self.ocean_config = experiment.control_path / "input.nml"
 
     def set_model_runtime(
@@ -32,6 +34,16 @@ class AccessOm3(Model):
         if years == months == 0:
             freq = "nseconds"
             n = str(seconds)
+
+            # Ensure that ocean.stats are written at the end of the run
+            if seconds < DAY_IN_SECONDS:
+                with open(self.mom_override, "a") as f:
+                    f.writelines(
+                        [
+                            f"\n#override TIMEUNIT = {n}",
+                            "\n#override ENERGYSAVEDAYS = 1.0",
+                        ]
+                    )
         elif seconds == 0:
             freq = "nmonths"
             n = str(12 * years + months)
