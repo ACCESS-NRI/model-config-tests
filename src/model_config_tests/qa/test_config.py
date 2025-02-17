@@ -174,8 +174,8 @@ class TestRelConfig:
         ), f"The license should be set to {LICENSE}"
                 
 @pytest.mark.config
-@pytest.mark.devconfig
-class TestDevConfig:
+@pytest.mark.dev_config
+class TestConfig:
     """General configuration tests"""
 
     @pytest.mark.parametrize("field", ["project", "shortpath"])

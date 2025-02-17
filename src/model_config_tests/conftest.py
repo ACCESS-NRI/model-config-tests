@@ -118,7 +118,7 @@ def pytest_configure(config):
         "markers", "config: mark as configuration tests for release branches in quick QA CI checks"
     )
     config.addinivalue_line(
-        "markers", "devconfig: mark as configuration tests in quick QA CI checks"
+        "markers", "dev_config: mark as configuration tests in quick QA CI checks"
     )
     config.addinivalue_line(
         "markers", "access_om2: mark as ACCESS-OM2 specific tests in quick QA CI checks"

@@ -9,3 +9,4 @@
 .idea
 /tests/tmp/
 coverage.xml
+/model-conf-test/
