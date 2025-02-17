@@ -98,6 +98,21 @@ class TestRelConfig:
                 "path" in config["sync"] and config["sync"]["path"] is not None
             ), "Sync path to remote archive should not be set"
 
+    def test_manifest_reproduce_exe_is_on(self, config):
+        manifest_reproduce = config.get("manifest", {}).get("reproduce", {})
+        assert "exe" in manifest_reproduce and manifest_reproduce["exe"], (
+            "Executable reproducibility should be enforced, e.g set:\n"
+            + "manifest:\n    reproduce:\n        exe: True"
+        )
+
+    def test_metadata_is_enabled(self, config):
+        if "metadata" in config and "enable" in config["metadata"]:
+            assert config["metadata"]["enable"], (
+                "Metadata should be enabled, otherwise new UUIDs will not "
+                + "be generated and branching in Payu would not work - as "
+                + "branch and UUIDs are not used in the name used for archival."
+            )
+
     def test_experiment_name_is_not_defined(self, config):
         assert "experiment" not in config, (
             f"experiment: {config['experiment']} should not set, "
@@ -157,38 +172,7 @@ class TestRelConfig:
         assert (
             "license" in metadata and metadata["license"] == LICENSE
         ), f"The license should be set to {LICENSE}"
-
-    def test_manifest_reproduce_exe_is_on(self, config):
-        manifest_reproduce = config.get("manifest", {}).get("reproduce", {})
-        assert "exe" in manifest_reproduce and manifest_reproduce["exe"], (
-            "Executable reproducibility should be enforced, e.g set:\n"
-            + "manifest:\n    reproduce:\n        exe: True"
-        )
-
-    def test_metadata_is_enabled(self, config):
-        if "metadata" in config and "enable" in config["metadata"]:
-            assert config["metadata"]["enable"], (
-                "Metadata should be enabled, otherwise new UUIDs will not "
-                + "be generated and branching in Payu would not work - as "
-                + "branch and UUIDs are not used in the name used for archival."
-            )
-            
-    def test_model_module_path_is_defined(self, branch_type, config):
-        """Check model module path is added to modules in config"""
-        if branch_type == "release":
-            module_paths = config.get("modules", {}).get("use", {})
-            assert RELEASE_MODULE_LOCATION in module_paths, (
-                "Expected model module path is added to module config. E.g.\n"
-                "  modules:\n"
-                "   use:\n"
-                f"    - {RELEASE_MODULE_LOCATION}\n"
-                "This path is used to find model module files"
-            )
-        else:
-            pytest.skip(
-                "The target branch is a dev version and doesn't require a stable module location"
-            )
-
+                
 @pytest.mark.config
 @pytest.mark.devconfig
 class TestDevConfig:
@@ -237,6 +221,22 @@ class TestDevConfig:
         assert content == license, (
             f"LICENSE file should be equal to {LICENSE} found here: " + LICENSE_URL
         )
+
+    def test_model_module_path_is_defined(self, branch_type, config):
+        """Check model module path is added to modules in config"""
+        if branch_type == "release":
+            module_paths = config.get("modules", {}).get("use", {})
+            assert RELEASE_MODULE_LOCATION in module_paths, (
+                "Expected model module path is added to module config. E.g.\n"
+                "  modules:\n"
+                "   use:\n"
+                f"    - {RELEASE_MODULE_LOCATION}\n"
+                "This path is used to find model module files"
+            )
+        else:
+            pytest.skip(
+                "The target branch is a dev version and doesn't require a stable module location"
+            )
 
 
 def read_exe_manifest_fullpaths(control_path: Path):
