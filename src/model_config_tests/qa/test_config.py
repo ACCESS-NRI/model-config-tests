@@ -65,32 +65,8 @@ def branch_type(control_path, target_branch):
 
 
 @pytest.mark.config
-class TestConfig:
-    """General configuration tests"""
-
-    @pytest.mark.parametrize("field", ["project", "shortpath"])
-    def test_field_is_not_defined(self, config, field):
-        assert (
-            field not in config
-        ), f"{field} should not be defined: '{field}: {config[field]}'"
-
-    def test_absolute_input_paths(self, config):
-        for path in insist_array(config.get("input", [])):
-            assert Path(path).is_absolute(), f"Input path should be absolute: {path}"
-
-    def test_absolute_submodel_input_paths(self, config):
-        for model in config.get("submodels", []):
-            for path in insist_array(model.get("input", [])):
-                assert Path(path).is_absolute(), (
-                    f"Input path for {model['name']} submodel should be "
-                    + f" absolute: {path}"
-                )
-
-    def test_no_storage_qsub_flags(self, config):
-        qsub_flags = config.get("qsub_flags", "")
-        assert (
-            "storage" not in qsub_flags
-        ), "Storage flags defined in qsub_flags will be silently ignored"
+class TestRelConfig:
+    """General configuration tests for release branches"""
 
     def test_runlog_is_on(self, config):
         runlog_config = config.get("runlog", {})
@@ -121,21 +97,6 @@ class TestConfig:
             assert not (
                 "path" in config["sync"] and config["sync"]["path"] is not None
             ), "Sync path to remote archive should not be set"
-
-    def test_manifest_reproduce_exe_is_on(self, config):
-        manifest_reproduce = config.get("manifest", {}).get("reproduce", {})
-        assert "exe" in manifest_reproduce and manifest_reproduce["exe"], (
-            "Executable reproducibility should be enforced, e.g set:\n"
-            + "manifest:\n    reproduce:\n        exe: True"
-        )
-
-    def test_metadata_is_enabled(self, config):
-        if "metadata" in config and "enable" in config["metadata"]:
-            assert config["metadata"]["enable"], (
-                "Metadata should be enabled, otherwise new UUIDs will not "
-                + "be generated and branching in Payu would not work - as "
-                + "branch and UUIDs are not used in the name used for archival."
-            )
 
     def test_experiment_name_is_not_defined(self, config):
         assert "experiment" not in config, (
@@ -178,7 +139,6 @@ class TestConfig:
             "keywords",
             "nominal_resolution",
             "version",
-            "reference",
             "url",
             "model",
             "realm",
@@ -198,6 +158,68 @@ class TestConfig:
             "license" in metadata and metadata["license"] == LICENSE
         ), f"The license should be set to {LICENSE}"
 
+    def test_manifest_reproduce_exe_is_on(self, config):
+        manifest_reproduce = config.get("manifest", {}).get("reproduce", {})
+        assert "exe" in manifest_reproduce and manifest_reproduce["exe"], (
+            "Executable reproducibility should be enforced, e.g set:\n"
+            + "manifest:\n    reproduce:\n        exe: True"
+        )
+
+    def test_metadata_is_enabled(self, config):
+        if "metadata" in config and "enable" in config["metadata"]:
+            assert config["metadata"]["enable"], (
+                "Metadata should be enabled, otherwise new UUIDs will not "
+                + "be generated and branching in Payu would not work - as "
+                + "branch and UUIDs are not used in the name used for archival."
+            )
+            
+    def test_model_module_path_is_defined(self, branch_type, config):
+        """Check model module path is added to modules in config"""
+        if branch_type == "release":
+            module_paths = config.get("modules", {}).get("use", {})
+            assert RELEASE_MODULE_LOCATION in module_paths, (
+                "Expected model module path is added to module config. E.g.\n"
+                "  modules:\n"
+                "   use:\n"
+                f"    - {RELEASE_MODULE_LOCATION}\n"
+                "This path is used to find model module files"
+            )
+        else:
+            pytest.skip(
+                "The target branch is a dev version and doesn't require a stable module location"
+            )
+
+@pytest.mark.config
+@pytest.mark.devconfig
+class TestDevConfig:
+    """General configuration tests"""
+
+    @pytest.mark.parametrize("field", ["project", "shortpath"])
+    def test_field_is_not_defined(self, config, field):
+        assert (
+            field not in config
+        ), f"{field} should not be defined: '{field}: {config[field]}'"
+
+    def test_absolute_input_paths(self, config):
+        for path in insist_array(config.get("input", [])):
+            assert Path(path).is_absolute(), f"Input path should be absolute: {path}"
+
+    def test_absolute_submodel_input_paths(self, config):
+        for model in config.get("submodels", []):
+            for path in insist_array(model.get("input", [])):
+                assert Path(path).is_absolute(), (
+                    f"Input path for {model['name']} submodel should be "
+                    + f" absolute: {path}"
+                )
+
+    def test_no_storage_qsub_flags(self, config):
+        qsub_flags = config.get("qsub_flags", "")
+        assert (
+            "storage" not in qsub_flags
+        ), "Storage flags defined in qsub_flags will be silently ignored"
+
+    
+
     def test_license_file(self, control_path):
         license_path = control_path / "LICENSE"
         assert license_path.exists(), (
@@ -215,22 +237,6 @@ class TestConfig:
         assert content == license, (
             f"LICENSE file should be equal to {LICENSE} found here: " + LICENSE_URL
         )
-
-    def test_model_module_path_is_defined(self, branch_type, config):
-        """Check model module path is added to modules in config"""
-        if branch_type == "release":
-            module_paths = config.get("modules", {}).get("use", {})
-            assert RELEASE_MODULE_LOCATION in module_paths, (
-                "Expected model module path is added to module config. E.g.\n"
-                "  modules:\n"
-                "   use:\n"
-                f"    - {RELEASE_MODULE_LOCATION}\n"
-                "This path is used to find model module files"
-            )
-        else:
-            pytest.skip(
-                "The target branch is a dev version and doesn't require a stable module location"
-            )
 
 
 def read_exe_manifest_fullpaths(control_path: Path):
