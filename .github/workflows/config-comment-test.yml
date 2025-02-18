@@ -292,8 +292,8 @@ jobs:
       - name: Update files
         # This will copy checksums from the artifact to the repo
         run: |
-          mkdir -p testing
-          cp --recursive --verbose ${{ env.ARTIFACT_LOCAL_LOCATION }}/*/* testing
+          mkdir -p testing/checksum
+          cp --verbose ${{ env.ARTIFACT_LOCAL_LOCATION }}/checksum/historical-*hr-checksum.json testing/checksum
 
       - name: Import Commit-Signing Key
         uses: crazy-max/ghaction-import-gpg@01dd5d3ca463c7f10f7f4f7b4f177225ac661ee4  # v6.1.0
