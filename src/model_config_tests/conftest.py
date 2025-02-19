@@ -115,7 +115,8 @@ def pytest_configure(config):
         "markers", "checksum_slow: mark tests as slow reproducibility tests"
     )
     config.addinivalue_line(
-        "markers", "config: mark as configuration tests for release branches in quick QA CI checks"
+        "markers",
+        "config: mark as configuration tests for release branches in quick QA CI checks",
     )
     config.addinivalue_line(
         "markers", "dev_config: mark as configuration tests in quick QA CI checks"
