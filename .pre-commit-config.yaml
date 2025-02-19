@@ -1,12 +1,13 @@
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.4.4
+    rev: v0.9.6
     hooks:
       - id: ruff
         args: [ --fix ]
 
   - repo: https://github.com/psf/black
-    rev: 24.4.2
+    rev: 25.1.0
     hooks:
-    - id: black
-      language_version: python3
+      - id: black
+        language_version: python3
+        exclude: "src/model_config_tests/_version.py"
