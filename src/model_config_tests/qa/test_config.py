@@ -65,32 +65,8 @@ def branch_type(control_path, target_branch):
 
 
 @pytest.mark.config
-class TestConfig:
-    """General configuration tests"""
-
-    @pytest.mark.parametrize("field", ["project", "shortpath"])
-    def test_field_is_not_defined(self, config, field):
-        assert (
-            field not in config
-        ), f"{field} should not be defined: '{field}: {config[field]}'"
-
-    def test_absolute_input_paths(self, config):
-        for path in insist_array(config.get("input", [])):
-            assert Path(path).is_absolute(), f"Input path should be absolute: {path}"
-
-    def test_absolute_submodel_input_paths(self, config):
-        for model in config.get("submodels", []):
-            for path in insist_array(model.get("input", [])):
-                assert Path(path).is_absolute(), (
-                    f"Input path for {model['name']} submodel should be "
-                    + f" absolute: {path}"
-                )
-
-    def test_no_storage_qsub_flags(self, config):
-        qsub_flags = config.get("qsub_flags", "")
-        assert (
-            "storage" not in qsub_flags
-        ), "Storage flags defined in qsub_flags will be silently ignored"
+class TestRelConfig:
+    """General configuration tests for release branches"""
 
     def test_runlog_is_on(self, config):
         runlog_config = config.get("runlog", {})
@@ -110,18 +86,6 @@ class TestConfig:
             "Restart frequency should be date-based: " + f"'restart_freq: {frequency}'"
         )
 
-    def test_sync_is_not_enabled(self, config):
-        if "sync" in config and "enable" in config["sync"]:
-            assert not config["sync"][
-                "enable"
-            ], "Sync to remote archive should not be enabled"
-
-    def test_sync_path_is_not_set(self, config):
-        if "sync" in config:
-            assert not (
-                "path" in config["sync"] and config["sync"]["path"] is not None
-            ), "Sync path to remote archive should not be set"
-
     def test_manifest_reproduce_exe_is_on(self, config):
         manifest_reproduce = config.get("manifest", {}).get("reproduce", {})
         assert "exe" in manifest_reproduce and manifest_reproduce["exe"], (
@@ -136,13 +100,6 @@ class TestConfig:
                 + "be generated and branching in Payu would not work - as "
                 + "branch and UUIDs are not used in the name used for archival."
             )
-
-    def test_experiment_name_is_not_defined(self, config):
-        assert "experiment" not in config, (
-            f"experiment: {config['experiment']} should not set, "
-            + "as this over-rides the experiment name used for archival. "
-            + "If set, branching in payu would not work."
-        )
 
     def test_no_scripts_in_top_level_directory(self, control_path):
         exts = {".py", ".sh"}
@@ -178,7 +135,6 @@ class TestConfig:
             "keywords",
             "nominal_resolution",
             "version",
-            "reference",
             "url",
             "model",
             "realm",
@@ -187,16 +143,40 @@ class TestConfig:
     def test_metadata_contains_fields(self, field, metadata):
         assert field in metadata, f"{field} field shoud be defined in metadata"
 
-    def test_metadata_does_contain_UUID(self, metadata):
-        assert "experiment_uuid" not in metadata, (
-            "`experiment_uuid` should not be defined in metadata, "
-            + "as this is an configuration rather than an experiment. "
-        )
-
     def test_metadata_license(self, metadata):
         assert (
             "license" in metadata and metadata["license"] == LICENSE
         ), f"The license should be set to {LICENSE}"
+
+
+@pytest.mark.config
+@pytest.mark.dev_config
+class TestConfig:
+    """General configuration tests"""
+
+    @pytest.mark.parametrize("field", ["project", "shortpath"])
+    def test_field_is_not_defined(self, config, field):
+        assert (
+            field not in config
+        ), f"{field} should not be defined: '{field}: {config[field]}'"
+
+    def test_absolute_input_paths(self, config):
+        for path in insist_array(config.get("input", [])):
+            assert Path(path).is_absolute(), f"Input path should be absolute: {path}"
+
+    def test_absolute_submodel_input_paths(self, config):
+        for model in config.get("submodels", []):
+            for path in insist_array(model.get("input", [])):
+                assert Path(path).is_absolute(), (
+                    f"Input path for {model['name']} submodel should be "
+                    + f" absolute: {path}"
+                )
+
+    def test_no_storage_qsub_flags(self, config):
+        qsub_flags = config.get("qsub_flags", "")
+        assert (
+            "storage" not in qsub_flags
+        ), "Storage flags defined in qsub_flags will be silently ignored"
 
     def test_license_file(self, control_path):
         license_path = control_path / "LICENSE"
@@ -231,6 +211,31 @@ class TestConfig:
             pytest.skip(
                 "The target branch is a dev version and doesn't require a stable module location"
             )
+
+    def test_metadata_does_not_contain_UUID(self, metadata):
+        assert "experiment_uuid" not in metadata, (
+            "`experiment_uuid` should not be defined in metadata, "
+            + "as this is an configuration rather than an experiment. "
+        )
+
+    def test_sync_is_not_enabled(self, config):
+        if "sync" in config and "enable" in config["sync"]:
+            assert not config["sync"][
+                "enable"
+            ], "Sync to remote archive should not be enabled"
+
+    def test_sync_path_is_not_set(self, config):
+        if "sync" in config:
+            assert not (
+                "path" in config["sync"] and config["sync"]["path"] is not None
+            ), "Sync path to remote archive should not be set"
+
+    def test_experiment_name_is_not_defined(self, config):
+        assert "experiment" not in config, (
+            f"experiment: {config['experiment']} should not set, "
+            + "as this over-rides the experiment name used for archival. "
+            + "If set, branching in payu would not work."
+        )
 
 
 def read_exe_manifest_fullpaths(control_path: Path):
