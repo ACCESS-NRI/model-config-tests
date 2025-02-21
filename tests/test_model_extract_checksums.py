@@ -19,6 +19,7 @@ def test_extract_checksums(model_name):
     # Mock ExpTestHelper
     mock_experiment = Mock()
     mock_experiment.output000 = resources_dir / "output000"
+    mock_experiment.restart000 = resources_dir / "restart000"
     mock_experiment.control_path = Path("test/tmp")
 
     # Create Model instance
@@ -53,6 +54,7 @@ def test_extract_checksums_unsupported_version(model_name):
     # Mock ExpTestHelper
     mock_experiment = Mock()
     mock_experiment.output000 = resources_dir / "output000"
+    mock_experiment.restart000 = resources_dir / "restart000"
     mock_experiment.control_path = Path("test/tmp")
 
     # Create Model instance
