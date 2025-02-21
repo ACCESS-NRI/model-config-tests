@@ -16,7 +16,7 @@ from model_config_tests.models.mom5 import mom5_extract_checksums
 class AccessOm2(Model):
     def __init__(self, experiment):
         super().__init__(experiment)
-        self.output_file = self.experiment.output000 / "access-om2.out"
+        self.output_file = self.output_0 / "access-om2.out"
 
         self.accessom2_config = experiment.control_path / "accessom2.nml"
         self.ocean_config = experiment.control_path / "ocean" / "input.nml"

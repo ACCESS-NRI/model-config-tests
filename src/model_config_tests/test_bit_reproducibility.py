@@ -179,7 +179,7 @@ class TestBitReproducibility:
 
         # Now compare the output between our two short and one long run.
         checksums_1d_0 = exp_2x1day.extract_checksums()
-        checksums_1d_1 = exp_2x1day.extract_checksums(exp_2x1day.output001)
+        checksums_1d_1 = exp_2x1day.extract_checksums(exp_2x1day.model.output_1)
 
         checksums_2d = exp_2day.extract_checksums()
 

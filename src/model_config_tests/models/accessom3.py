@@ -1,10 +1,10 @@
 """Specific Access-OM3 Model setup and post-processing"""
 
-import re
 from collections import defaultdict
 from pathlib import Path
 from typing import Any
 
+from netCDF4 import Dataset
 from payu.models.cesm_cmeps import Runconfig
 
 from model_config_tests.models.model import (
@@ -12,17 +12,18 @@ from model_config_tests.models.model import (
     SCHEMA_VERSION_1_0_0,
     Model,
 )
-from model_config_tests.util import DAY_IN_SECONDS
 
 
 class AccessOm3(Model):
     def __init__(self, experiment):
         super().__init__(experiment)
-        self.output_file = self.experiment.output000 / "ocean.stats"
 
+        # ACCESS-OM3 uses restarts for repro testing
+        self.output_0 = self.experiment.restart000
+        self.output_1 = self.experiment.restart001
+
+        self.mom_restart_pointer = self.output_0 / "rpointer.ocn"
         self.runconfig = experiment.control_path / "nuopc.runconfig"
-        self.mom_override = experiment.control_path / "MOM_override"
-        self.ocean_config = experiment.control_path / "input.nml"
 
     def set_model_runtime(
         self, years: int = 0, months: int = 0, seconds: int = DEFAULT_RUNTIME_SECONDS
@@ -35,15 +36,6 @@ class AccessOm3(Model):
             freq = "nseconds"
             n = str(seconds)
 
-            # Ensure that ocean.stats are written at the end of the run
-            if seconds < DAY_IN_SECONDS:
-                with open(self.mom_override, "a") as f:
-                    f.writelines(
-                        [
-                            f"\n#override TIMEUNIT = {n}",
-                            "\n#override ENERGYSAVEDAYS = 1.0",
-                        ]
-                    )
         elif seconds == 0:
             freq = "nmonths"
             n = str(12 * years + months)
@@ -61,36 +53,32 @@ class AccessOm3(Model):
 
     def output_exists(self) -> bool:
         """Check for existing output file"""
-        return self.output_file.exists()
+        return self.mom_restart_pointer.exists()
 
     def extract_checksums(
         self, output_directory: Path = None, schema_version: str = None
     ) -> dict[str, Any]:
         """Parse output file and create checksum using defined schema"""
         if output_directory:
-            output_filename = output_directory / "ocean.stats"
+            mom_restart_pointer = output_directory / "rpointer.ocn"
         else:
-            output_filename = self.output_file
+            mom_restart_pointer = self.mom_restart_pointer
 
-        # ocean.stats is used for regression testing in MOM6's own test suite
-        # See https://github.com/mom-ocean/MOM6/blob/2ab885eddfc47fc0c8c0bae46bc61531104428d5/.testing/Makefile#L495-L501
-        # Rows in ocean.stats look like:
-        #      0,  693135.000,     0, En 3.0745627134675957E-23, CFL  0.00000, ...
-        # where the first three columns are Step, Day, Truncs and the remaining
-        # columns include a label for what they are (e.g. En = Energy/Mass)
-        # Header info is only included for new runs so can't be relied on
+        # MOM6 saves checksums for each variable in its restart files. Extract these
+        # attributes for each restart
         output_checksums: dict[str, list[any]] = defaultdict(list)
 
-        with open(output_filename) as f:
-            lines = f.readlines()
-            # Skip header if it exists (for new runs)
-            istart = 2 if "Step" in lines[0] else 0
-            for line in lines[istart:]:
-                for col in line.split(","):
-                    # Only keep columns with labels (ie not Step, Day, Truncs)
-                    col = re.split(" +", col.strip().rstrip("\n"))
-                    if len(col) > 1:
-                        output_checksums[col[0]].append(col[-1])
+        mom_restarts = []
+        with open(mom_restart_pointer) as f:
+            for restart in f.readlines():
+                mom_restarts.append(mom_restart_pointer.parent / restart.rstrip())
+
+        for mom_restart in mom_restarts:
+            rootgrp = Dataset(mom_restart, "r")
+            for v in rootgrp.variables:
+                var = rootgrp[v]
+                if "checksum" in var.ncattrs():
+                    output_checksums[var.long_name.strip()].append(var.checksum.strip())
 
         if schema_version is None:
             schema_version = self.default_schema_version
