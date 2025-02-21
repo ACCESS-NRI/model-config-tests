@@ -27,6 +27,8 @@ class ExpTestHelper:
         self.work_path = lab_path / "work" / self.exp_name
         self.output000 = self.archive_path / "output000"
         self.output001 = self.archive_path / "output001"
+        self.restart000 = self.archive_path / "restart000"
+        self.restart001 = self.archive_path / "restart001"
 
         with open(self.config_path) as f:
             self.config = yaml.safe_load(f)

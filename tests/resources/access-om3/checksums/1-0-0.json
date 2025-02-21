@@ -1,32 +1,89 @@
 {
   "schema_version": "1-0-0",
   "output": {
-    "En": [
-      "3.0745627134675957E-23"
+    "Potential Temperature": [
+      "E441AC22DEDE8930"
     ],
-    "CFL": [
-      "0.00000"
+    "Salinity": [
+      "8E3D02158AE4EAED"
     ],
-    "SL": [
-      "1.5112E-10"
+    "Layer Thickness": [
+      "9138701970F7E8A"
     ],
-    "M": [
-      "1.36404E+21"
+    "Zonal velocity": [
+      "803BF5B7E9C239C1"
     ],
-    "S": [
-      "34.7263"
+    "Meridional velocity": [
+      "7D9693C22E4D52B5"
     ],
-    "T": [
-      "3.6362"
+    "Frazil heat flux into ocean": [
+      "5FE9C9F905239FC4"
     ],
-    "Me": [
-      "0.00E+00"
+    "Ocean surface pressure used in EoS": [
+      "161DADB852A006F1"
     ],
-    "Se": [
-      "0.00E+00"
+    "Time average sea surface height": [
+      "40E5A21D6F0D1F87"
     ],
-    "Te": [
-      "0.00E+00"
+    "Indicator of the first direction in split calculations.": [
+      "0"
+    ],
+    "Free surface Height": [
+      "68FCD5E9DE45D1DF"
+    ],
+    "Auxiliary Zonal velocity": [
+      "32A58A90C668C32D"
+    ],
+    "Auxiliary Meridional velocity": [
+      "DA212F15199DC960"
+    ],
+    "Zonal Coriolis and advactive acceleration": [
+      "A4C51EC2A34D8EF1"
+    ],
+    "Meridional Coriolis and advactive  acceleration": [
+      "DA7F07794C0B7279"
+    ],
+    "Zonal horizontal viscous acceleration": [
+      "749F723BA63A013C"
+    ],
+    "Meridional horizontal viscous acceleration": [
+      "CD7614674E679DA8"
+    ],
+    "Time mean barotropic zonal velocity": [
+      "2E16365E105FFB9"
+    ],
+    "Time mean barotropic meridional velocity": [
+      "A6344B9A6D8CB3A9"
+    ],
+    "Barotropic timestep": [
+      "4055968059DD63AF"
+    ],
+    "Ideal Age Tracer": [
+      "B64AD181B58D3F4B"
+    ],
+    "Mesoscale Eddy Kinetic Energy": [
+      "A205FF94D0736FD0"
+    ],
+    "Lateral diffusivity from Mesoscale Eddy Kinetic Energy": [
+      "C5E23A24466765D4"
+    ],
+    "Lateral viscosity from Mesoscale Eddy Kinetic Energy": [
+      "A9959752C4D3DE41"
+    ],
+    "Copy of thickness diffusivity for diffusing MEKE": [
+      "C62261CF4678ACEE"
+    ],
+    "Shear-driven turbulent diffusivity at interfaces": [
+      "8A1CB3488BF7FAC7"
+    ],
+    "Shear-driven turbulent viscosity at interfaces": [
+      "55036CBF887185D4"
+    ],
+    "Instantaneous active mixing layer thickness": [
+      "A815BF54039C2D82"
+    ],
+    "Time-filtered MLD for use in MLE": [
+      "7463C5D823501487"
     ]
   }
 }

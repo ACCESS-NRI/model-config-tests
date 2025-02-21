@@ -23,6 +23,9 @@ class Model:
 
         self.default_runtime_seconds = DEFAULT_RUNTIME_SECONDS
 
+        self.output_0 = self.experiment.output000
+        self.output_1 = self.experiment.output001
+
     def extract_checksums(self, output_directory: Path, schema_version: str):
         """Extract checksums from output directory"""
         raise NotImplementedError

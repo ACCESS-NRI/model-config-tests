@@ -19,7 +19,7 @@ class AccessEsm1p5(Model):
         # Override model default runtime
         self.default_runtime_seconds = DEFAULT_RUNTIME_SECONDS
 
-        self.output_file = self.experiment.output000 / "access.out"
+        self.output_file = self.output_0 / "access.out"
 
     def set_model_runtime(
         self, years: int = 0, months: int = 0, seconds: int = DEFAULT_RUNTIME_SECONDS
