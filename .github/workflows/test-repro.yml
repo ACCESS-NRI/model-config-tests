@@ -153,7 +153,12 @@ jobs:
           source "${{ env.TEST_VENV_LOCATION }}/bin/activate"
 
           # Install model-config-tests
-          pip install model-config-tests==${{ inputs.model-config-tests-version }}
+          TEST_VERSION="${{ inputs.model-config-tests-version }}"
+          pip install "model-config-tests==${TEST_VERSION}" || {
+            echo "Failed to install model-config-tests==${TEST_VERSION} from PyPI"
+            echo "Attempting to install directly from Github repository with reference ${TEST_VERSION}"
+            pip install git+https://github.com/access-nri/model-config-tests.git@${TEST_VERSION}
+          }
 
           # The pytests in model-config-tests might fail in this command,
           # but that is okay. We still want to run the rest of the commands
