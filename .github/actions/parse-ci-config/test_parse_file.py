@@ -65,12 +65,12 @@ from parse_file import get_config_value, parse_ci_config
         (
             {
                 "qa": {
-                    "dev-*": {"markers": "dev_config"},
+                    "dev-.*": {"markers": "dev_config"},
                     "default": {"markers": "config or dev_config"},
                 },
             },
             "qa",
-            "dev_branch1",
+            "dev-branch1",
             "markers",
             "dev_config",
         ),
@@ -78,42 +78,57 @@ from parse_file import get_config_value, parse_ci_config
         (
             {
                 "qa": {
-                    "dev-*": {"markers": "dev_config"},
-                    "dev_branch1": {"markers": "another_marker"},
+                    "dev-.*": {"markers": "dev_config"},
+                    "dev-branch1": {"markers": "another_marker"},
                     "default": {"markers": "config or dev_config"},
                 },
             },
             "qa",
-            "dev_branch1",
+            "dev-branch1",
             "markers",
             "another_marker",
         ),
-        # Test for the longest regex match for the branch name
+        # Test for the first regex match for the branch name
         (
             {
                 "qa": {
-                    "dev-*": {"markers": "dev_config"},
-                    "dev_branch*": {"markers": "another_marker"},
+                    "dev-branch.*": {"markers": "another_marker"},
+                    "dev-.*": {"markers": "dev_config"},
                     "default": {"markers": "config or dev_config"},
                 },
             },
             "qa",
-            "dev_branch1",
+            "dev-branch1",
             "markers",
             "another_marker",
         ),
-        # Test if regex match for branch name but payu-version is not found
+        # Test if regex match for branch but payu-version only set for default
         (
             {
                 "qa": {
-                    "dev-*": {"markers": "dev_config"},
-                    "dev_branch*": {"markers": "another_marker"},
+                    "dev-branch.*": {"markers": "another_marker"},
+                    "dev-.*": {"markers": "dev_config"},
                     "default": {"markers": "config or dev_config"},
                 },
                 "default": {"payu-version": "1.0.0"},
             },
             "qa",
-            "dev_branch1",
+            "dev-branch1",
+            "payu-version",
+            "1.0.0",
+        ),
+        # Test ignores partial matches
+        (
+            {
+                "qa": {
+                    "dev-.*": {"markers": "dev_config"},
+                    "dev-branch": {"payu-version": "1.0.2"},
+                    "default": {"markers": "config or dev_config"},
+                },
+                "default": {"payu-version": "1.0.0"},
+            },
+            "qa",
+            "dev-branch1",
             "payu-version",
             "1.0.0",
         ),
@@ -130,11 +145,11 @@ def sample_config():
             "release-1deg_jra55_ryf": {
                 "markers": "repro or repro_slow",
             },
-            "dev-*": {
-                "payu-version": "dev",
-            },
-            "dev-branch-*": {
+            "dev-branch-.*": {
                 "payu-version": "2.0.0",
+            },
+            "dev-.*": {
+                "payu-version": "dev",
             },
             "dev-branch-1": {
                 "payu-version": "3.0.0",
@@ -144,7 +159,7 @@ def sample_config():
             },
         },
         "qa": {
-            "dev-*": {
+            "dev-.*": {
                 "markers": "config_dev",
             },
             "default": {
@@ -172,10 +187,10 @@ def test_parse_ci_config(sample_config, tmp_path):
         "payu-version": "2.0.0",
     }
 
-    result = parse_ci_config("reproducibility", "dev-something", config_file)
+    result = parse_ci_config("reproducibility", "dev-branch-2", config_file)
     assert result == {
         "model-config-tests-version": "1.2.0",
         "python-version": "3.10",
         "markers": "default-repro",
-        "payu-version": "dev",
+        "payu-version": "2.0.0",
     }

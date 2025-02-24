@@ -49,4 +49,4 @@ runs:
         echo "payu-version=$(jq -r '.["payu-version"]' tmp-result.json)" >> $GITHUB_OUTPUT
 
         # Clean up result file
-        rm result.json
+        rm tmp-result.json

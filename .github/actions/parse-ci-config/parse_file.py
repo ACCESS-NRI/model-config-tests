@@ -17,25 +17,18 @@ def get_config_value(config, test_type, reference, key):
     Returns:
     str: The value associated with the key.
     """
-    # Check for exact match
+    # Check for exact match of test_type and reference
     value = config.get(test_type, {}).get(reference, {}).get(key)
     if value:
         return value
 
-    # Check for branch/tag with the longest regex match
-    # E.g. dev-branch-1 should match dev-branch-* over dev-*
-    longest_match = None
-    longest_match_length = 0
+    # Check for reference regex match with a key defined with priority given
+    # to the first match found (so top-down order matters)
     for pattern in config.get(test_type, {}):
-        match = re.match(pattern, reference)
+        # Use fullmatch to require entire string to match pattern exactly
+        match = re.fullmatch(pattern, reference)
         if match and config[test_type][pattern].get(key):
-            match_length = len(match.group(0))
-            if match_length > longest_match_length:
-                longest_match = pattern
-                longest_match_length = match_length
-
-    if longest_match:
-        return config[test_type][longest_match].get(key)
+            return config[test_type][pattern].get(key)
 
     # Check for default values for test type and the top-level default
     return config.get(test_type, {}).get("default", {}).get(key) or config.get(
