@@ -105,7 +105,7 @@ VCS = "git"
 style = "pep440"
 versionfile_source = "src/model_config_tests/_version.py"
 versionfile_build = "model_config_tests/_version.py"
-tag_prefix = ""
+tag_prefix = "v"
 parentdir_prefix = "model_config_tests-"
 
 [tool.coverage.run]
