@@ -6,7 +6,9 @@ import re
 def get_config_value(config, test_type, reference, key):
     """
     Retrieve the value for a given key from the nested structure of the JSON file.
-    It first checks the specific 'test_type' and 'reference', then falls back to the default values if not found.
+    It first checks the specific 'test_type' and 'reference', then checks
+    for a regex match with the 'reference', and then falls back to the default
+    values if key is not found.
 
     Parameters:
     config (dict): The dictionary containing the CI configuration.

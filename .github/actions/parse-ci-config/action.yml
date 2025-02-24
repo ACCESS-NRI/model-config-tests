@@ -27,9 +27,11 @@ runs:
   using: "composite"
   steps:
     - name: Set up Python
+      id: cp311
       uses: actions/setup-python@v5
       with:
         python-version: 3.11
+        update-environment: false
 
     - name: Read Configuration File
       id: read-config
@@ -37,7 +39,7 @@ runs:
       run: |
         set -e
         # Use python script in parse-ci-config directory to parse CI configuration file
-        python3 ${{ github.action_path }}/parse_file.py \
+        ${{ steps.cp311.outputs.python-path }} ${{ github.action_path }}/parse_file.py \
           --test-type "${{ inputs.check }}" \
           --reference "${{ inputs.branch-or-tag }}" \
           --config-filepath "${{ inputs.config-filepath }}" \
