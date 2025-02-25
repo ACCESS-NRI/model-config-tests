@@ -109,6 +109,9 @@ jobs:
         run: |
           ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} -i ${{ steps.ssh.outputs.private-key-path }} /bin/bash<<'EOT'
 
+          # Immediately exit if any test setup fails
+          set -e
+
           # Remove base experiment (and everything else) if it exists
           if [ -d "${{ env.EXPERIMENT_LOCATION }}" ]; then
             rm -rf "${{ env.EXPERIMENT_LOCATION }}"
