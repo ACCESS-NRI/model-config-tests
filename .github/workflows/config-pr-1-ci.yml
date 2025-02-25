@@ -184,7 +184,13 @@ jobs:
           cache-dependency-path: model-config-tests/pyproject.toml
 
       - name: Install model-config-tests
-        run: pip install model-config-tests=='${{ needs.config.outputs.qa-model-config-tests-version }}'
+        run: |
+          VERSION="${{ needs.config.outputs.qa-model-config-tests-version }}"
+          pip install "model-config-tests==${VERSION}" || {
+            echo "Failed to install model-config-tests==${VERSION} from PyPI"
+            echo "Attempting to install directly from Github repository with reference ${VERSION}"
+            pip install git+https://github.com/access-nri/model-config-tests.git@${VERSION}
+          }
 
       - name: Invoke Simple CI Pytests
         # We continue on error because we will let the checks generated in
