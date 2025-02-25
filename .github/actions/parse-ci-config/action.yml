@@ -24,39 +24,31 @@ outputs:
     value: ${{ steps.read-config.outputs.payu-version }}
     description: The payu version used to create test virtual environment for remote tests (e.g. repro tests)
 runs:
-  using: "composite" 
-  steps:         
+  using: "composite"
+  steps:
+    - name: Set up Python
+      id: cp311
+      uses: actions/setup-python@v5
+      with:
+        python-version: 3.11
+        update-environment: false
+
     - name: Read Configuration File
-      shell: bash
       id: read-config
+      shell: bash
       run: |
-        # Fall back to default config values if not defined for a given branch or tag
-        output=$(jq --arg branch "${{ inputs.branch-or-tag }}" --arg check "${{ inputs.check }}" '
-        {
-          "model-config-tests-version": (
-            .[$check][$branch]["model-config-tests-version"] //
-            .[$check].default["model-config-tests-version"] // 
-            .default["model-config-tests-version"]
-          ),
-          "python-version": (
-            .[$check][$branch]["python-version"] // 
-            .[$check].default["python-version"] // 
-            .default["python-version"]
-          ),
-          "payu-version": (
-            .[$check][$branch]["payu-version"] //
-            .[$check].default["payu-version"] //
-            .default["payu-version"]
-          ),
-          "markers": (
-            .[$check][$branch].markers // 
-            .[$check].default.markers //
-            .default.markers
-          ),
-        }
-        ' "${{ inputs.config-filepath }}")
-        
-        echo "markers=$(echo "$output" | jq -r '.["markers"]')" >> $GITHUB_OUTPUT
-        echo "python-version=$(echo "$output" | jq -r '.["python-version"]')" >> $GITHUB_OUTPUT
-        echo "payu-version=$(echo "$output" | jq -r '.["payu-version"]')" >> $GITHUB_OUTPUT
-        echo "model-config-tests-version=$(echo "$output" | jq -r '.["model-config-tests-version"]')" >> $GITHUB_OUTPUT
+        set -e
+        # Use python script in parse-ci-config directory to parse CI configuration file
+        ${{ steps.cp311.outputs.python-path }} ${{ github.action_path }}/parse_file.py \
+          --test-type "${{ inputs.check }}" \
+          --reference "${{ inputs.branch-or-tag }}" \
+          --config-filepath "${{ inputs.config-filepath }}" \
+          --output-filepath tmp-result.json
+
+        echo "model-config-tests-version=$(jq -r '.["model-config-tests-version"]' tmp-result.json)" >> $GITHUB_OUTPUT
+        echo "python-version=$(jq -r '.["python-version"]' tmp-result.json)" >> $GITHUB_OUTPUT
+        echo "markers=$(jq -r '.["markers"]' tmp-result.json)" >> $GITHUB_OUTPUT
+        echo "payu-version=$(jq -r '.["payu-version"]' tmp-result.json)" >> $GITHUB_OUTPUT
+
+        # Clean up result file
+        rm tmp-result.json
