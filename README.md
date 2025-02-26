@@ -183,15 +183,15 @@ A   (Common Ancestor)
 ### CI Configuration File
 
 Each model configuration repository requires a `config/ci.json`
-file for defining CI test configuration. This file specifies what scheduled tests to run, and what tests to run for a given git branch of tag and test type.
+file for defining CI test configuration. This file specifies what scheduled tests to run, and what tests to run for a given git branch (or tag) and test type.
 
 #### Test types
 
 The different types of test are defined as:
 
 - `scheduled`: Scheduled monthly reproducibility tests run on NCI. The keys under these tests are released configuration tags to run the scheduled tests.
-- `reproducibility`: Reproducibility tests run as part of pull requests and are run on NCI. The keys under these tests represent the target branches into which pull requests are being merged. These are automatically run for pull requests from development (`dev-`) branches to released (`release-`) branches. These tests can also be triggered manually in a PR using the `!test repro` command.
-- `qa` - Quick quality assurance tests are run as part of pull requests and run locally on a GitHub Runner. The keys under these tests represent the target branches into which pull requests are being merged. These are run for any PR being merged into development or released branches.
+- `reproducibility`: Reproducibility tests run on NCI as part of pull requests. The keys under these tests represent the target branches into which pull requests are being merged. These are automatically run for pull requests from development (`dev-`) branches to released (`release-`) branches. These tests can also be triggered manually in a PR using the `!test repro` command.
+- `qa` - Quick quality assurance tests are run locally on a GitHub Runner as part of pull requests . The keys under these tests represent the target branches into which pull requests are being merged. These are run for any PR being merged into development or released branches.
 
 #### Test Configuration Settings
 
@@ -215,9 +215,9 @@ There are also model-specific markers for configuration QA tests, e.g., `access_
 
 To select a combination of tests, use the `or` keyword, e.g. `"markers": "dev_config or config"`.
 
-The Payu version is the module version loaded on NCI to build the base of the test virtual environment. To use the development Payu module which has all the latest changes in Payu repository, set `"payu-version": "dev"`.
+The Payu version is the module version loaded on NCI to build the base of the test virtual environment and is only relevant for tests run on NCI. To use the development Payu module which has all the latest changes in Payu repository, set `"payu-version": "dev"`.
 
-For development model configuration branches, it may be useful to use `main` branch of the `model-config-tests` repository. A git branch, tag, or commit of the `model-config-tests` repository can be used for `model-config-tests-version`, and the CI will install from Github if the package can't be installed from PyPI. Similarly, with the development Payu version, it is recommended to use released versions so the released configurations tests are stable.
+A git branch, tag, or commit of the `model-config-tests` repository can be used for `model-config-tests-version`, and the CI will install from Github if the package can't be installed from PyPI. For development model configuration branches it may be useful to use the most recent code in the `model-config-tests` repository. Using the `main` branch will achieve this. This is fine for testing, however it is recommended to use released versions of `model-config-tests` and `payu` so the released configurations tests are stable. 
 
 #### File Structure
 
