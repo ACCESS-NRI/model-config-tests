@@ -239,9 +239,6 @@ For example, given the following `config/ci.json` file:
         },
     },
     "reproducibility": {
-        "default": {
-            "markers": "checksum"
-        },
         "dev-1deg_jra55do_ryf": {
             "markers": "checksum or checksum_slow"
         },
@@ -251,6 +248,9 @@ For example, given the following `config/ci.json` file:
         "dev-example-branch": {
             "payu-version": "dev",
             "model-config-tests-version": "main"
+        },
+        "default": {
+            "markers": "checksum"
         },
     },
     "qa": {
