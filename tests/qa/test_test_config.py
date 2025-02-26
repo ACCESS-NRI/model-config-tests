@@ -10,7 +10,8 @@ def test_test_config_access_om2():
     access_om2_configs = RESOURCES_DIR / "access-om2" / "configurations"
     test_config = access_om2_configs / branch_name
 
-    assert test_config.exists()
+    if not test_config.exists():
+        raise FileNotFoundError(f"The test configuration {test_config} does not exist.")
 
     test_cmd = (
         "model-config-tests -s "

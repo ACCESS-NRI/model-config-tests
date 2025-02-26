@@ -1,10 +1,11 @@
 """Specific Access-OM3 Model setup and post-processing"""
 
-import re
 from collections import defaultdict
 from pathlib import Path
 from typing import Any
 
+import f90nml
+from netCDF4 import Dataset
 from payu.models.cesm_cmeps import Runconfig
 
 from model_config_tests.models.model import (
@@ -12,17 +13,19 @@ from model_config_tests.models.model import (
     SCHEMA_VERSION_1_0_0,
     Model,
 )
-from model_config_tests.util import DAY_IN_SECONDS
 
 
 class AccessOm3(Model):
     def __init__(self, experiment):
         super().__init__(experiment)
-        self.output_file = self.experiment.output000 / "ocean.stats"
 
+        # ACCESS-OM3 uses restarts for repro testing
+        self.output_0 = self.experiment.restart000
+        self.output_1 = self.experiment.restart001
+
+        self.mom_restart_pointer = self.output_0 / "rpointer.ocn"
         self.runconfig = experiment.control_path / "nuopc.runconfig"
-        self.mom_override = experiment.control_path / "MOM_override"
-        self.ocean_config = experiment.control_path / "input.nml"
+        self.wav_in = experiment.control_path / "wav_in"
 
     def set_model_runtime(
         self, years: int = 0, months: int = 0, seconds: int = DEFAULT_RUNTIME_SECONDS
@@ -31,19 +34,20 @@ class AccessOm3(Model):
         Default is 3 hours"""
         runconfig = Runconfig(self.runconfig)
 
+        # Check that ocean model component is MOM since checksums are obtained from
+        # MOM6 restarts. Fail early if not
+        ocn_model = runconfig.get("ALLCOMP_attributes", "OCN_model")
+        if ocn_model != "mom":
+            raise ValueError(
+                "ACCESS-OM3 reproducibility checks utilize checksums written in MOM6 "
+                "restarts and hence can only be used with ACCESS-OM3 configurations that "
+                f"use MOM6. This configuration uses OCN_model = {ocn_model}."
+            )
+
         if years == months == 0:
             freq = "nseconds"
             n = str(seconds)
 
-            # Ensure that ocean.stats are written at the end of the run
-            if seconds < DAY_IN_SECONDS:
-                with open(self.mom_override, "a") as f:
-                    f.writelines(
-                        [
-                            f"\n#override TIMEUNIT = {n}",
-                            "\n#override ENERGYSAVEDAYS = 1.0",
-                        ]
-                    )
         elif seconds == 0:
             freq = "nmonths"
             n = str(12 * years + months)
@@ -59,38 +63,42 @@ class AccessOm3(Model):
 
         runconfig.write()
 
+        # Unfortunately WW3 doesn't (yet) obey the nuopc.runconfig. This should change in a
+        # future release, but for now we have to set WW3 runtime in wav_in. See
+        # https://github.com/COSIMA/access-om3/issues/239
+        if self.wav_in.exists():
+            with open(self.wav_in) as f:
+                nml = f90nml.read(f)
+
+            nml["output_date_nml"]["date"]["restart"]["stride"] = int(n)
+            nml.write(self.wav_in, force=True)
+
     def output_exists(self) -> bool:
         """Check for existing output file"""
-        return self.output_file.exists()
+        return self.mom_restart_pointer.exists()
 
     def extract_checksums(
         self, output_directory: Path = None, schema_version: str = None
     ) -> dict[str, Any]:
         """Parse output file and create checksum using defined schema"""
         if output_directory:
-            output_filename = output_directory / "ocean.stats"
+            mom_restart_pointer = output_directory / "rpointer.ocn"
         else:
-            output_filename = self.output_file
+            mom_restart_pointer = self.mom_restart_pointer
 
-        # ocean.stats is used for regression testing in MOM6's own test suite
-        # See https://github.com/mom-ocean/MOM6/blob/2ab885eddfc47fc0c8c0bae46bc61531104428d5/.testing/Makefile#L495-L501
-        # Rows in ocean.stats look like:
-        #      0,  693135.000,     0, En 3.0745627134675957E-23, CFL  0.00000, ...
-        # where the first three columns are Step, Day, Truncs and the remaining
-        # columns include a label for what they are (e.g. En = Energy/Mass)
-        # Header info is only included for new runs so can't be relied on
+        # MOM6 saves checksums for each variable in its restart files. Extract these
+        # attributes for each restart
         output_checksums: dict[str, list[any]] = defaultdict(list)
 
-        with open(output_filename) as f:
-            lines = f.readlines()
-            # Skip header if it exists (for new runs)
-            istart = 2 if "Step" in lines[0] else 0
-            for line in lines[istart:]:
-                for col in line.split(","):
-                    # Only keep columns with labels (ie not Step, Day, Truncs)
-                    col = re.split(" +", col.strip().rstrip("\n"))
-                    if len(col) > 1:
-                        output_checksums[col[0]].append(col[-1])
+        with open(mom_restart_pointer) as f:
+            for restart_file in f.readlines():
+                restart = mom_restart_pointer.parent / restart_file.rstrip()
+                rootgrp = Dataset(restart, "r")
+                for variable in sorted(rootgrp.variables):
+                    var = rootgrp[variable]
+                    if "checksum" in var.ncattrs():
+                        output_checksums[variable.strip()].append(var.checksum.strip())
+                rootgrp.close()
 
         if schema_version is None:
             schema_version = self.default_schema_version

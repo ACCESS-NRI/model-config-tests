@@ -8,6 +8,8 @@ from pathlib import Path
 import f90nml
 import pytest
 import yaml
+from netCDF4 import Dataset
+from payu.models.cesm_cmeps import Runconfig
 
 from tests.common import RESOURCES_DIR
 
@@ -72,6 +74,11 @@ class CommonTestHelper:
         # TODO: Could create use a test config.yaml file for each model
         # in test resources? This could be used to test "config" tests too?
 
+    def copy_config(self, configuration):
+        """Copy a minimal control directory from RESOURCES_DIR"""
+        mock_config = self.resources_path / "configurations" / configuration
+        shutil.copytree(mock_config, self.control_path)
+
     def base_test_command(self):
         """Create a minimal test command"""
         # Minimal test command
@@ -86,68 +93,35 @@ class CommonTestHelper:
         )
         return test_cmd
 
-    def create_mock_output000(self):
-        """Copy some expected output in the archive directory"""
-        resources_output000 = self.resources_path / "output000"
-        mock_output000 = self.test_archive_path / "output000"
-        shutil.copytree(resources_output000, mock_output000)
-        return mock_output000
+    def create_mock_output(self, output="output000", modify=False):
+        """Copy some expected output in the archive directory, optionally modifying the output
+        to alter checksums"""
+        resources_output = self.resources_path / output
+        mock_output = self.test_archive_path / output
+        shutil.copytree(resources_output, mock_output)
 
+        if modify:
+            if self.model_name in ["access", "access-om2"]:
+                with (mock_output / f"{self.model_name}.out").open("a") as f:
+                    f.write("[chksum] test_checksum               -1")
+            elif self.model_name == "access-om3":
+                mom_restart_pointer = mock_output / "rpointer.ocn"
+                with open(mom_restart_pointer) as f:
+                    restart_file = f.readline().rstrip()
 
-def test_test_bit_repro_historical_access_pass(tmp_dir):
-    """Test ACCESS-ESM1.5 access class with historical repro test with
-    some mock output and configuration directory."""
-    test_name = "test_bit_repro_historical"
-    model_name = "access"
-
-    # Setup test Helper
-    helper = CommonTestHelper(test_name, model_name, tmp_dir)
-    helper.write_config()
-
-    # Compare checksums against the existing checksums in resources folder
-    checksum_path = helper.resources_path / "checksums" / "1-0-0.json"
-
-    # Put some expected output in the archive directory (as we are skipping
-    # the actual payu run step)
-    helper.create_mock_output000()
-
-    # Build test command
-    test_cmd = (
-        f"{helper.base_test_command()} "
-        f"--checksum-path {checksum_path} "
-        f"--control-path {helper.control_path} "
-    )
-
-    # Run test in a subprocess call
-    result = subprocess.run(shlex.split(test_cmd), capture_output=True, text=True)
-
-    if result.returncode:
-        # Print out test logs if there are errors
-        print(f"Test stdout: {result.stdout}\nTest stderr: {result.stderr}")
-    assert result.returncode == 0
-
-    # Check config.yaml file generated for the test
-    with helper.test_config_path.open("r") as f:
-        test_config = yaml.safe_load(f)
-
-    # Check runtime of 24hr hours is set
-    assert test_config["calendar"]["runtime"] == {
-        "years": 0,
-        "months": 0,
-        "days": 0,
-        "seconds": 86400,
-    }
-
-    # Check general config.yaml settings for test
-    assert test_config["experiment"] == test_name
-    assert not test_config["runlog"]
-    assert not test_config["metadata"]["enable"]
-    assert test_config["laboratory"] == str(helper.lab_path)
-
-    # Check name of checksum file written out and contents
-    test_checksum = helper.output_path / "checksum" / "historical-24hr-checksum.json"
-    assert test_checksum.exists()
-    assert test_checksum.read_text() == checksum_path.read_text()
+                restart = mom_restart_pointer.parent / restart_file
+                rootgrp = Dataset(restart, "a")
+                for variable in sorted(rootgrp.variables):
+                    # Find the first var with a checksum and subtract 1 from it
+                    var = rootgrp[variable]
+                    if "checksum" in var.ncattrs():
+                        # Subtract 1 from the checksum and return as uppercase
+                        var_p1 = format(int(var.checksum, 16) - 1, "X")
+                        var.setncattr("checksum", var_p1)
+                        break
+                rootgrp.close()
+            else:
+                raise ValueError(f"Unrecognised model: {self.model_name}")
 
 
 def test_test_bit_repro_historical_access_checksums_saved_on_config(tmp_dir):
@@ -170,7 +144,7 @@ def test_test_bit_repro_historical_access_checksums_saved_on_config(tmp_dir):
 
     # Put some expected output in the archive directory (as we are skipping
     # the actual payu run step)
-    helper.create_mock_output000()
+    helper.create_mock_output()
 
     # Build test command
     test_cmd = helper.base_test_command()
@@ -191,46 +165,6 @@ def test_test_bit_repro_historical_access_checksums_saved_on_config(tmp_dir):
     assert result.returncode == 0
 
 
-def test_test_bit_repro_historical_access_fail(tmp_dir):
-    """Check when checksums do not match, checksum file is still written out"""
-    test_name = "test_bit_repro_historical"
-    model_name = "access"
-
-    # Setup test Helper
-    helper = CommonTestHelper(test_name, model_name, tmp_dir)
-    helper.write_config()
-
-    # Compare checksums against the existing checksums in resources folder
-    checksum_path = helper.resources_path / "checksums" / "1-0-0.json"
-
-    # Put some expected output in the archive directory (as we are skipping
-    # the actual payu run step)
-    mock_output000 = helper.create_mock_output000()
-
-    # Modify output file to mimic a change to output file in archive
-    with (mock_output000 / "access.out").open("a") as f:
-        f.write("[chksum] test_checksum               -1")
-
-    # Build test command
-    test_cmd = (
-        f"{helper.base_test_command()} "
-        f"--checksum-path {checksum_path} "
-        f"--control-path {helper.control_path} "
-    )
-
-    # Run test in a subprocess call
-    result = subprocess.run(shlex.split(test_cmd), capture_output=True, text=True)
-
-    # Expect test to fail
-    assert result.returncode == 1
-
-    # Test when checksums aren't matched, that file are still written
-    test_checksum = helper.output_path / "checksum" / "historical-24hr-checksum.json"
-    assert test_checksum.exists()
-    content = test_checksum.read_text()
-    assert content != checksum_path.read_text()
-
-
 def test_test_bit_repro_historical_access_no_reference_checksums(tmp_dir):
     """Check when a reference file for checksums does not exist, that
     checksums from the output are written out"""
@@ -243,7 +177,7 @@ def test_test_bit_repro_historical_access_no_reference_checksums(tmp_dir):
 
     # Put some expected output in the archive directory (as we are skipping
     # the actual payu run step)
-    helper.create_mock_output000()
+    helper.create_mock_output()
 
     # Build test command
     test_cmd = f"{helper.base_test_command()} " f"--control-path {helper.control_path} "
@@ -255,12 +189,8 @@ def test_test_bit_repro_historical_access_no_reference_checksums(tmp_dir):
     assert result.returncode == 1
 
     # Test that checksums are still written out
-    test_checksum = helper.output_path / "checksum" / "historical-24hr-checksum.json"
-    assert test_checksum.exists()
-
-    # Test that they are equal to checksums in resource folder
     checksum_path = helper.resources_path / "checksums" / "1-0-0.json"
-    assert test_checksum.read_text() == checksum_path.read_text()
+    check_checksum(helper.output_path, checksum_path, helper.model_name)
 
 
 def test_test_bit_repro_historical_access_no_model_output(tmp_dir):
@@ -292,25 +222,38 @@ def test_test_bit_repro_historical_access_no_model_output(tmp_dir):
     assert not test_checksum.exists()
 
 
-def test_test_bit_repro_historical_access_om2_pass(tmp_dir):
-    """Test ACCESS-OM2 class with historical repro test with
-    some mock output and configuration directory."""
+@pytest.mark.parametrize(
+    "model_name, output_0, configuration",
+    [
+        ("access", "output000", None),
+        ("access", "output000", "release-preindustrial+concentrations"),
+        ("access-om2", "output000", "release-1deg_jra55_ryf"),
+        ("access-om3", "restart000", "om3-dev-1deg_jra55do_ryf"),
+        ("access-om3", "restart000", "om3-wav-dev-1deg_jra55do_ryf"),
+    ],
+)
+@pytest.mark.parametrize("fail", [False, True])
+def test_test_bit_repro_historical(tmp_dir, model_name, output_0, configuration, fail):
+    """Test ACCESS-OM classes with historical repro test with some mock
+    output and configuration directory, optionally checking that things
+    fail when the outputs are modified to give different checksums"""
     test_name = "test_bit_repro_historical"
-    model_name = "access-om2"
 
     # Setup test Helper
     helper = CommonTestHelper(test_name, model_name, tmp_dir)
 
-    # Use config in resources dir
-    mock_config = helper.resources_path / "configurations" / "release-1deg_jra55_ryf"
-    shutil.copytree(mock_config, helper.control_path)
+    # Use config in resources dir if provided
+    if configuration:
+        helper.copy_config(configuration)
+    else:
+        helper.write_config()
 
     # Compare checksums against the existing checksums in resources folder
     checksum_path = helper.resources_path / "checksums" / "1-0-0.json"
 
     # Put some expected output in the archive directory (as we are skipping
-    # the actual payu run step)
-    helper.create_mock_output000()
+    # the actual payu run step) and modify the output if testing failure
+    helper.create_mock_output(output_0, modify=fail)
 
     # Build test command
     test_cmd = (
@@ -322,20 +265,103 @@ def test_test_bit_repro_historical_access_om2_pass(tmp_dir):
     # Run test in a subprocess call
     result = subprocess.run(shlex.split(test_cmd), capture_output=True, text=True)
 
-    if result.returncode:
-        # Print out test logs if there are errors
-        print(f"Test stdout: {result.stdout}\nTest stderr: {result.stderr}")
-    assert result.returncode == 0
+    assert result.returncode == int(fail)
 
-    # Check runtime of 3 hours is set
-    with open(helper.test_control_path / "accessom2.nml") as f:
-        nml = f90nml.read(f)
-    years, months, seconds = nml["date_manager_nml"]["restart_period"]
-    assert years == 0
-    assert months == 0
-    assert seconds == 10800
+    # Check runtime is set correctly
+    check_runtime(helper.test_control_path, helper.model_name)
+
+    # Check general config.yaml settings for test
+    with open(helper.test_control_path / "config.yaml") as f:
+        test_config = yaml.safe_load(f)
+    assert test_config["experiment"] == test_name
+    assert not test_config["runlog"]
+    assert not test_config["metadata"]["enable"]
+    assert test_config["laboratory"] == str(helper.lab_path)
 
     # Check name of checksum file written out and contents
-    test_checksum = helper.output_path / "checksum" / "historical-3hr-checksum.json"
+    check_checksum(
+        helper.output_path, checksum_path, helper.model_name, match=(not fail)
+    )
+
+
+def test_test_access_om3_ocean_model(tmp_dir):
+    """Test that an error is thrown when the ocean model is not MOM. This should be moved into
+    dedicated tests for experiment setup when they exist. See
+    https://github.com/ACCESS-NRI/model-config-tests/issues/115"""
+    test_name = "test_bit_repro_historical"
+
+    # Setup test Helper
+    helper = CommonTestHelper(test_name, "access-om3", tmp_dir)
+
+    helper.copy_config("om3-dev-1deg_jra55do_ryf")
+
+    # Set ocean model in nuopc.runconfig to something other than mom
+    mock_runconfig = Runconfig(helper.control_path / "nuopc.runconfig")
+    mock_runconfig.set("ALLCOMP_attributes", "OCN_model", "docn")
+    mock_runconfig.write()
+
+    # Put some expected output in the archive directory (as we are skipping
+    # the actual payu run step)
+    helper.create_mock_output("restart000")
+
+    # Build test command
+    test_cmd = f"{helper.base_test_command()} " f"--control-path {helper.control_path} "
+
+    # Run test in a subprocess call
+    result = subprocess.run(shlex.split(test_cmd), capture_output=True, text=True)
+
+    # Expect test to have failed
+    assert result.returncode == 1
+    error_msg = (
+        "ACCESS-OM3 reproducibility checks utilize checksums written in MOM6 restarts"
+    )
+    assert error_msg in result.stdout
+
+
+def check_runtime(control_path, model_name):
+    if model_name == "access":
+        with open(control_path / "config.yaml") as f:
+            test_config = yaml.safe_load(f)
+        # Check runtime of 24hr hours is set
+        assert test_config["calendar"]["runtime"] == {
+            "years": 0,
+            "months": 0,
+            "days": 0,
+            "seconds": 86400,
+        }
+    elif model_name == "access-om2":
+        with open(control_path / "accessom2.nml") as f:
+            nml = f90nml.read(f)
+        years, months, seconds = nml["date_manager_nml"]["restart_period"]
+        assert years == 0
+        assert months == 0
+        assert seconds == 10800
+    elif model_name == "access-om3":
+        runconfig = Runconfig(control_path / "nuopc.runconfig")
+        assert runconfig.get("CLOCK_attributes", "restart_option") == "nseconds"
+        assert int(runconfig.get("CLOCK_attributes", "restart_n")) == 10800
+        assert runconfig.get("CLOCK_attributes", "stop_option") == "nseconds"
+        assert int(runconfig.get("CLOCK_attributes", "stop_n")) == 10800
+
+        wav_in = control_path / "wav_in"
+        if wav_in.exists():
+            with open(wav_in) as f:
+                nml = f90nml.read(f)
+            assert nml["output_date_nml"]["date"]["restart"]["stride"] == 10800
+    else:
+        raise ValueError(f"Unrecognised model: {model_name}")
+
+
+def check_checksum(output_path, checksum_path, model_name, match=True):
+    if model_name == "access":
+        test_checksum = output_path / "checksum" / "historical-24hr-checksum.json"
+    elif model_name in ["access-om2", "access-om3"]:
+        test_checksum = output_path / "checksum" / "historical-3hr-checksum.json"
+    else:
+        raise ValueError(f"Unrecognised model: {model_name}")
     assert test_checksum.exists()
-    assert test_checksum.read_text() == checksum_path.read_text()
+
+    if match:
+        assert test_checksum.read_text() == checksum_path.read_text()
+    else:
+        assert test_checksum.read_text() != checksum_path.read_text()

@@ -12,7 +12,8 @@ def test_test_access_om2_config_release_1deg_jra55_ryf():
     access_om2_configs = RESOURCES_DIR / "access-om2" / "configurations"
     test_config = access_om2_configs / "release-1deg_jra55_ryf"
 
-    assert test_config.exists()
+    if not test_config.exists():
+        raise FileNotFoundError(f"The test configuration {test_config} does not exist.")
 
     test_cmd = (
         "model-config-tests -s "

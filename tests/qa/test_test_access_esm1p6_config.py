@@ -11,7 +11,8 @@ def test_test_access_esm1p6_config_release_release_preindustrial():
     # access_esm1p6_configs = RESOURCES_DIR / "access" / "configurations"
     # test_config = access_esm1p6_configs / "release-preindustrial+concentrations"
 
-    # assert test_config.exists()
+    # if not test_config.exists():
+    #     raise FileNotFoundError(f"The test configuration {test_config} does not exist.")
 
     # test_cmd = (
     #     "model-config-tests -s "
