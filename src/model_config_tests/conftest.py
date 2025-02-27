@@ -50,6 +50,13 @@ def metadata(control_path: Path):
 
 
 @pytest.fixture(scope="session")
+def skipif_no_metadata(control_path):
+    metadata_path = control_path / "metadata.yaml"
+    if not metadata_path.exists():
+        pytest.skip("No metadata.yaml file exists")
+
+
+@pytest.fixture(scope="session")
 def config(control_path: Path):
     """Read the config file in the control directory"""
     config_path = control_path / "config.yaml"
