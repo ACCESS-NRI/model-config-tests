@@ -212,10 +212,11 @@ class TestConfig:
                 "The target branch is a dev version and doesn't require a stable module location"
             )
 
+    @pytest.mark.usefixtures("skipif_no_metadata")
     def test_metadata_does_not_contain_UUID(self, metadata):
         assert "experiment_uuid" not in metadata, (
             "`experiment_uuid` should not be defined in metadata, "
-            + "as this is an configuration rather than an experiment. "
+            + "as this is a configuration rather than an experiment. "
         )
 
     def test_sync_is_not_enabled(self, config):
