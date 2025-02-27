@@ -189,9 +189,9 @@ file for defining CI test configuration. This file specifies what scheduled test
 
 The different types of test are defined as:
 
-- `scheduled`: Scheduled monthly reproducibility tests run on NCI. The keys under these tests are released configuration tags to run the scheduled tests.
-- `reproducibility`: Reproducibility tests run on NCI as part of pull requests. The keys under these tests represent the target branches into which pull requests are being merged. These are automatically run for pull requests from development (`dev-`) branches to released (`release-`) branches. These tests can also be triggered manually in a PR using the `!test repro` command.
-- `qa` - Quick quality assurance tests are run locally on a GitHub Runner as part of pull requests . The keys under these tests represent the target branches into which pull requests are being merged. These are run for any PR being merged into development or released branches.
+- `scheduled`: Scheduled reproducibility tests run on NCI. These are typically scheduled to run monthly but this can re-configured by modifying the cron in the `.github/workflows/schedule.yml` workflow. The keys under these tests are released configuration tags or branches to run the scheduled tests.
+- `reproducibility`: Reproducibility tests run on NCI as part of pull requests (PRs). These are automatically run for PRs from development (`dev-`) branches to released (`release-`) branches. These tests can also be triggered manually in a PR using the `!test repro` command. The keys under these tests represent the target branches into which PRs are being merged.
+- `qa` - Quick quality assurance tests are run locally on a GitHub Runner as part of PRs. These are consistency checks which run without needing to run the model. These are run automatically for any PR being merged into development or released branches. The keys under these tests represent the target branches into which PRs are being merged.
 
 #### Test Configuration Settings
 
@@ -209,7 +209,7 @@ Pytest markers select what pytests to run in `model-config-tests`. Current marke
 - `checksum`: Historical reproducibility test that runs a model and compares checksums with a stored previous result.
 - `checksum_slow`: Restart reproducibility tests. These include model determinism, by repeating running a configuration from initial conditions to check it reproduces the same output, and checking reproducibility by confirming two short consecutive model runs give the same result as a longer single model run.
 - `dev_config`: General configuration QA tests.
-- `config`: Configuration QA tests for released branches.
+- `config`: Configuration QA tests for released branches. This includes the `dev_config` tests.
 
 There are also model-specific markers for configuration QA tests, e.g., `access_om2`, `access_esm1p5`, `access_om3` and `access_esm1p6`.
 
@@ -254,12 +254,14 @@ For example, given the following `config/ci.json` file:
         },
     },
     "qa": {
-        "dev-.*": "dev_config",
         "dev-example-branch": {
             "model-config-tests-version": "main"
         },
+        "dev-.*": {
+            "markers": "dev_config"
+        },
         "default": {
-            "markers": "config or dev_config"
+            "markers": "config"
         }
     },
     "default": {
