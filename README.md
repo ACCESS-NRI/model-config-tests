@@ -199,25 +199,25 @@ The configuration properties needed to run the tests are:
 
 | Name | Type | Description |  Example |
 | ---- | ---- | ----------- | -------- |
-| markers | `string` | Markers used for the pytest checks, in the Python format | `checksum` |
+| markers | `string` | Markers used for pytest, in the Python format | `checksum` |
 | model-config-tests-version | `string` | The version of the model-config-tests | `0.0.1` |
 | python-version | `string` | The python version used to create test virtual environment on GitHub hosted tests | `3.11.0` |
 | payu-version | `string` | The Payu version used to run the model | `1.1.5` |
 
 Pytest markers select what pytests to run in `model-config-tests`. Current markers include:
 
-- `checksum`: Reproducibility test that runs a model and compares checksums with a stored previous result.
-- `checksum_slow`: Slower reproducibility tests. These include repeating running a configuration from initial conditions to check it reproduces the same output, and checking restart reproducibility by comparing two shorter model runs with a longer model run.
+- `checksum`: Historical reproducibility test that runs a model and compares checksums with a stored previous result.
+- `checksum_slow`: Restart reproducibility tests. These include model determinism, by repeating running a configuration from initial conditions to check it reproduces the same output, and checking reproducibility by confirming two short consecutive model runs give the same result as a longer single model run.
 - `dev_config`: General configuration QA tests.
 - `config`: Configuration QA tests for released branches.
 
 There are also model-specific markers for configuration QA tests, e.g., `access_om2`, `access_esm1p5`, `access_om3` and `access_esm1p6`.
 
-To select a combination of tests, use the `or` keyword, e.g. `"markers": "dev_config or config"`.
+To select a combination of tests, use the `or` keyword, e.g. `"markers": "access_om2 or config"`.
 
 The Payu version is the module version loaded on NCI to build the base of the test virtual environment and is only relevant for tests run on NCI. To use the development Payu module which has all the latest changes in Payu repository, set `"payu-version": "dev"`.
 
-A git branch, tag, or commit of the `model-config-tests` repository can be used for `model-config-tests-version`, and the CI will install from Github if the package can't be installed from PyPI. For development model configuration branches it may be useful to use the most recent code in the `model-config-tests` repository. Using the `main` branch will achieve this. This is fine for testing, however it is recommended to use released versions of `model-config-tests` and `payu` so the released configurations tests are stable. 
+A git branch, tag, or commit of the `model-config-tests` repository can be used for `model-config-tests-version`, and the CI will install from Github if the package can't be installed from PyPI. For development model configuration branches it may be useful to use the most recent code in the `model-config-tests` repository. Using the `main` branch will achieve this. This is good for continuous integration, however it is recommended to use released versions of `model-config-tests` and `payu` for the released model configurations so that tests are stable. 
 
 #### File Structure
 
