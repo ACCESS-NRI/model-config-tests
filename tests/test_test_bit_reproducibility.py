@@ -101,7 +101,7 @@ class CommonTestHelper:
         shutil.copytree(resources_output, mock_output)
 
         if modify:
-            if self.model_name in ["access", "access-om2"]:
+            if self.model_name in ["access", "access-esm1.6", "access-om2"]:
                 with (mock_output / f"{self.model_name}.out").open("a") as f:
                     f.write("[chksum] test_checksum               -1")
             elif self.model_name == "access-om3":
@@ -227,6 +227,7 @@ def test_test_bit_repro_historical_access_no_model_output(tmp_dir):
     [
         ("access", "output000", None),
         ("access", "output000", "release-preindustrial+concentrations"),
+        ("access-esm1.6", "output000", None),
         ("access-om2", "output000", "release-1deg_jra55_ryf"),
         ("access-om3", "restart000", "om3-dev-1deg_jra55do_ryf"),
         ("access-om3", "restart000", "om3-wav-dev-1deg_jra55do_ryf"),
@@ -319,7 +320,7 @@ def test_test_access_om3_ocean_model(tmp_dir):
 
 
 def check_runtime(control_path, model_name):
-    if model_name == "access":
+    if model_name in ["access", "access-esm1.6"]:
         with open(control_path / "config.yaml") as f:
             test_config = yaml.safe_load(f)
         # Check runtime of 24hr hours is set
@@ -353,7 +354,7 @@ def check_runtime(control_path, model_name):
 
 
 def check_checksum(output_path, checksum_path, model_name, match=True):
-    if model_name == "access":
+    if model_name in ["access", "access-esm1.6"]:
         test_checksum = output_path / "checksum" / "historical-24hr-checksum.json"
     elif model_name in ["access-om2", "access-om3"]:
         test_checksum = output_path / "checksum" / "historical-3hr-checksum.json"
