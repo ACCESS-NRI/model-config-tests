@@ -189,7 +189,7 @@ file for defining CI test configuration. This file specifies what scheduled test
 
 The different types of test are defined as:
 
-- `scheduled`: Scheduled reproducibility tests run on NCI. These are typically scheduled to run monthly but this can re-configured by modifying the cron in the `.github/workflows/schedule.yml` workflow. The keys under these tests are released configuration tags or branches to run the scheduled tests.
+- `scheduled`: Scheduled reproducibility tests run on NCI. These are typically scheduled to run monthly but this can re-configured by modifying the cron in the `.github/workflows/schedule.yml` workflow. The keys under these tests are released tags or branches to run the scheduled tests.
 - `reproducibility`: Reproducibility tests run on NCI as part of pull requests (PRs). These are automatically run for PRs from development (`dev-`) branches to released (`release-`) branches. These tests can also be triggered manually in a PR using the `!test repro` command. The keys under these tests represent the target branches into which PRs are being merged.
 - `qa` - Quick quality assurance tests are run locally on a GitHub Runner as part of PRs. These are consistency checks which run without needing to run the model. These are run automatically for any PR being merged into development or released branches. The keys under these tests represent the target branches into which PRs are being merged.
 
