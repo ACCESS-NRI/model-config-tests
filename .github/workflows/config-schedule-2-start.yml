@@ -84,7 +84,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
           BODY: |
-            There was a failure of a monthly reproducibility check on `${{ github.repository }}`.
+            There was a failure of the scheduled reproducibility check on `${{ github.repository }}`.
 
             Model: `${{ steps.variables.outputs.model }}`, found here: ${{ steps.variables.outputs.model-url }}
             Config Repo: `${{ steps.variables.outputs.config }}`, found here: ${{ steps.variables.outputs.config-url }}
@@ -96,6 +96,10 @@ jobs:
 
             Tagging @ACCESS-NRI/model-release
         run: |
+          # Create tags for the issue if they don't already exist
+          gh label create 'type:repro-fail' --description 'Repro check failure' --color 000000 || true
+          gh label create 'priority:blocker' --color B60205 || true
+
           gh issue create \
             --title 'Scheduled Repro Check Failed for Config `${{ inputs.config-tag }}`' \
             --label "type:repro-fail,priority:blocker" \
