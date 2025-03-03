@@ -179,3 +179,102 @@ D   (PR Target Branch)
 |/
 A   (Common Ancestor)
 ```
+
+### CI Configuration File
+
+Each model configuration repository requires a `config/ci.json`
+file for defining CI test configuration. This file specifies what scheduled tests to run, and what tests to run for a given git branch (or tag) and test type.
+
+#### Test types
+
+The different types of test are defined as:
+
+- `scheduled`: Scheduled reproducibility tests run on NCI. These are typically scheduled to run monthly but this can re-configured by modifying the cron in the `.github/workflows/schedule.yml` workflow. The keys under these tests are released tags or branches to run the scheduled tests.
+- `reproducibility`: Reproducibility tests run on NCI as part of pull requests (PRs). These are automatically run for PRs from development (`dev-`) branches to released (`release-`) branches. These tests can also be triggered manually in a PR using the `!test repro` command. The keys under these tests represent the target branches into which PRs are being merged.
+- `qa` - Quick quality assurance tests are run locally on a GitHub Runner as part of PRs. These are consistency checks which run without needing to run the model. These are run automatically for any PR being merged into development or released branches. The keys under these tests represent the target branches into which PRs are being merged.
+
+#### Test Configuration Settings
+
+The configuration properties needed to run the tests are:
+
+| Name | Type | Description |  Example |
+| ---- | ---- | ----------- | -------- |
+| markers | `string` | Markers used for pytest, in the Python format | `checksum` |
+| model-config-tests-version | `string` | The version of the model-config-tests | `0.0.1` |
+| python-version | `string` | The python version used to create test virtual environment on GitHub hosted tests | `3.11.0` |
+| payu-version | `string` | The Payu version used to run the model | `1.1.5` |
+
+Pytest markers select what pytests to run in `model-config-tests`. Current markers include:
+
+- `checksum`: Historical reproducibility test that runs a model and compares checksums with a stored previous result.
+- `checksum_slow`: Restart reproducibility tests. These include model determinism, by repeating running a configuration from initial conditions to check it reproduces the same output, and checking reproducibility by confirming two short consecutive model runs give the same result as a longer single model run.
+- `dev_config`: General configuration QA tests.
+- `config`: Configuration QA tests for released branches. This includes the `dev_config` tests.
+
+There are also model-specific markers for configuration QA tests, e.g., `access_om2`, `access_esm1p5`, `access_om3` and `access_esm1p6`.
+
+To select a combination of tests, use the `or` keyword, e.g. `"markers": "access_om2 or config"`.
+
+The Payu version is the module version loaded on NCI to build the base of the test virtual environment and is only relevant for tests run on NCI. To use the development Payu module which has all the latest changes in Payu repository, set `"payu-version": "dev"`.
+
+A git branch, tag, or commit of the `model-config-tests` repository can be used for `model-config-tests-version`, and the CI will install from Github if the package can't be installed from PyPI. For development model configuration branches it may be useful to use the most recent code in the `model-config-tests` repository. Using the `main` branch will achieve this. This is good for continuous integration, however it is recommended to use released versions of `model-config-tests` and `payu` for the released model configurations so that tests are stable. 
+
+#### File Structure
+
+The schema for this file is found in [`ACCESS-NRI/schema`](https://github.com/ACCESS-NRI/schema).  As most of the tests use the same test and python versions, and similar markers, there are two levels of defaults. There's a default at the test type level which is useful for defining test markers - this selects certain pytests to run in `model-config-tests`. There is an outer global default, which is used if a property is not defined for a given branch/tag, and it is not defined for the test default. The [`parse-ci-config`](.github/actions/parse-ci-config/README.md) action applies this fall-back default logic.
+
+There is also support for using regex patterns for the git branches for `qa` and `reproducibility` tests, e.g.
+`dev-.*` will match all development branches. If there are multiple regex patterns, priority will be given to the order so more specific patterns should
+be higher in the list, e.g. `dev-1deg-.*` before `dev-.*`. Note that regex patterns are currently not supported for `scheduled` tests so every tag that requires a scheduled test needs to be defined.
+
+For example, given the following `config/ci.json` file:
+
+```json
+{
+    "$schema": "<https://github.com/ACCESS-NRI/schema/tree/main/au.org.access-nri/model/configuration/ci/2-0-0.json>",
+    "scheduled": {
+        "release-1deg_jra55_ryf-2.0": {},
+        "default": {
+            "markers": "checksum"
+        },
+    },
+    "reproducibility": {
+        "dev-1deg_jra55do_ryf": {
+            "markers": "checksum or checksum_slow"
+        },
+        "release-1deg_jra55do_ryf": {
+            "markers": "checksum or checksum_slow"
+        },
+        "dev-example-branch": {
+            "payu-version": "dev",
+            "model-config-tests-version": "main"
+        },
+        "default": {
+            "markers": "checksum"
+        },
+    },
+    "qa": {
+        "dev-example-branch": {
+            "model-config-tests-version": "main"
+        },
+        "dev-.*": {
+            "markers": "dev_config"
+        },
+        "default": {
+            "markers": "config"
+        }
+    },
+    "default": {
+        "model-config-tests-version": "0.0.11",
+        "python-version": "3.11.0",
+        "payu-version": "1.1.6"
+    }
+}
+```
+
+The above configuration triggers monthly scheduled tests for `release-1deg_jra55_ryf-2.0` GitHub tag. This scheduled test will run with `checksum` test marker, and the top-level defaults for `model-config-tests-version`, `python-version` and `payu-version`.
+
+If a PR was being merged into a `release-1deg_jra55do_ryf` branch, the QA tests run on the GitHub runner would use the `config or dev_config` test markers and the repro tests on NCI, would select the `checksum or checksum_slow` tests.
+
+If a PR was being merged into a `dev-example-branch`, the QA tests that run automatically would use the `dev_config` tests and if repro tests were triggered manually, then it would use the `checksum` tests.
+For both test types, it would use the latest changes in the `model-config-tests` repository. For repro tests, it would use the `payu/dev` module on NCI for running the model.
