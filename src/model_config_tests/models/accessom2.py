@@ -16,7 +16,8 @@ from model_config_tests.models.mom5 import mom5_extract_checksums
 class AccessOm2(Model):
     def __init__(self, experiment):
         super().__init__(experiment)
-        self.output_file = self.output_0 / "access-om2.out"
+        self.output_filename = "access-om2.out"
+        self.output_file = self.output_0 / self.output_filename
 
         self.accessom2_config = experiment.control_path / "accessom2.nml"
         self.ocean_config = experiment.control_path / "ocean" / "input.nml"
@@ -48,7 +49,7 @@ class AccessOm2(Model):
     ) -> dict[str, Any]:
         """Parse output file and create checksum using defined schema"""
         if output_directory:
-            output_filename = output_directory / "access-om2.out"
+            output_filename = output_directory / self.output_filename
         else:
             output_filename = self.output_file
 

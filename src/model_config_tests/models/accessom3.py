@@ -23,7 +23,8 @@ class AccessOm3(Model):
         self.output_0 = self.experiment.restart000
         self.output_1 = self.experiment.restart001
 
-        self.mom_restart_pointer = self.output_0 / "rpointer.ocn"
+        self.mom_restart_pointer_filename = "rpointer.ocn"
+        self.mom_restart_pointer = self.output_0 / self.mom_restart_pointer_filename
         self.runconfig = experiment.control_path / "nuopc.runconfig"
         self.wav_in = experiment.control_path / "wav_in"
 
@@ -82,7 +83,7 @@ class AccessOm3(Model):
     ) -> dict[str, Any]:
         """Parse output file and create checksum using defined schema"""
         if output_directory:
-            mom_restart_pointer = output_directory / "rpointer.ocn"
+            mom_restart_pointer = output_directory / self.mom_restart_pointer_filename
         else:
             mom_restart_pointer = self.mom_restart_pointer
 

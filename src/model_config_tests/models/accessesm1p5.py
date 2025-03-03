@@ -19,7 +19,8 @@ class AccessEsm1p5(Model):
         # Override model default runtime
         self.default_runtime_seconds = DEFAULT_RUNTIME_SECONDS
 
-        self.output_file = self.output_0 / "access.out"
+        self.output_filename = "access.out"
+        self.output_file = self.output_0 / self.output_filename
 
     def set_model_runtime(
         self, years: int = 0, months: int = 0, seconds: int = DEFAULT_RUNTIME_SECONDS
@@ -57,7 +58,7 @@ class AccessEsm1p5(Model):
     ) -> dict[str, Any]:
         """Parse output file and create checksum using defined schema"""
         if output_directory:
-            output_filename = output_directory / "access.out"
+            output_filename = output_directory / self.output_filename
         else:
             output_filename = self.output_file
 
