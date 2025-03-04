@@ -10,15 +10,15 @@ jobs:
     name: Setup Tasks
     runs-on: ubuntu-latest
     outputs:
-      tags: ${{ steps.get-released-config.outputs.tags }}
+      refs: ${{ steps.get-scheduled-tests.outputs.refs }}
     steps:
       - uses: actions/checkout@v4
         with:
           ref: main
 
-      - name: Get all released configs
-        id: get-released-config
-        run: echo "tags=$(jq --compact-output --raw-output '.scheduled | del(.default) | keys' config/ci.json)" >> $GITHUB_OUTPUT
+      - name: Get all tag/branches of configs for scheduled tests
+        id: get-scheduled-tests
+        run: echo "refs=$(jq --compact-output --raw-output '.scheduled | del(.default) | keys' config/ci.json)" >> $GITHUB_OUTPUT
 
   repro-ci:
     # We use this reusable workflow with a matrix strategy rather than calling repro-ci.yml, as
@@ -28,10 +28,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        config-tag: ${{ fromJson(needs.setup.outputs.tags) }}
+        config-ref: ${{ fromJson(needs.setup.outputs.refs) }}
     uses: ./.github/workflows/config-schedule-2-start.yml
     with:
-      config-tag: ${{ matrix.config-tag }}
+      config-ref: ${{ matrix.config-ref }}
     secrets: inherit
     permissions:
       checks: write

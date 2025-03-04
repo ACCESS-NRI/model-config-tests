@@ -2,10 +2,10 @@ name: Scheduled Checks - Branch Specific
 on:
   workflow_call:
     inputs:
-      config-tag:
+      config-ref:
         type: string
         required: true
-        description: Tag associated with a config branch that is used in the reproducibility run
+        description: Tag or branch of a configuration used for the scheduled checks
 jobs:
   config:
     name: Read CI Testing Configuration
@@ -33,7 +33,7 @@ jobs:
         uses: access-nri/model-config-tests/.github/actions/parse-ci-config@main
         with:
           check: scheduled
-          branch-or-tag: ${{ inputs.config-tag }}
+          branch-or-tag: ${{ inputs.config-ref }}
           config-filepath: "config/ci.json"
 
   repro-ci:
@@ -45,8 +45,8 @@ jobs:
     with:
       # FIXME: Make the environment name an input of some kind - what if we deploy to a different supercomputer?
       environment-name: Gadi
-      config-ref: ${{ inputs.config-tag }}
-      compared-config-ref: ${{ inputs.config-tag }}
+      config-ref: ${{ inputs.config-ref }}
+      compared-config-ref: ${{ inputs.config-ref }}
       test-markers: ${{ needs.config.outputs.markers }}
       model-config-tests-version: ${{ needs.config.outputs.model-config-tests-version }}
       payu-version: ${{ needs.config.outputs.payu-version }}
@@ -74,7 +74,7 @@ jobs:
           model=${config%-*}
           echo "model=$model" >> $GITHUB_OUTPUT
           echo "model-url=https://github.com/ACCESS-NRI/$model" >> $GITHUB_OUTPUT
-          echo "tag-url=https://github.com/ACCESS-NRI/$config/releases/tag/${{ inputs.config-tag }}" >> GITHUB_OUTPUT
+          echo "ref-url=${{ github.server_url }}/${{ github.repository }}/tree/${{ inputs.config-ref }}" >> $GITHUB_OUTPUT
           echo "run-url=${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" >> $GITHUB_OUTPUT
 
           cat $GITHUB_OUTPUT
@@ -88,11 +88,11 @@ jobs:
 
             Model: `${{ steps.variables.outputs.model }}`, found here: ${{ steps.variables.outputs.model-url }}
             Config Repo: `${{ steps.variables.outputs.config }}`, found here: ${{ steps.variables.outputs.config-url }}
-            Config Tag Tested for Reproducibility: `${{ inputs.config-tag }}`, found here: ${{ steps.variables.outputs.tag-url }}
+            Config Ref Tested for Reproducibility: `${{ inputs.config-ref }}`, found here: ${{ steps.variables.outputs.ref-url }}
             Failed Run Log: ${{ steps.variables.outputs.run-url }}
             Experiment Location (Gadi): `${{ needs.repro-ci.outputs.experiment-location }}`
             Checksums created: In the `testing/checksum` directory of ${{ needs.repro-ci.outputs.artifact-url }}
-            Checksums compared against: ${{ format('{0}/{1}/tree/{2}/testing/checksum', github.server_url, github.repository, inputs.config-tag) }}
+            Checksums compared against: ${{ format('{0}/{1}/tree/{2}/testing/checksum', github.server_url, github.repository, inputs.config-ref) }}
 
             Tagging @ACCESS-NRI/model-release
         run: |
@@ -101,6 +101,6 @@ jobs:
           gh label create 'priority:blocker' --color B60205 || true
 
           gh issue create \
-            --title 'Scheduled Repro Check Failed for Config `${{ inputs.config-tag }}`' \
+            --title 'Scheduled Repro Check Failed for Config `${{ inputs.config-ref }}`' \
             --label "type:repro-fail,priority:blocker" \
             --body '${{ env.BODY }}'
