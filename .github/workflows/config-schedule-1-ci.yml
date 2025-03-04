@@ -19,16 +19,19 @@ jobs:
       - name: Get all tag/branches of configs for scheduled tests
         id: get-scheduled-tests
         run: |
-          # Pattern to exclude refs that include ? or * or [
-          exclude_pattern="[\\*\\?\\[]"
+          # Parse keys under scheduled and exclude the default configuration
+          scheduled_keys=$(jq --compact-output --raw-output '.scheduled | del(.default) | keys | .[]' config/ci.json)
 
-          # Filter out keys under scheduled that are not default and do not
-          # include some regex characters
-          refs=$(jq --compact-output --raw-output --arg pattern "$exclude_pattern" '
-            .scheduled | del(.default) | keys | map(select(test($pattern) | not))
-          ' config/ci.json)
+          # Parse the valid branches or tags in the git repository
+          valid_refs="["
+          for ref in $scheduled_keys; do
+            if [[ -n "$(git ls-remote --tags --branches origin "${ref}")" ]]; then
+              valid_refs="$valid_refs\"$ref\","
+            fi
+          done
 
-          echo "refs=$refs" >> $GITHUB_OUTPUT
+          # Remove trailing comma and close the square bracket
+          echo "refs=$( echo "${valid_refs%,}]" | jq -r 'tostring' )" >> $GITHUB_OUTPUT
 
   repro-ci:
     # We use this reusable workflow with a matrix strategy rather than calling repro-ci.yml, as
