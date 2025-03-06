@@ -154,10 +154,36 @@ class TestBitReproducibility:
 
         assert produced == expected
 
+    def test_restart_repeat_repro(self, output_path: Path, control_path: Path):
+        """
+        Test that a run reproduces across restarts with runs of the same length.
+
+        Compares 2 consecutive runs of a configuration with the same config run again
+        """
+        exp_bit_repo1 = setup_exp(control_path, output_path, "test_bit_repro_repeat_1")
+        exp_bit_repo2 = setup_exp(control_path, output_path, "test_bit_repro_repeat_2")
+
+        # Reconfigure to the default model runtime and run
+        for exp in [exp_bit_repo1, exp_bit_repo2]:
+            exp.model.set_model_runtime()
+            exp.setup_and_run()
+            exp.force_qsub_run()
+
+        # Compare expected to produced.
+        assert exp_bit_repo1.model.output_exists()
+        expected = exp_bit_repo1.extract_checksums()
+
+        assert exp_bit_repo2.model.output_exists()
+        produced = exp_bit_repo2.extract_checksums()
+
+        assert produced == expected
+
     @pytest.mark.checksum_slow
     def test_restart_repro(self, output_path: Path, control_path: Path):
         """
-        Test that a run reproduces across restarts.
+        Test that a run reproduces across restarts with runs of different lengths.
+
+        Compares 2x1day with 1x2day
         """
         # First do two short (1 day) runs.
         exp_2x1day = setup_exp(control_path, output_path, "test_restart_repro_2x1day")
