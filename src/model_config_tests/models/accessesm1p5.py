@@ -3,6 +3,7 @@
 from pathlib import Path
 from typing import Any
 
+import f90nml
 import yaml
 
 from model_config_tests.models.model import SCHEMA_VERSION_1_0_0, Model
@@ -21,6 +22,9 @@ class AccessEsm1p5(Model):
 
         self.output_filename = "access.out"
         self.output_file = self.output_0 / self.output_filename
+
+        self.ice_config = experiment.control_path / "ice" / "cice_in.nml"
+        self.atmosphere_config = experiment.control_path / "atmosphere" / "namelists"
 
     def set_model_runtime(
         self, years: int = 0, months: int = 0, seconds: int = DEFAULT_RUNTIME_SECONDS
@@ -48,6 +52,19 @@ class AccessEsm1p5(Model):
 
         with open(self.experiment.config_path, "w") as f:
             yaml.dump(doc, f)
+
+        # Write atmosphere restarts at daily frequency
+        with open(self.atmosphere_config) as f:
+            atmosphere_nml = f90nml.read(f)
+        # 48 timesteps per day
+        atmosphere_nml["NLSTCGEN"]["DUMPFREQim"] = [48, 0, 0, 0]
+        atmosphere_nml.write(self.atmosphere_config, force=True)
+
+        # Write ice restarts at daily frequency
+        with open(self.ice_config) as f:
+            ice_nml = f90nml.read(f)
+        ice_nml["setup_nml"]["dumpfreq"] = "d"
+        ice_nml.write(self.ice_config, force=True)
 
     def output_exists(self) -> bool:
         """Check for existing output file"""
