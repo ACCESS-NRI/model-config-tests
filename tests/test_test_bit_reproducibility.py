@@ -133,7 +133,7 @@ def test_test_bit_repro_historical_access_checksums_saved_on_config(tmp_dir):
 
     # Setup test Helper
     helper = CommonTestHelper(test_name, model_name, tmp_dir)
-    helper.write_config()
+    helper.copy_config("release-preindustrial+concentrations")
 
     # Copy checksums from resources to model configuration
     checksum_path = helper.resources_path / "checksums" / "1-0-0.json"
@@ -173,7 +173,7 @@ def test_test_bit_repro_historical_access_no_reference_checksums(tmp_dir):
 
     # Setup test Helper
     helper = CommonTestHelper(test_name, model_name, tmp_dir)
-    helper.write_config()
+    helper.copy_config("release-preindustrial+concentrations")
 
     # Put some expected output in the archive directory (as we are skipping
     # the actual payu run step)
@@ -225,9 +225,7 @@ def test_test_bit_repro_historical_access_no_model_output(tmp_dir):
 @pytest.mark.parametrize(
     "model_name, output_0, configuration",
     [
-        ("access", "output000", None),
         ("access", "output000", "release-preindustrial+concentrations"),
-        ("access-esm1.6", "output000", None),
         ("access-om2", "output000", "release-1deg_jra55_ryf"),
         ("access-om3", "restart000", "om3-dev-1deg_jra55do_ryf"),
         ("access-om3", "restart000", "om3-wav-dev-1deg_jra55do_ryf"),
