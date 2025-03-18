@@ -259,6 +259,40 @@ def read_config_model_exes(config: dict[str, Any]):
     return exes
 
 
+def get_spack_location_file(model_repo_name, model_version):
+    """Return the spack.location file for the model version
+    from a Github release artefact. Raises an AssertionError if the
+    release artefact or spack.location file is not found."""
+    base_url = f"https://github.com/ACCESS-NRI/{model_repo_name}/releases"
+    # Check whether there is a release artefact for the model version
+    release_url = f"{base_url}/tag/{model_version}"
+    assert (
+        requests.get(release_url).status_code == 200
+    ), f"Failed to find release artefact for model version at {release_url}"
+
+    # Urls for spack.location file in release artefacts assets,
+    # Note: Gadi.spack.location filename is used for models built with
+    # access-nri/build-cd version v4 and later
+    urls = [
+        f"{base_url}/download/{model_version}/spack.location",
+        f"{base_url}/download/{model_version}/Gadi.spack.location",
+    ]
+
+    # Attempt to download a spack.location file
+    spack_location = None
+    for url in urls:
+        response = requests.get(url)
+        if response.status_code == 200:
+            spack_location = str(response.content)
+
+    assert spack_location is not None, (
+        "Failed to download a spack.location or Gadi.spack.location file in "
+        f"the release artefact for model version {model_version}. "
+        f"Checked urls: {(', ').join(urls)}"
+    )
+    return spack_location
+
+
 def check_manifest_exes_in_spack_location(
     model_module_name, model_repo_name, control_path, config
 ):
@@ -301,15 +335,7 @@ def check_manifest_exes_in_spack_location(
     _, module_version = modules[0].split("/")
 
     # Use the module version to download spack.location file
-    url = (
-        f"https://github.com/ACCESS-NRI/{model_repo_name}/"
-        f"releases/download/{module_version}/spack.location"
-    )
-
-    # Check there is a released spack.location file for the module version
-    response = requests.get(url)
-    assert response.status_code == 200, f"Failed to download spack.location from {url}"
-    spack_location = response.content
+    spack_location = get_spack_location_file(model_repo_name, module_version)
 
     # Read exe full paths in the manifests
     exe_paths = read_exe_manifest_fullpaths(control_path)
@@ -319,7 +345,7 @@ def check_manifest_exes_in_spack_location(
 
     for exe_path in exe_paths:
         install_path, exe_name = exe_path.split("/bin/")
-        assert install_path in str(spack_location), (
+        assert install_path in spack_location, (
             "Expected exe path in exe manifest to match an install path in released spack.location "
             f"for {model_module_name}/{module_version}.\n"
             f"Executable path: {exe_path}\n"

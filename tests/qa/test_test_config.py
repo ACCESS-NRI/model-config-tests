@@ -1,7 +1,14 @@
 import shlex
 import subprocess
+import warnings
+
+import pytest
 
 from tests.common import RESOURCES_DIR
+
+# Disable specific warnings from the model_config_tests.qa.test_config module
+warnings.filterwarnings("ignore", category=pytest.PytestUnknownMarkWarning)
+from model_config_tests.qa.test_config import get_spack_location_file
 
 
 def test_test_config_access_om2():
@@ -29,3 +36,29 @@ def test_test_config_access_om2():
         print(f"Test stdout: {result.stdout}\nTest stderr: {result.stderr}")
 
     assert result.returncode == 0
+
+
+@pytest.mark.parametrize(
+    "repo_name, model_version, test_content",
+    [
+        # Release with spack.location file
+        ("ACCESS-OM2", "2024.03.0", "access-om2-2024_03_0"),
+        # Release with Gadi.spack.location file
+        ("ACCESS-OM3", "2025.01.1", "access-om3-2025_01_1"),
+    ],
+)
+def test_get_spack_location_file(repo_name, model_version, test_content):
+    """
+    Test to check that get_spack_location_file runs without error
+    for a couple ACCESS-NRI releases
+    """
+    spack_location = get_spack_location_file(repo_name, model_version)
+    assert test_content in spack_location
+
+
+def test_get_spack_location_file_no_release_artefact():
+    """
+    Test that an error is raised when the release artefact is not found
+    """
+    with pytest.raises(AssertionError, match=r"Failed to find release .*"):
+        get_spack_location_file("fake-repo-name", "fake.module.version")
