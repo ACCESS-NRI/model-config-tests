@@ -216,6 +216,10 @@ class TestAccessEsm1p6:
 
         assert "collate" in config, error_field_nonexistence("collate", "config.yaml")
 
+        assert "enable" in config["collate"], error_field_nonexistence(
+            "collate.enable", "config.yaml"
+        )
+
         assert not config["collate"]["enable"], error_field_incorrect(
             "collate.enable", "config.yaml", False
         )
