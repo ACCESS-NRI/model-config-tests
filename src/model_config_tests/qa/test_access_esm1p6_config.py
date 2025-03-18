@@ -214,9 +214,7 @@ class TestAccessEsm1p6:
         if branch.config_scenario == "amip":
             pytest.skip("amip scenarios do not contain the MOM sub-model")
 
-        assert "collate" in config, error_field_nonexistence(
-            "collate", "config.yaml"
-        )
+        assert "collate" in config, error_field_nonexistence("collate", "config.yaml")
 
         assert not config["collate"]["enable"], error_field_incorrect(
             "collate.enable", "config.yaml", False
@@ -246,15 +244,13 @@ class TestAccessEsm1p6:
 
         mom_input = f90nml.read(mom_input_path)
 
-        assert "io_layout" in mom_input[OCEAN_MODEL_NML_NAME], (
-            error_field_nonexistence("io_layout", MOM_INPUT_NML_FNAME)
+        assert "io_layout" in mom_input[OCEAN_MODEL_NML_NAME], error_field_nonexistence(
+            "io_layout", MOM_INPUT_NML_FNAME
         )
-        assert mom_input["ocean_model_nml"]["io_layout"] == VALID_IO_LAYOUT, (
-            error_field_incorrect(
-                "io_layout",
-                MOM_INPUT_NML_FNAME,
-                ','.join(i for i in VALID_IO_LAYOUT)
-            )
+        assert (
+            mom_input["ocean_model_nml"]["io_layout"] == VALID_IO_LAYOUT
+        ), error_field_incorrect(
+            "io_layout", MOM_INPUT_NML_FNAME, ",".join(i for i in VALID_IO_LAYOUT)
         )
 
     def test_cice_configuration_icefields_nml_in_ice_history_nml(
