@@ -38,6 +38,10 @@ CICE_IN_NML_FNAME = "cice_in.nml"
 ICE_HISTORY_NML_FNAME = "ice_history.nml"
 ICEFIELDS_NML_NAME = "icefields_nml"
 
+MOM_INPUT_NML_FNAME = "input.nml"
+OCEAN_MODEL_NML_NAME = "ocean_model_nml"
+VALID_IO_LAYOUT = [1, 1]
+
 
 ### Some functions to avoid copying assertion error text
 def error_field_nonexistence(field: str, file: str) -> str:
@@ -203,24 +207,55 @@ class TestAccessEsm1p6:
             "restart_freq", "config.yaml", VALID_RESTART_FREQ
         )
 
-    def test_mppnccombine_fast_collate_exe(self, config):
-        if "collate" in config:
-            assert (
-                config["collate"]["exe"] == VALID_MPPNCCOMBINE_EXE
-            ), error_field_incorrect(
-                "collate.exe", "config.yaml", VALID_MPPNCCOMBINE_EXE
-            )
+    def test_collation_disabled(self, config, branch):
+        """
+        Check that collation is not enabled.
+        """
+        if branch.config_scenario == "amip":
+            pytest.skip("amip scenarios do not contain the MOM sub-model")
 
-            assert "mpi" in config["collate"], error_field_nonexistence(
-                "collate.mpi", "config.yaml"
-            )
+        assert "collate" in config, error_field_nonexistence("collate", "config.yaml")
 
-            # Loading the yaml into a dict also converts
-            # `collate.mpi:true`/`collate.mpi:false` to `True`/`False` so we
-            # can assert if it is a `bool`.
-            assert isinstance(config["collate"]["mpi"], bool), error_field_incorrect(
-                "collate.mpi", "config.yaml", "true or false"
-            )
+        assert "enable" in config["collate"], error_field_nonexistence(
+            "collate.enable", "config.yaml"
+        )
+
+        assert not config["collate"]["enable"], error_field_incorrect(
+            "collate.enable", "config.yaml", False
+        )
+
+    def test_mom_io(self, branch, config, control_path):
+        """
+        Check that io_layout set to 1,1 in MOM namelist
+        """
+        if branch.config_scenario == "amip":
+            pytest.skip("amip scenarios do not contain the MOM sub-model")
+
+        # Find MOM sub-model control path
+        model_name = None
+        for sub_model in config["submodels"]:
+            if sub_model["model"] == "mom":
+                model_name = sub_model["name"]
+        assert model_name
+        mom_control_path = control_path / model_name
+
+        # Check input.nml exists
+        mom_input_path = mom_control_path / MOM_INPUT_NML_FNAME
+        assert mom_input_path.is_file(), (
+            f"No {MOM_INPUT_NML_FNAME} file found. This is a required "
+            "configuration file for the MOM model component."
+        )
+
+        mom_input = f90nml.read(mom_input_path)
+
+        assert "io_layout" in mom_input[OCEAN_MODEL_NML_NAME], error_field_nonexistence(
+            "io_layout", MOM_INPUT_NML_FNAME
+        )
+        assert (
+            mom_input["ocean_model_nml"]["io_layout"] == VALID_IO_LAYOUT
+        ), error_field_incorrect(
+            "io_layout", MOM_INPUT_NML_FNAME, ",".join(str(i) for i in VALID_IO_LAYOUT)
+        )
 
     def test_cice_configuration_icefields_nml_in_ice_history_nml(
         self, branch, config, control_path
