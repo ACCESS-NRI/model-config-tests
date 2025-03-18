@@ -79,6 +79,18 @@ class AccessEsm1p5(Model):
         else:
             output_filename = self.output_file
 
+        # Find if mom submodel is present
+        self.experiment.config
+
+
+        model_name = None
+        for sub_model in config["submodels"]:
+            if sub_model["model"] == "cice":
+                model_name = sub_model["name"]
+        assert model_name
+        cice_control_path = control_path / model_name
+
+
         # Extract mom5 checksums
         output_checksums = mom5_extract_checksums(output_filename)
 
