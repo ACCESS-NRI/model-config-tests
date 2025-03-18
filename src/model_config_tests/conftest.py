@@ -116,20 +116,18 @@ def pytest_addoption(parser):
 
 def pytest_configure(config):
     config.addinivalue_line(
-        "markers", "checksum: mark tests to run as part of reproducibility CI tests"
+        "markers", "repro: mark tests to run as part of reproducibility tests"
     )
     config.addinivalue_line(
-        "markers", "checksum_slow: mark tests as slow reproducibility tests"
+        "markers", "repro_historical: mark tests that check historical reproducibility"
     )
     config.addinivalue_line(
-        "markers", "repro_historical: mark tests as historical reproducibility test"
+        "markers", "repro_repeat: mark tests that check repeat reproducibility"
     )
     config.addinivalue_line(
-        "markers", "repro_repeat: mark tests as repeat reproducibility test"
+        "markers", "repro_restart: mark tests that check restart reproducibility"
     )
-    config.addinivalue_line(
-        "markers", "repro_restart: mark tests as restart reproducibility test"
-    )
+    config.addinivalue_line("markers", "slow: mark tests that are slow to run")
     config.addinivalue_line(
         "markers",
         "config: mark as configuration tests for release branches in quick QA CI checks",
