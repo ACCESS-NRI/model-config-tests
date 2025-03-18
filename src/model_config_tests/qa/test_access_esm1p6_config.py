@@ -250,7 +250,7 @@ class TestAccessEsm1p6:
         assert (
             mom_input["ocean_model_nml"]["io_layout"] == VALID_IO_LAYOUT
         ), error_field_incorrect(
-            "io_layout", MOM_INPUT_NML_FNAME, ",".join(i for i in VALID_IO_LAYOUT)
+            "io_layout", MOM_INPUT_NML_FNAME, ",".join(str(i) for i in VALID_IO_LAYOUT)
         )
 
     def test_cice_configuration_icefields_nml_in_ice_history_nml(
