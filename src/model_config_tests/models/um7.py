@@ -7,7 +7,7 @@ from pathlib import Path
 FINAL_ABSOLUTE_NORM = "Final Absolute Norm"
 
 
-def um7_extract_norms(output_filename: Path) -> dict[str, list[any]]:
+def um7_extract_norms(output_filename: Path, n_norms: int = 10) -> dict[str, list[any]]:
     """
     Given an atm.fort6.pe0 log file, extract the solver statistics generated
     by the UM7 model.
@@ -34,11 +34,9 @@ def um7_extract_norms(output_filename: Path) -> dict[str, list[any]]:
             # Check for checksum pattern match
             match = re.match(pattern, line)
             if match:
-                absolute_norm = match.group(1).strip()
+                output_norms[FINAL_ABSOLUTE_NORM].append(match.group(1).strip())
 
-        # Save the absolute norm from the last timestep
-        last_ts_final_absolute_norm = absolute_norm
-
-        output_norms[FINAL_ABSOLUTE_NORM].append(last_ts_final_absolute_norm)
+    # Save last n_norms
+    output_norms[FINAL_ABSOLUTE_NORM] = output_norms[FINAL_ABSOLUTE_NORM][-n_norms:]
 
     return output_norms

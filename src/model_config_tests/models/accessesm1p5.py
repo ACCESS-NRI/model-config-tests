@@ -2,12 +2,14 @@
 
 from pathlib import Path
 from typing import Any
+import os
 
 import f90nml
 import yaml
 
 from model_config_tests.models.model import SCHEMA_VERSION_1_0_0, Model
 from model_config_tests.models.mom5 import mom5_extract_checksums
+from model_config_tests.models.um7 import um7_extract_norms
 from model_config_tests.util import DAY_IN_SECONDS
 
 # Default model runtime (24 hrs)
@@ -22,9 +24,6 @@ class AccessEsm1p5(Model):
 
         self.output_filename = "access.out"
         self.output_file = self.output_0 / self.output_filename
-
-        self.ice_config = experiment.control_path / "ice" / "cice_in.nml"
-        self.atmosphere_config = experiment.control_path / "atmosphere" / "namelists"
 
     def set_model_runtime(
         self, years: int = 0, months: int = 0, seconds: int = DEFAULT_RUNTIME_SECONDS
@@ -53,18 +52,27 @@ class AccessEsm1p5(Model):
         with open(self.experiment.config_path, "w") as f:
             yaml.dump(doc, f)
 
-        # Write atmosphere restarts at daily frequency
-        with open(self.atmosphere_config) as f:
-            atmosphere_nml = f90nml.read(f)
-        # 48 timesteps per day
-        atmosphere_nml["NLSTCGEN"]["DUMPFREQim"] = [48, 0, 0, 0]
-        atmosphere_nml.write(self.atmosphere_config, force=True)
+        # Write UM and CICE restarts at daily frequency.
+        # Only set when these components are present to allow for
+        # amip configurations.
+        for submodel in self.experiment.config["submodels"]:
 
-        # Write ice restarts at daily frequency
-        with open(self.ice_config) as f:
-            ice_nml = f90nml.read(f)
-        ice_nml["setup_nml"]["dumpfreq"] = "d"
-        ice_nml.write(self.ice_config, force=True)
+            if submodel["model"] == "um":
+                atmosphere_config = self.experiment.control_path / submodel["name"] / "namelists"
+                # Write atmosphere restarts at daily frequency
+                with open(atmosphere_config) as f:
+                    atmosphere_nml = f90nml.read(f)
+                # 48 timesteps per day
+                atmosphere_nml["NLSTCGEN"]["DUMPFREQim"] = [48, 0, 0, 0]
+                atmosphere_nml.write(atmosphere_config, force=True)
+
+            elif submodel["model"] == "cice":
+                # Write ice restarts at daily frequency
+                ice_config = self.experiment.control_path / submodel["name"] / "cice_in.nml"
+                with open(ice_config) as f:
+                    ice_nml = f90nml.read(f)
+                ice_nml["setup_nml"]["dumpfreq"] = "d"
+                ice_nml.write(ice_config, force=True)
 
     def output_exists(self) -> bool:
         """Check for existing output file"""
@@ -74,26 +82,32 @@ class AccessEsm1p5(Model):
         self, output_directory: Path = None, schema_version: str = None
     ) -> dict[str, Any]:
         """Parse output file and create checksum using defined schema"""
-        if output_directory:
-            output_filename = output_directory / self.output_filename
-        else:
-            output_filename = self.output_file
 
-        # Find if mom submodel is present
-        self.experiment.config
+        submodels = {
+            submodel["model"]: {"submodel_name": submodel["name"]} for submodel in self.experiment.config["submodels"]
+        }
 
+        # Extract checksums from output, preferentially using mom5
+        submodel_extract_checksums = None
+        if "mom" in submodels:
+            output_filename = self.output_filename
+            submodel_extract_checksums = mom5_extract_checksums
+        elif "um" in submodels:
+            # UM output is stored in submodel ouptut sub-directory
+            output_filename = self.output_0 / submodels["um"]["submodel_name"] / "atm.fort6.pe0"
+            submodel_extract_checksums = um7_extract_norms
 
-        model_name = None
-        for sub_model in config["submodels"]:
-            if sub_model["model"] == "cice":
-                model_name = sub_model["name"]
-        assert model_name
-        cice_control_path = control_path / model_name
+        assert submodel_extract_checksums is not None, (
+            "Failed to find suitable submodel for checksum extraction."
+            "Required 'mom' or 'um' submodels not present in config.yaml "
+        )
 
+        if output_directory is not None:
+            output_filename = output_directory / output_filename
 
-        # Extract mom5 checksums
-        output_checksums = mom5_extract_checksums(output_filename)
+        output_checksums = submodel_extract_checksums(output_filename)
 
+        # Format checksums
         if schema_version is None:
             schema_version = self.default_schema_version
 

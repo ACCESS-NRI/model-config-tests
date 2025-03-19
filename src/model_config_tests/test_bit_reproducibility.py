@@ -131,7 +131,11 @@ class TestBitReproducibility:
 
         assert (
             hist_checksums == checksums
-        ), f"Checksums were not equal. The new checksums have been written to {checksum_output_file}."
+        ), (
+            f"Checksums were not equal. The new checksums have been written to {checksum_output_file}."
+            f"New: {checksums}"
+            f"Old: {hist_checksums}"
+            )
 
     @pytest.mark.repro
     @pytest.mark.repro_repeat
