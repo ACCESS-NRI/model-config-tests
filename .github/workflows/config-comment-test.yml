@@ -313,7 +313,7 @@ jobs:
 
           if [ -z "$(git status --porcelain)" ]; then  # If there are no added files
             echo "::warning::Attempting to add the changed checksums failed as they were identical to the existing ones on the PR branch. A previous commit must have updated them already, and they match."
-            continue
+            exit 0
           fi
 
           git commit -m "Updated checksums as part of ${{ env.RUN_URL }}"
