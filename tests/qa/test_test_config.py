@@ -1,6 +1,7 @@
 import shlex
 import subprocess
 import warnings
+from unittest.mock import Mock, patch
 
 import pytest
 
@@ -62,3 +63,27 @@ def test_get_spack_location_file_no_release_artefact():
     """
     with pytest.raises(AssertionError, match=r"Failed to find release .*"):
         get_spack_location_file("fake-repo-name", "fake.module.version")
+
+
+def mock_request_get(url, *args, **kwargs):
+    """Custom side effect function for mocking requests.get to pass the initial
+    initial request (e.g that a release artefact exists)
+    but returns a 404 status for subsequent requests.get calls
+    """
+    response = Mock()
+    if url == "https://github.com/ACCESS-NRI/fake-repo/releases/tag/fake-version":
+        response.status_code = 200
+    else:
+        response.status_code = 404
+    return response
+
+
+def test_get_spack_location_file_no_spack_location():
+    """
+    Test that an error is raised when the spack.location
+    or Gadi.spack.location file is not found in the release artefact
+    """
+    with patch("requests.get", side_effect=mock_request_get):
+        error_msg = r"Failed to download a spack.location .*"
+        with pytest.raises(AssertionError, match=error_msg):
+            get_spack_location_file("fake-repo", "fake-version")
