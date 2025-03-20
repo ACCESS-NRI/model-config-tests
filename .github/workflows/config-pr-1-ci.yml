@@ -153,9 +153,7 @@ jobs:
     # Run quick, non-HPC tests on the runner.
     name: QA CI Checks
     needs:
-      - commit-check
       - config
-    if: needs.commit-check.outputs.authorship != vars.GH_ACTIONS_BOT_GIT_USER_NAME
     runs-on: ubuntu-latest
     permissions:
       checks: write
