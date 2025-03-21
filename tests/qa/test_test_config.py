@@ -84,6 +84,6 @@ def test_get_spack_location_file_no_spack_location():
     or Gadi.spack.location file is not found in the release artefact
     """
     with patch("requests.get", side_effect=mock_request_get):
-        error_msg = r"Failed to download a spack.location .*"
+        error_msg = r"Failed to download a spack\.location .*"
         with pytest.raises(AssertionError, match=error_msg):
             get_spack_location_file("fake-repo", "fake-version")
