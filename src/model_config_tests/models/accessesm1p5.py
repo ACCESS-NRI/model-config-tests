@@ -2,7 +2,6 @@
 
 from pathlib import Path
 from typing import Any
-import os
 
 import f90nml
 import yaml
@@ -58,7 +57,9 @@ class AccessEsm1p5(Model):
         for submodel in self.experiment.config["submodels"]:
 
             if submodel["model"] == "um":
-                atmosphere_config = self.experiment.control_path / submodel["name"] / "namelists"
+                atmosphere_config = (
+                    self.experiment.control_path / submodel["name"] / "namelists"
+                )
                 # Write atmosphere restarts at daily frequency
                 with open(atmosphere_config) as f:
                     atmosphere_nml = f90nml.read(f)
@@ -68,7 +69,9 @@ class AccessEsm1p5(Model):
 
             elif submodel["model"] == "cice":
                 # Write ice restarts at daily frequency
-                ice_config = self.experiment.control_path / submodel["name"] / "cice_in.nml"
+                ice_config = (
+                    self.experiment.control_path / submodel["name"] / "cice_in.nml"
+                )
                 with open(ice_config) as f:
                     ice_nml = f90nml.read(f)
                 ice_nml["setup_nml"]["dumpfreq"] = "d"
@@ -84,7 +87,8 @@ class AccessEsm1p5(Model):
         """Parse output file and create checksum using defined schema"""
 
         submodels = {
-            submodel["model"]: {"submodel_name": submodel["name"]} for submodel in self.experiment.config["submodels"]
+            submodel["model"]: {"submodel_name": submodel["name"]}
+            for submodel in self.experiment.config["submodels"]
         }
 
         # Extract checksums from output, preferentially using mom5
@@ -94,7 +98,9 @@ class AccessEsm1p5(Model):
             submodel_extract_checksums = mom5_extract_checksums
         elif "um" in submodels:
             # UM output is stored in submodel ouptut sub-directory
-            output_filename = self.output_0 / submodels["um"]["submodel_name"] / "atm.fort6.pe0"
+            output_filename = (
+                self.output_0 / submodels["um"]["submodel_name"] / "atm.fort6.pe0"
+            )
             submodel_extract_checksums = um7_extract_norms
 
         assert submodel_extract_checksums is not None, (
