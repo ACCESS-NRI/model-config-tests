@@ -1,5 +1,5 @@
-from collections import defaultdict
 import json
+from collections import defaultdict
 from pathlib import Path
 from unittest.mock import Mock
 
@@ -12,11 +12,7 @@ from tests.common import RESOURCES_DIR
 
 MODEL_NAMES = model_index.keys()
 
-ESM1PX_CONFIG = {
-    "submodels": [
-            {"model": "mom", "name": "ocean"}
-    ]
-}
+ESM1PX_CONFIG = {"submodels": [{"model": "mom", "name": "ocean"}]}
 model_checksum_configs = defaultdict(dict)
 model_checksum_configs["access"] = ESM1PX_CONFIG
 model_checksum_configs["access-esm1.6"] = ESM1PX_CONFIG
