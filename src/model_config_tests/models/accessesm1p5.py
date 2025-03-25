@@ -94,7 +94,7 @@ class AccessEsm1p5(Model):
         # Extract checksums from output, preferentially using mom5
         submodel_extract_checksums = None
         if "mom" in submodels:
-            output_filename = self.output_filename
+            output_filename = self.output_file
             submodel_extract_checksums = mom5_extract_checksums
         elif "um" in submodels:
             # UM output is stored in submodel ouptut sub-directory

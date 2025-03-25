@@ -1,3 +1,4 @@
+from collections import defaultdict
 import json
 from pathlib import Path
 from unittest.mock import Mock
@@ -11,6 +12,15 @@ from tests.common import RESOURCES_DIR
 
 MODEL_NAMES = model_index.keys()
 
+ESM1PX_CONFIG = {
+    "submodels": [
+            {"model": "mom", "name": "ocean"}
+    ]
+}
+model_checksum_configs = defaultdict(dict)
+model_checksum_configs["access"] = ESM1PX_CONFIG
+model_checksum_configs["access-esm1.6"] = ESM1PX_CONFIG
+
 
 @pytest.mark.parametrize("model_name", MODEL_NAMES)
 def test_extract_checksums(model_name):
@@ -21,6 +31,7 @@ def test_extract_checksums(model_name):
     mock_experiment.output000 = resources_dir / "output000"
     mock_experiment.restart000 = resources_dir / "restart000"
     mock_experiment.control_path = Path("test/tmp")
+    mock_experiment.config = model_checksum_configs[model_name]
 
     # Create Model instance
     ModelType = model_index[model_name]
@@ -56,6 +67,7 @@ def test_extract_checksums_unsupported_version(model_name):
     mock_experiment.output000 = resources_dir / "output000"
     mock_experiment.restart000 = resources_dir / "restart000"
     mock_experiment.control_path = Path("test/tmp")
+    mock_experiment.config = model_checksum_configs[model_name]
 
     # Create Model instance
     ModelType = model_index[model_name]
