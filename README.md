@@ -122,7 +122,6 @@ Currently, these repositories make use of the reusable CI:
 - [access-esm1.5-configs](https://github.com/ACCESS-NRI/access-esm1.5-configs)
 - [access-esm1.6-configs](https://github.com/ACCESS-NRI/access-esm1.6-configs)
 - [access-om3-configs](https://github.com/ACCESS-NRI/access-om3-configs)
-- [access-om3-wav-configs](https://github.com/ACCESS-NRI/access-om3-wav-configs) (now depreciated with configs moved to `access-om3-configs`)
 
 Below is information on the use of these workflows.
 
