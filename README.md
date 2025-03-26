@@ -6,6 +6,15 @@ The checksum pytests are used for reproducibility CI checks in this repository. 
 
 Code from these pytests is adapted from COSIMAS's ACCESS-OM2's [bit reproducibility tests](https://github.com/COSIMA/access-om2/blob/master/test/test_bit_reproducibility.py).
 
+## Definitions for reproducibility
+It is helpful if we work from the same definitions of what 'reproducibility' means, we consider four kinds:
+ 1. _Determinism_.
+      1. _Determinism rest_: Repeated runs give the same result from rest;
+      1. _Determinism restart_: Repeated runs give the same result from a restart file;
+ 1. _Restart reproducibility_: Two short runs match a single longer run, in other words, reproducibility across a restart boundary;
+ 1. _Historical reproducibility_: Match a stored previous result;
+ 2. _Build reproducibilty_: Match a stored previous result when using the same build description files on the same machine.
+
 ## Pytests
 
 ### How to run pytests manually on NCI
@@ -113,7 +122,7 @@ Currently, these repositories make use of the reusable CI:
 - [access-esm1.5-configs](https://github.com/ACCESS-NRI/access-esm1.5-configs)
 - [access-esm1.6-configs](https://github.com/ACCESS-NRI/access-esm1.6-configs)
 - [access-om3-configs](https://github.com/ACCESS-NRI/access-om3-configs)
-- [access-om3-wav-configs](https://github.com/ACCESS-NRI/access-om3-wav-configs)
+- [access-om3-wav-configs](https://github.com/ACCESS-NRI/access-om3-wav-configs) (now depreciated with configs moved to `access-om3-configs`)
 
 Below is information on the use of these workflows.
 
@@ -207,7 +216,7 @@ The configuration properties needed to run the tests are:
 Pytest markers select what pytests to run in `model-config-tests`. Current markers include:
 
 - `checksum`: Historical reproducibility test that runs a model and compares checksums with a stored previous result.
-- `checksum_slow`: Restart reproducibility tests. These include model determinism, by repeating running a configuration from initial conditions to check it reproduces the same output, and checking reproducibility by confirming two short consecutive model runs give the same result as a longer single model run.
+- `checksum_slow`: Restart reproducibility tests. These include model determinism, by repeating running a configuration from initial conditions to check it reproduces the same output (`Determinism rest`--see above `Definitions for reproducibility`), and checking reproducibility by confirming two short consecutive model runs give the same result as a longer single model run (`Restart reproducibility`--see above `Definitions for reproducibility`)).
 - `dev_config`: General configuration QA tests.
 - `config`: Configuration QA tests for released branches. This includes the `dev_config` tests.
 
