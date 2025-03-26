@@ -215,8 +215,11 @@ The configuration properties needed to run the tests are:
 
 Pytest markers select what pytests to run in `model-config-tests`. Current markers include:
 
-- `checksum`: Historical reproducibility test that runs a model and compares checksums with a stored previous result.
-- `checksum_slow`: Restart reproducibility tests. These include model determinism, by repeating running a configuration from initial conditions to check it reproduces the same output (`Determinism rest`--see above `Definitions for reproducibility`), and checking reproducibility by confirming two short consecutive model runs give the same result as a longer single model run (`Restart reproducibility`--see above `Definitions for reproducibility`)).
+- `repro`: All available reproducibility tests.
+- `repro_historical`: Historical reproducibility test that confirms results from a model run match a stored previous result.
+- `repro_repeat`: Determinism test that confirms repeated model runs give the same result.
+- `repro_restart`: Restart reproducibility test that confirms two short consecutive model runs give the same result as a longer single model run.
+- `slow`: Tests that are slow to run
 - `dev_config`: General configuration QA tests.
 - `config`: Configuration QA tests for released branches. This includes the `dev_config` tests.
 
