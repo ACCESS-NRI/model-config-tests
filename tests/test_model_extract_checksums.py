@@ -16,19 +16,21 @@ MODEL_NAMES = model_index.keys()
 # TODO: Update with release esm1.6 configurations when available
 # TODO: Is there a way to test checksum extraction for amip configurations?
 @pytest.mark.parametrize(
-    "model_name, configuration",
+    "model_name, configuration, output, expected_checksum",
     [
-        ("access", "release-preindustrial+concentrations"),
-        ("access-om2", None),
-        ("access-om3", None),
+        ("access", "release-preindustrial+concentrations", "output000", "checksums"),
+        ("access-esm1.6", "dev-amip", "amip-output000", "amip-checksums"),
+        ("access-esm1.6", "dev-preindustrial+concentrations", "output000", "checksums"),
+        ("access-om2", None, "output000", "checksums"),
+        ("access-om3", None, "output000", "checksums"),
     ],
 )
-def test_extract_checksums(model_name, configuration):
+def test_extract_checksums(model_name, configuration, output, expected_checksum):
     resources_dir = RESOURCES_DIR / model_name
 
     # Mock ExpTestHelper
     mock_experiment = Mock()
-    mock_experiment.output000 = resources_dir / "output000"
+    mock_experiment.output000 = resources_dir / output
     mock_experiment.restart000 = resources_dir / "restart000"
     mock_experiment.control_path = Path("test/tmp")
     if configuration:
@@ -48,7 +50,7 @@ def test_extract_checksums(model_name, configuration):
         assert checksums["schema_version"] == version
 
         # Check the entire checksum file is expected
-        checksum_file = resources_dir / "checksums" / f"{version}.json"
+        checksum_file = resources_dir / expected_checksum / f"{version}.json"
         with open(checksum_file) as file:
             expected_checksums = json.load(file)
 

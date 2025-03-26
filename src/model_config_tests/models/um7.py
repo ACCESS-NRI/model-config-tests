@@ -20,7 +20,7 @@ def um7_extract_norms(output_filename: Path, n_norms: int = 10) -> dict[str, lis
     # Regex pattern for final absolute norms in the `atm.fort6.pe0` file
     # Examples:
     # Final Absolute Norm :   9.735899063190541E-003
-    pattern = rf"\s*{FINAL_ABSOLUTE_NORM}\s+:\s+\d+\.?(\d*E?-?\d*)"
+    pattern = rf"\s*{FINAL_ABSOLUTE_NORM}\s+:\s+(\d+\.?\d*E?-?\d*)"
 
     # checksums outputted in form:
     # {
