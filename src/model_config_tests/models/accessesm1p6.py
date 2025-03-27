@@ -7,5 +7,4 @@ class AccessEsm1p6(AccessEsm1p5):
     def __init__(self, experiment):
         super().__init__(experiment)
 
-        self.output_filename = "access-esm1.6.out"
-        self.output_file = self.output_0 / self.output_filename
+        self.set_output_files(model_std_file="access-esm1.6.out")
