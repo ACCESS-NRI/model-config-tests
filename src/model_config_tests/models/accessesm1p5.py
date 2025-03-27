@@ -26,11 +26,23 @@ class AccessEsm1p5(Model):
             for submodel in self.experiment.config["submodels"]
         }
 
+        self.set_output_files(model_std_file="access.out")
+
+    def set_output_files(self, model_std_file: str):
+        """
+        Set paths for output files used for extracting checksums, depending on
+        available submodels.
+        """
         if "mom" in self.submodels:
-            self.output_filename = "access.out"
+            self.output_filename = model_std_file
         elif "um" in self.submodels:
             # UM output is stored in submodel ouptut sub-directory
             self.output_filename = Path(self.submodels["um"]) / "atm.fort6.pe0"
+        else:
+            raise RuntimeError(
+                "Failed to find suitable submodel for checksum extraction."
+                "Required 'mom' or 'um' submodels not present in config.yaml."
+            )
 
         self.output_file = self.output_0 / self.output_filename
 
@@ -106,11 +118,6 @@ class AccessEsm1p5(Model):
         elif "um" in self.submodels:
             # UM output is stored in submodel ouptut sub-directory
             submodel_extract_checksums = um7_extract_norms
-
-        assert submodel_extract_checksums is not None, (
-            "Failed to find suitable submodel for checksum extraction."
-            "Required 'mom' or 'um' submodels not present in config.yaml "
-        )
 
         output_checksums = submodel_extract_checksums(output_filepath)
 
