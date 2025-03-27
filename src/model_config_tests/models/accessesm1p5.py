@@ -94,11 +94,11 @@ class AccessEsm1p5(Model):
         # Extract checksums from output, preferentially using mom5
         submodel_extract_checksums = None
         if "mom" in submodels:
-            output_filename = self.output_file
+            output_filename = self.output_filename
             submodel_extract_checksums = mom5_extract_checksums
         elif "um" in submodels:
             # UM output is stored in submodel ouptut sub-directory
-            output_filename = self.output_0 / submodels["um"] / "atm.fort6.pe0"
+            output_filename = Path(submodels["um"]) / "atm.fort6.pe0"
             submodel_extract_checksums = um7_extract_norms
 
         assert submodel_extract_checksums is not None, (
@@ -107,9 +107,11 @@ class AccessEsm1p5(Model):
         )
 
         if output_directory is not None:
-            output_filename = output_directory / output_filename
+            output_filepath = output_directory / output_filename
+        else:
+            output_filepath = self.output_0 / output_filename
 
-        output_checksums = submodel_extract_checksums(output_filename)
+        output_checksums = submodel_extract_checksums(output_filepath)
 
         # Format checksums
         if schema_version is None:
