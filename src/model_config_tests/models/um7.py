@@ -5,9 +5,12 @@ from collections import defaultdict
 from pathlib import Path
 
 FINAL_ABSOLUTE_NORM = "Final Absolute Norm"
+DEFAULT_N_NORMS = 10
 
 
-def um7_extract_norms(output_filename: Path, n_norms: int = 10) -> dict[str, list[any]]:
+def um7_extract_norms(
+    output_filename: Path, n_norms: int = DEFAULT_N_NORMS
+) -> dict[str, list[any]]:
     """
     Given an atm.fort6.pe0 log file, extract the solver statistics generated
     by the UM7 model.

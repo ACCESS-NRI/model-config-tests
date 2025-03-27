@@ -87,7 +87,7 @@ class AccessEsm1p5(Model):
         """Parse output file and create checksum using defined schema"""
 
         submodels = {
-            submodel["model"]: {"submodel_name": submodel["name"]}
+            submodel["model"]: submodel["name"]
             for submodel in self.experiment.config["submodels"]
         }
 
@@ -98,9 +98,7 @@ class AccessEsm1p5(Model):
             submodel_extract_checksums = mom5_extract_checksums
         elif "um" in submodels:
             # UM output is stored in submodel ouptut sub-directory
-            output_filename = (
-                self.output_0 / submodels["um"]["submodel_name"] / "atm.fort6.pe0"
-            )
+            output_filename = self.output_0 / submodels["um"] / "atm.fort6.pe0"
             submodel_extract_checksums = um7_extract_norms
 
         assert submodel_extract_checksums is not None, (
