@@ -13,25 +13,24 @@ on:
         description: Whether to commit the checksums to the config branch once generated.
       committed-checksum-location:
         type: string
-        required: false
-        default: ./testing/checksum
+        required: true
         description: "If checksums are committed: Where in the repository the generated checksums should be committed to."
-      committed-checksum-tag:
+      committed-checksum-tag-version:
         type: string
-        required: false
-        description: "If checksums are committed: An optional tag to attach to the committed checksums."
+        required: true
+        description: "If checksums are committed: An optional tag version to attach to the committed checksums."
+      committed-checksum-create-release:
+        type: boolean
+        required: true
+        description: "If checksums are being committed and a tag is being created: Whether to create a GitHub Release for the committed checksums."
       environment-name:
         type: string
         required: true
         description: The name of a GitHub Environment that is inherited from the caller.
-      model-config-tests-version:
+      test-markers:
         type: string
         required: true
-        description: A version of the model-config-tests package
-      payu-version:
-        type: string
-        required: true
-        description: The payu module version used to create test virtual environment
+        description: A pytest-style string of pytest markers to run
     outputs:
       artifact-name:
         value: ${{ jobs.repro-ci.outputs.artifact-name }}
@@ -43,15 +42,62 @@ on:
         value: ${{ jobs.repro-ci.outputs.experiment-location }}
         description: Location of the experiment on the target environment
 jobs:
+  config:
+    name: Read Testing Configuration
+    runs-on: ubuntu-latest
+    outputs:
+      payu-version: ${{ steps.repro-config.outputs.payu-version }}
+      model-config-tests-version: ${{ steps.repro-config.outputs.model-config-tests-version }}
+      checksum-tag: ${{ steps.checksum-tag.outputs.checksum-tag }}
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Validate
+        uses: access-nri/schema/.github/actions/validate-with-schema@main
+        with:
+          schema-version: ${{ vars.CI_JSON_SCHEMA_VERSION }}
+          meta-schema-version: draft-2020-12
+          schema-location: au.org.access-nri/model/configuration/ci
+          data-location: config/ci.json
+
+      - name: Read reproducibility tests config
+        id: repro-config
+        uses: access-nri/model-config-tests/.github/actions/parse-ci-config@main
+        with:
+          check: reproducibility
+          branch-or-tag: ${{ inputs.config-branch-name }}
+          config-filepath: "config/ci.json"
+
+      - name: Set committed checksum tag
+        if: inputs.commit-checksums
+        id: checksum-tag
+        run: echo "checksum-tag=${{ inputs.config-branch-name }}-${{ inputs.committed-checksum-tag-version }}" >> $GITHUB_OUTPUT
+
+  log-inputs:
+    name: Log Inputs
+    needs:
+      - config
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          echo '::notice::This deployment is using the following inputs: `config-branch-name`=`${{ inputs.config-branch-name }}`, `commit-checksums`=`${{ inputs.commit-checksums }}`, `committed-checksum-location`=`${{ inputs.committed-checksum-location }}`,`committed-checksum-tag-version`=`${{ inputs.committed-checksum-tag-version }}`, `committed-checksum-create-release`=`${{ inputs.committed-checksum-create-release }}`, `test-markers`=`${{ inputs.test-markers }}`.'
+          echo '::notice::This deployment is using Payu Version ${{ needs.config.outputs.payu-version }} and Model Config Tests Version ${{ needs.config.outputs.model-config-tests-version }}'
+
   repro-ci:
     name: Repro CI
+    needs:
+      - config
+      - log-inputs
     uses: access-nri/model-config-tests/.github/workflows/test-repro.yml@main
     with:
       config-ref: ${{ inputs.config-branch-name }}
       environment-name: ${{ inputs.environment-name }}
-      test-markers: checksum
-      model-config-tests-version: ${{ inputs.model-config-tests-version }}
-      payu-version: ${{ inputs.payu-version }}
+      test-markers: ${{ inputs.test-markers }}
+      model-config-tests-version: ${{ needs.config.outputs.model-config-tests-version }}
+      payu-version: ${{ needs.config.outputs.payu-version }}
     secrets: inherit
     permissions:
       contents: write
@@ -60,11 +106,13 @@ jobs:
   commit-checksum-to-branch:
     name: Commit Checksum To ${{ inputs.config-branch-name }}
     needs:
+      - config
       - repro-ci
     if: inputs.commit-checksums
     runs-on: ubuntu-latest
     env:
       ARTIFACT_LOCAL_LOCATION: /opt/artifact
+      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -84,11 +132,8 @@ jobs:
           cp --recursive --verbose ${{ env.ARTIFACT_LOCAL_LOCATION }}/*/* ${{ inputs.committed-checksum-location }}
 
       - name: Update version in metadata.yaml
-        if: inputs.committed-checksum-tag != ''
-        run: |
-          full_tag=${{ inputs.committed-checksum-tag }}
-          version=${full_tag/*-}
-          yq -i ".version = \"${version}\"" metadata.yaml
+        if: inputs.committed-checksum-tag-version != ''
+        run: yq -i ".version = \"${{ inputs.committed-checksum-tag-version }}\"" metadata.yaml
 
       - name: Import Commit-Signing Key
         uses: crazy-max/ghaction-import-gpg@01dd5d3ca463c7f10f7f4f7b4f177225ac661ee4  # v6.1.0
@@ -105,24 +150,24 @@ jobs:
       - name: Commit Checksums to Repo
         run: |
           git add .
-          git commit -m "Added initial checksums generated from ${{ inputs.config-branch-name }}"
+          git commit -m "Added initial checksums generated from ${{ inputs.config-branch-name }} at ${{ env.RUN_URL }}"
           git push
           echo "::notice::Committed and pushed checksums generated from ${{ inputs.config-branch-name }}"
 
       - name: Tag Checksums in Repo
-        if: inputs.committed-checksum-tag != ''
+        if: inputs.committed-checksum-tag-version != ''
         env:
-          STATUS: ${{ endsWith(inputs.committed-checksum-tag, '.0') && 'breaking' || 'preserving' }}
+          STATUS: ${{ endsWith(inputs.committed-checksum-tag-version, '.0') && 'breaking' || 'preserving' }}
         run: |
-          git tag ${{ inputs.committed-checksum-tag }} -m "Repro-${{ env.STATUS }} update to ${{ inputs.config-branch-name }} via model-config-tests 'generate-checksums.yml' workflow."
+          git tag ${{ needs.config.outputs.checksum-tag }} -m "Repro-${{ env.STATUS }} update to ${{ inputs.config-branch-name }} at ${{ env.RUN_URL }}."
           git push --tags
-          echo "::notice::Pushed new tag ${{ inputs.committed-checksum-tag }}"
+          echo "::notice::Pushed new tag ${{ needs.config.outputs.checksum-tag }} to ${{ inputs.config-branch-name }}"
 
       - name: Create Release
-        if: inputs.committed-checksum-tag != ''
+        if: inputs.committed-checksum-tag-version != '' && inputs.committed-checksum-create-release
         env:
-          TAG: ${{ inputs.committed-checksum-tag }}
-          IS_REPRO_BREAK: ${{ endsWith(inputs.committed-checksum-tag, '.0') && 'DOES' || 'does not' }}
+          TAG: ${{ needs.config.outputs.checksum-tag }}
+          IS_REPRO_BREAK: ${{ endsWith(inputs.committed-checksum-tag-version, '.0') && 'DOES' || 'does not' }}
         uses: softprops/action-gh-release@de2c0eb89ae2a093876385947365aca7b0e5f844  #v0.1.15
         with:
           tag_name: ${{ env.TAG }}
