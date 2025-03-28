@@ -32,6 +32,10 @@ on:
         type: string
         required: true
         description: The payu module version used to create test virtual environment
+      test-markers:
+        type: string
+        required: true
+        description: A pytest-style string of pytest markers to run
     outputs:
       artifact-name:
         value: ${{ jobs.repro-ci.outputs.artifact-name }}
@@ -49,7 +53,7 @@ jobs:
     with:
       config-ref: ${{ inputs.config-branch-name }}
       environment-name: ${{ inputs.environment-name }}
-      test-markers: checksum
+      test-markers: ${{ inputs.test-markers }}
       model-config-tests-version: ${{ inputs.model-config-tests-version }}
       payu-version: ${{ inputs.payu-version }}
     secrets: inherit
