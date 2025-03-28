@@ -83,7 +83,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: |
-          echo '::notice::This deployment is using the following inputs: `config-branch-name`=`${{ inputs.config-branch-name }}`, `commit-checksums`=`${{ inputs.commit-checksums }}`, `committed-checksum-location`=`${{ inputs.committed-checksum-location }}`,`committed-checksum-tag-version`=`${{ needs.config.outputs.checksum-tag }}`, `test-markers`=`${{ inputs.test-markers }}`.'
+          echo '::notice::This deployment is using the following inputs: `config-branch-name`=`${{ inputs.config-branch-name }}`, `commit-checksums`=`${{ inputs.commit-checksums }}`, `committed-checksum-location`=`${{ inputs.committed-checksum-location }}`,`committed-checksum-tag-version`=`${{ needs.config.outputs.checksum-tag }}`, `committed-checksum-create-release`=`${{ inputs.committed-checksum-create-release }}`, `test-markers`=`${{ inputs.test-markers }}`.'
           echo '::notice::This deployment is using Payu Version ${{ needs.config.outputs.payu-version }} and Model Config Tests Version ${{ needs.config.outputs.model-config-tests-version }}'
 
   repro-ci:
