@@ -42,6 +42,24 @@ ACCESS_OM2_BGC_MODULE_NAME = "access-om2-bgc"
 ACCESS_OM2_REPOSITORY_NAME = "ACCESS-OM2"
 ACCESS_OM2_BGC_REPOSITORY_NAME = "ACCESS-OM2-BGC"
 
+# Expected metadata notes with conditions of use
+EXPECTED_METADATA_NOTES = """COSIMA request that users of this or other ACCESS-OM2 model code or output data:
+(a) add a project description to COSIMA's list:
+https://docs.google.com/spreadsheets/d/18BDyZlHTSy6EOaf_5o9CwGBOu4pBj88XsS2vNW4R_2o
+(b) consider citing Kiss et al. (2020) [http://doi.org/10.5194/gmd-13-401-2020] and papers describing relevant
+configuration updates - see https://forum.access-hive.org.au/t/access-om2-control-experiments/258
+(c) include an acknowledgement such as the following (replacing/deleting text in angle brackets as needed):
+"This work was supported by computational resources provided by the Australian Government through the
+National Computational Infrastructure (NCI) under the <National Computational Merit Allocation Scheme>
+and/or <ANU Merit Allocation Scheme>. We thank the vibrant communities of the Consortium for Ocean–Sea Ice
+Modelling in Australia (COSIMA; cosima.org.au) and the Australian Community Climate and Earth System Simulator
+National Research Infrastructure (ACCESS-NRI; access-nri.org.au) for making the ACCESS-OM2 <models> and/or
+<outputs> and/or <analysis tools> available through the NCI. COSIMA is funded through the Australian Research
+Council grant LP200100406."
+(d) let COSIMA know of any publications which use these models or data so they can add them to their list:
+https://scholar.google.com/citations?hl=en&user=inVqu_4AAAAJ
+(e) Tell ACCESS-NRI that you are using ACCESS-NRI infrastructure: https://www.access-nri.org.au/resources/user-reporting/"""
+
 
 class AccessOM2Branch:
     """Use the naming patterns of the branch name to infer information of
@@ -218,3 +236,8 @@ class TestAccessOM2:
         assert (
             "model" in metadata and metadata["model"] == expected_model
         ), f"Expected model field set to: {branch.module_name}"
+
+    def test_access_om2_metadata_notes(self, metadata):
+        assert "notes" in metadata and metadata["notes"] == EXPECTED_METADATA_NOTES, (
+            "Expected metadata notes field set to:\n" + EXPECTED_METADATA_NOTES
+        )
