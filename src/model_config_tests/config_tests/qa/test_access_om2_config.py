@@ -207,3 +207,14 @@ class TestAccessOM2:
             control_path=control_path,
             config=config,
         )
+
+    def test_access_om2_metadata_model(self, metadata, branch):
+        if branch.resolution == "025deg":
+            expected_model = "ACCESS-OM2-025"
+        elif branch.resolution == "01deg":
+            expected_model = "ACCESS-OM2-01"
+        else:
+            expected_model = "ACCESS-OM2"
+        assert (
+            "model" in metadata and metadata["model"] == expected_model
+        ), f"Expected model field set to: {branch.module_name}"
