@@ -42,8 +42,9 @@ def tmp_dir():
 class CommonTestHelper:
     """Helper function to store all paths for a test run"""
 
-    def __init__(self, test_name, model_name, tmp_dir):
+    def __init__(self, test_name, exp_name, model_name, tmp_dir):
         self.test_name = test_name
+        self.exp_name = exp_name
         self.model_name = model_name
 
         # Output path for storing test output - resolve to a full path
@@ -53,9 +54,9 @@ class CommonTestHelper:
         # pytest calls (Except for the archive path which is provided with
         # mock model output)
         self.lab_path = self.output_path / "lab"
-        self.test_control_path = self.output_path / "control" / test_name
+        self.test_control_path = self.output_path / "control" / exp_name
         self.test_config_path = self.test_control_path / "config.yaml"
-        self.test_archive_path = self.lab_path / "archive" / test_name
+        self.test_archive_path = self.lab_path / "archive" / exp_name
 
         # Setup model configuration to run tests from
         self.control_path = tmp_dir / "base-experiment"
@@ -129,10 +130,11 @@ def test_test_bit_repro_historical_access_checksums_saved_on_config(tmp_dir):
     configuration under testing/checksum), and the default for control
     directory fixture (use current working directory of subprocess call)"""
     test_name = "test_bit_repro_historical"
+    exp_name = "exp_default_runtime"
     model_name = "access"
 
     # Setup test Helper
-    helper = CommonTestHelper(test_name, model_name, tmp_dir)
+    helper = CommonTestHelper(test_name, exp_name, model_name, tmp_dir)
     helper.copy_config("release-preindustrial+concentrations")
 
     # Copy checksums from resources to model configuration
@@ -169,10 +171,11 @@ def test_test_bit_repro_historical_access_no_reference_checksums(tmp_dir):
     """Check when a reference file for checksums does not exist, that
     checksums from the output are written out"""
     test_name = "test_bit_repro_historical"
+    exp_name = "exp_default_runtime"
     model_name = "access"
 
     # Setup test Helper
-    helper = CommonTestHelper(test_name, model_name, tmp_dir)
+    helper = CommonTestHelper(test_name, exp_name, model_name, tmp_dir)
     helper.copy_config("release-preindustrial+concentrations")
 
     # Put some expected output in the archive directory (as we are skipping
@@ -197,10 +200,11 @@ def test_test_bit_repro_historical_access_no_model_output(tmp_dir):
     """Check when a test exits, that there are no checksums in the output
     directory- similar to when payu run exits with an error"""
     test_name = "test_bit_repro_historical"
+    exp_name = "exp_default_runtime"
     model_name = "access"
 
     # Setup test Helper
-    helper = CommonTestHelper(test_name, model_name, tmp_dir)
+    helper = CommonTestHelper(test_name, exp_name, model_name, tmp_dir)
     helper.write_config()
 
     # Test any pre-existing test output checksums are removed in test call
@@ -237,9 +241,10 @@ def test_test_bit_repro_historical(tmp_dir, model_name, output_0, configuration,
     output and configuration directory, optionally checking that things
     fail when the outputs are modified to give different checksums"""
     test_name = "test_bit_repro_historical"
+    exp_name = "exp_default_runtime"
 
     # Setup test Helper
-    helper = CommonTestHelper(test_name, model_name, tmp_dir)
+    helper = CommonTestHelper(test_name, exp_name, model_name, tmp_dir)
 
     # Use config in resources dir if provided
     if configuration:
@@ -272,7 +277,7 @@ def test_test_bit_repro_historical(tmp_dir, model_name, output_0, configuration,
     # Check general config.yaml settings for test
     with open(helper.test_control_path / "config.yaml") as f:
         test_config = yaml.safe_load(f)
-    assert test_config["experiment"] == test_name
+    assert test_config["experiment"] == exp_name
     assert not test_config["runlog"]
     assert not test_config["metadata"]["enable"]
     assert test_config["laboratory"] == str(helper.lab_path)
@@ -288,9 +293,10 @@ def test_test_access_om3_ocean_model(tmp_dir):
     dedicated tests for experiment setup when they exist. See
     https://github.com/ACCESS-NRI/model-config-tests/issues/115"""
     test_name = "test_bit_repro_historical"
+    exp_name = "exp_default_runtime"
 
     # Setup test Helper
-    helper = CommonTestHelper(test_name, "access-om3", tmp_dir)
+    helper = CommonTestHelper(test_name, exp_name, "access-om3", tmp_dir)
 
     helper.copy_config("om3-dev-1deg_jra55do_ryf")
 
