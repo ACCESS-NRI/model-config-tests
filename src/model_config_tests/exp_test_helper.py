@@ -7,7 +7,9 @@ import re
 import shutil
 import subprocess as sp
 import sys
+from collections.abc import Callable
 from pathlib import Path
+from typing import Optional
 
 import yaml
 
@@ -215,3 +217,267 @@ def setup_exp(
             pass
 
     return exp
+
+
+def parse_run_id(stdout: str) -> str:
+    """Parses the run ID from the subprocess stdout that submits payu run.
+    The run ID is the first line of the stdout."""
+    run_id = stdout.splitlines()[0]
+    return run_id
+
+
+def parse_gadi_pbs_ids(stdout: str) -> list[str]:
+    """
+    Parse all Gadi PBS job IDs that are printed out in to a line
+    in the payu stdout file
+
+    Parameters
+    ----------
+    stdout: str
+        The contents of a payu PBS job stdout file
+
+    Returns
+    ----------
+    list[str]
+        A list of jobs IDs printed out to a line
+    """
+    # Define the regex pattern, e.g. 137776067.gadi-pbs
+    pattern = r"^(\d+\.gadi-pbs)$"
+
+    # Find all matches in the text
+    matches = re.findall(pattern, stdout, re.MULTILINE)
+    return matches
+
+
+def parse_exit_status_from_file(stdout: str) -> Optional[int]:
+    """
+    Parse the exit status from the payu stdout file
+
+    Parameters
+    ----------
+    stdout: str
+        The contents of a payu PBS job stdout file
+
+    Returns
+    ----------
+    int
+        The exit status of the job. If not found, return None.
+    """
+    # Regex pattern for exit status - allow spaces before and after
+    pattern = r"^\s*Exit Status:\s*(\d+)\s*$"
+
+    # Find all matches in the text
+    matches = re.findall(pattern, stdout, re.MULTILINE)
+    if len(matches) == 0:
+        return None
+    return int(matches[-1])
+
+
+def parse_pbs_submitted_jobs(stdout: str) -> tuple[str, str]:
+    """
+    Parse a payu STDOUT file for run and collate job IDs
+
+    TODO: This function assumes collate IDs are printed before run IDs.
+    It also does not support userscripts printing out job ids to stdout,
+    or if there was a payu-sync job submitted.
+    This can removed once there's some support in payu for mapping job ids to
+    specific jobs: https://github.com/payu-org/payu/issues/520
+
+    Parameters
+    ----------
+    stdout: str
+        The contents of a payu job stdout file
+
+    Returns
+    ----------
+    tuple[str, str]
+        A tuple of (run_id, collate_id). If a run and/or collate job were
+        not submitted, the id/s will be None.
+    """
+    collate_pattern = r"^qsub.*/bin/payu-collate$"
+    collate_submitted = re.search(collate_pattern, stdout, re.MULTILINE) is not None
+    run_pattern = r"^qsub.*/bin/payu-run$"
+    run_submitted = re.search(run_pattern, stdout, re.MULTILINE) is not None
+
+    job_ids = parse_gadi_pbs_ids(stdout)
+
+    run_id = collate_id = None
+    if collate_submitted and run_submitted:
+        if len(job_ids) != 2:
+            raise RuntimeError(
+                "Expected 2 job IDs in stdout file when both collate"
+                " and run jobs are submitted."
+            )
+        collate_id, run_id = job_ids
+    elif collate_submitted:
+        if len(job_ids) != 1:
+            raise RuntimeError(
+                "Expected 1 job ID in stdout file when collate job is submitted."
+            )
+        collate_id = job_ids[0]
+    elif run_submitted:
+        if len(job_ids) != 1:
+            raise RuntimeError(
+                "Expected 1 job ID in stdout file when run job is submitted."
+            )
+        run_id = job_ids[0]
+
+    return run_id, collate_id
+
+
+def read_job_output_file(
+    control_path: Path, job_id: str, file_type: str = "stdout"
+) -> tuple[str, str]:
+    """
+    Read the output file of a job
+
+    Parameters
+    ----------
+    control_path: str
+        The path to the control directory
+    job_id: str
+        The ID of the job to read the output file for.
+    file_type: str
+        The type of file to read ("stdout" or "stderr")
+
+    Returns
+    ----------
+    tuple[str, str]
+        A tuple of (contents, filename) where contents of the stdout/stderr
+        file and filename is the path to the file.
+    """
+    job_id = job_id.split(".")[0]
+    if file_type == "stdout":
+        filename = glob.glob(str(control_path / f"*.o{job_id}"))
+    elif file_type == "stderr":
+        filename = glob.glob(str(control_path / f"*.e{job_id}"))
+    else:
+        raise ValueError("file_type must be 'stdout' or 'stderr'")
+
+    if len(filename) != 1:
+        raise RuntimeError(
+            f"There are too many stdout files for {file_type} job ID {job_id}"
+        )
+
+    with open(filename[0]) as f:
+        contents = f.read()
+
+    return contents, filename[0]
+
+
+def wait_for_qsub_job(
+    control_path: Path,
+    job_id: str,
+    wait_for_qsub_func: Callable[[str], None],
+    job_type: str = "run",
+) -> tuple[str, str, list]:
+    """
+    Wait for a qsub job to finish, checks the exit status,
+    and returns the job output files.
+
+    Parameters
+    ----------
+    control_path: str
+        The path to the control directory
+    job_id: str
+        The ID of the job to wait for.
+    wait_for_qsub_func: Callable[[str], None]
+        A function that waits for a PBS job to complete
+    job_type: str
+        The type of job to wait for - e.g. "run" or "collate"
+
+    Returns
+    ----------
+    tuple[str, str, list]
+        A tuple of (stdout, stderr, output_files) where stdout and stderr
+        are the contents of the stdout and stderr files, and output_files
+        is a list of filepaths to the output files
+    """
+    # Wait for job to complete
+    print(f"Waiting for {job_type} job to finish. Job ID: {job_id}")
+    wait_for_qsub_func(job_id)
+
+    # Read stdout/stderr files
+    stdout, stdout_filename = read_job_output_file(control_path, job_id, "stdout")
+    stderr, stderr_filename = read_job_output_file(control_path, job_id, "stderr")
+    output_files = [stdout_filename, stderr_filename]
+
+    # Check whether the run job was successful
+    exit_status = parse_exit_status_from_file(stdout)
+    if exit_status != 0:
+        print(
+            f"Job_ID: {job_id}\n"
+            f"Output files: {output_files}\n"
+            f"--- stdout ---\n{stdout}\n"
+            f"--- stderr ---\n{stderr}\n"
+        )
+        raise RuntimeError(
+            "Payu {job_type} job failed with exit status {exit_status}\n"
+        )
+
+    return stdout, stderr, output_files
+
+
+def wait_for_payu_jobs(
+    control_path: Path, run_id: str, wait_for_qsub_func: Callable[[str], None]
+) -> list[str]:
+    """
+    Wait for a initial payu run PBS job to finsh, then waits
+    for any subsequent collate and run jobs.
+
+    Raises an Runtime Error if any of the jobs fail, or unable to parse
+    STDOUT/STDERR files for job IDs.
+
+    TODO: These functions can be simplified once there's support in payu for
+     storing information on jobs submitted, JOB_IDs, and exit statuses
+    (see https://github.com/payu-org/payu/issues/520)
+
+    This will allow better support for waiting for post-scripts, and less
+    reliance on the format of payu STDOUT/STDERR files.
+
+    Parameters
+    ----------
+    control_path: str
+        The path to the control directory. This is where to find the
+        STDOUT/STDERR files for the jobs.
+    run_id: str
+        The ID of the run job to wait for.
+    wait_for_qsub_func: Callable[[str], None]
+        A function that waits for a PBS job to complete
+
+    Returns
+    ----------
+    list[str]
+        A list of filepaths to the output log files created by the run and
+        collate jobs.
+    """
+    output_files = []
+    run_count = 0
+    while run_id is not None:
+        # Wait for run to complete
+        run_stdout, _, run_output_files = wait_for_qsub_job(
+            control_path, run_id, wait_for_qsub_func
+        )
+
+        # Check whether collate and run jobs were submitted
+        next_run_id, collate_id = parse_pbs_submitted_jobs(run_stdout)
+
+        if collate_id is not None:
+            # Wait for collate job to finish
+            _, _, collate_output_files = wait_for_qsub_job(
+                control_path, collate_id, wait_for_qsub_func, job_type="collate"
+            )
+
+        # Add job log files to the list of output files
+        output_files.extend(run_output_files)
+        output_files.extend(collate_output_files)
+
+        if next_run_id is not None:
+            run_count += 1
+            print(
+                f"Waiting for subsequent submitted payu run job (run_count: {run_count})"
+            )
+
+        run_id = next_run_id
+
+    return output_files
