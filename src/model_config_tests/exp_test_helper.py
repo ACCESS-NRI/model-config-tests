@@ -6,7 +6,6 @@ import os
 import re
 import shutil
 import subprocess as sp
-import sys
 from collections.abc import Callable
 from pathlib import Path
 from typing import Optional
@@ -165,104 +164,6 @@ class ExpTestHelper:
             run_id=run_id,
             wait_for_qsub_func=wait_for_qsub,
         )
-
-    def run(self):
-        """
-        Run the experiment using payu and check output.
-
-        Don't do any work if it has already run.
-        """
-        # Skip running payu if it's disabled, or if output already exists
-        if self.disable_payu_run or self.has_run():
-            return 0, None, None, None
-        else:
-            return self.force_qsub_run()
-
-    def force_qsub_run(self):
-        """
-        Run using qsub
-        """
-        if self.disable_payu_run:
-            # Skip running payu if it's disabled.
-            return 0, None, None, None
-
-        # Change to experiment directory and run.
-        owd = Path.cwd()
-        try:
-            os.chdir(self.control_path)
-            sp.check_output(["payu", "sweep", "--lab", self.lab_path])
-            run_id = sp.check_output(["payu", "run", "--lab", self.lab_path])
-            run_id = run_id.decode().splitlines()[0]
-        except sp.CalledProcessError:
-            print("Error: call to payu run failed.", file=sys.stderr)
-            return 1, None, None, None
-        finally:
-            os.chdir(owd)
-
-        wait_for_qsub(run_id)
-        run_id = run_id.split(".")[0]
-
-        output_files = []
-        # Read qsub stdout file
-        stdout_filename = glob.glob(str(self.control_path / f"*.o{run_id}"))
-        print(stdout_filename)
-        if len(stdout_filename) != 1:
-            print("Error: there are too many stdout files.", file=sys.stderr)
-            return 2, None, None, None
-
-        stdout_filename = stdout_filename[0]
-        output_files.append(stdout_filename)
-        stdout = ""
-        with open(stdout_filename) as f:
-            stdout = f.read()
-
-        # Read qsub stderr file
-        stderr_filename = glob.glob(str(self.control_path / f"*.e{run_id}"))
-        stderr = ""
-        if len(stderr_filename) == 1:
-            stderr_filename = stderr_filename[0]
-            output_files.append(stderr_filename)
-            with open(stderr_filename) as f:
-                stderr = f.read()
-
-        # TODO: Early return if not collating
-
-        # Read the qsub id of the collate job from the stdout.
-        # Payu puts this here.
-
-        # TODO: Fish out the exit code from the run logs and early
-        # return if status != 0
-
-        m = re.search(r"(\d+.gadi-pbs)\n", stdout)
-        if m is None:
-            print("Error: qsub id of collate job.", file=sys.stderr)
-            return 3, stdout, stderr, output_files
-
-        # Wait for the collate to complete.
-        run_id = m.group(1)
-        wait_for_qsub(run_id)
-
-        # Return files created by qsub so caller can read or delete.
-        collate_files = self.control_path / f"*.[oe]{run_id}"
-        output_files += glob.glob(str(collate_files))
-
-        return 0, stdout, stderr, output_files
-
-    def setup_and_run(self):
-        self.setup_for_test_run()
-        return self.run()
-
-    def print_run_logs(self, status, stdout, stderr, output_files):
-        """Print run information"""
-        run_info = (
-            f"Experiment run: {self.exp_name}\n"
-            f"Status: {status}\n"
-            f"Control directory: {self.control_path}\n"
-            f"Output files: {output_files}\n"
-            f"--- stdout ---\n{stdout}\n"
-            f"--- stderr ---\n{stderr}\n"
-        )
-        print(run_info)
 
 
 class Experiments:
