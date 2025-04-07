@@ -1,0 +1,13 @@
+# File with non-zero exit status
+======================================================================================
+                  Resource Usage on 2025-03-27 17:43:23:
+   Job Id:             1234.gadi-pbs
+   Project:            testProject
+   Exit Status:        1
+   Service Units:      0.5
+   NCPUs Requested:    1                      NCPUs Used: 1               
+                                           CPU Time Used: 00:01:00       
+   Memory Requested:   1.0GB                 Memory Used: 1.0GB           
+   Walltime requested: 00:01:00            Walltime Used: 00:01:00        
+   JobFS requested:    1.0GB                 JobFS used: 0B              
+======================================================================================
