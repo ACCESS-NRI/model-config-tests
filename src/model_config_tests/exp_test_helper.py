@@ -18,8 +18,26 @@ from model_config_tests.util import wait_for_qsub
 
 
 class ExpTestHelper:
+    """
+    Helper class to manage a payu experiment
 
-    def __init__(self, control_path: Path, lab_path: Path, disable_payu_run=False):
+    Parameters
+    ----------
+    control_path: Path
+        The path to the payu control directory
+    lab_path: Path
+        The path to the payu lab directory
+    disable_payu_run: bool
+        Whether to disable the payu run. This is useful for testing
+        where we don't want to submit any PBS jobs
+    """
+
+    def __init__(
+        self,
+        control_path: Path,
+        lab_path: Path,
+        disable_payu_run: Optional[bool] = False,
+    ):
 
         self.exp_name = control_path.name
         self.control_path = control_path
@@ -27,6 +45,8 @@ class ExpTestHelper:
         self.config_path = control_path / "config.yaml"
         self.archive_path = lab_path / "archive" / self.exp_name
         self.work_path = lab_path / "work" / self.exp_name
+
+        # Output directories that are accessed in tests
         self.output000 = self.archive_path / "output000"
         self.output001 = self.archive_path / "output001"
         self.restart000 = self.archive_path / "restart000"
@@ -38,6 +58,8 @@ class ExpTestHelper:
         self.set_model()
 
         self.disable_payu_run = disable_payu_run
+
+        self.run_id = None
 
     def set_model(self):
         """Set model based on payu config. Currently only setting top-level
@@ -243,11 +265,131 @@ class ExpTestHelper:
         print(run_info)
 
 
+class Experiments:
+    """
+    Class to manage the shared payu experiments
+
+    Parameters
+    ----------
+    control_path: Path
+        The path to the configuration to that is being tested - this will
+        be copied to the control directory for the test experiments
+    output_path: Path
+        The path to store all test output. e.g. control and lab directories
+        for the test experiments
+    keep_archive: bool
+        Whether to keep previous test output. This is useful for testing
+    """
+
+    def __init__(
+        self,
+        control_path: Path,
+        output_path: Path,
+        keep_archive: Optional[bool] = False,
+    ):
+        self.control_path = control_path
+        self.output_path = output_path
+        self.keep_archive = keep_archive
+        self.experiments = {}
+        self.successful_experiments = []
+
+    def setup_and_submit(
+        self,
+        exp_name: str,
+        model_runtime: Optional[int] = None,
+        n_runs: Optional[int] = None,
+    ) -> ExpTestHelper:
+        """Setup and submit a payu experiment
+
+        Parameters
+        ----------
+        exp_name: str
+            The name of the experiment to run
+        model_runtime: int
+            The model runtime in seconds. If None, use the default
+            model runtime defined in the model class
+        n_runs: int
+            The number of runs to submit with --nruns. If None, submit once
+
+        Returns
+        ----------
+        ExpTestHelper
+            The experiment helper object for the submitted experiment
+        """
+        # Setup experiment
+        exp = setup_exp(
+            self.control_path, self.output_path, exp_name, self.keep_archive
+        )
+
+        print(f"-----Setting up experiment {exp_name}-----")
+        print(f"Control path: {exp.control_path}")
+        print(f"Lab path: {exp.lab_path}")
+        print(f"Archive path: {exp.archive_path}")
+
+        if model_runtime is not None:
+            # Set model runtime in seconds
+            exp.model.set_model_runtime(seconds=model_runtime)
+        else:
+            # Set the default model runtime defined in the model class
+            exp.model.set_model_runtime()
+
+        # Add experiment  to dictionary of saved experiments
+        self.experiments[exp_name] = exp
+
+        # Submit the experiment
+        if n_runs is not None:
+            exp.submit_payu_run(n_runs=n_runs)
+        else:
+            exp.submit_payu_run()
+
+        return exp
+
+    def get_experiment(self, exp_name: str) -> ExpTestHelper:
+        """
+        Return the experiment object for the given experiment name
+        """
+        return self.experiments.get(exp_name)
+
+    def wait_for_all_experiments(self, catch_errors=True) -> None:
+        """
+        Wait for all experiments to finish
+
+        Parameters
+        ----------
+        catch_errors: bool
+            Whether to catch errors and continue waiting for other test
+            experiments, or raise an error and stop the tests. Default is True.
+        """
+        for exp_name, exp in self.experiments.items():
+            print(f"-----Waiting for experiment {exp_name} to complete-----")
+            try:
+                exp.wait_for_payu_run()
+                print(f"Experiment {exp_name} completed successfully")
+                self.successful_experiments.append(exp_name)
+            except RuntimeError as e:
+                if catch_errors:
+                    print(f"Error in experiment {exp_name}: {e}")
+                else:
+                    raise e
+
+    def check_experiments(self, exp_names=list[str]) -> None:
+        """
+        Check whether given experiments names have run successfully
+        """
+        for exp_name in exp_names:
+            # TODO: Is there other useful information to display here?
+            assert (
+                exp_name in self.successful_experiments
+            ), f"There was an error running experiment: {exp_name}"
+
+
 def setup_exp(
     control_path: Path, output_path: Path, exp_name: str, keep_archive: bool = False
-):
+) -> ExpTestHelper:
     """
-    Create a exp by copying over base config
+    Create a experiment by copying over a base configuration to the control
+    directory, and setting up the lab and archive directories, and
+    the config.yaml file
     """
     # Set experiment control path
     if control_path.name != "base-experiment":
@@ -278,6 +420,9 @@ def setup_exp(
             shutil.rmtree(exp.work_path)
         except FileNotFoundError:
             pass
+
+    # Set up experiment config
+    exp.setup_for_test_run()
 
     return exp
 
