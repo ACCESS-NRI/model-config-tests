@@ -81,6 +81,69 @@ class ExpTestHelper:
         with open(self.config_path, "w") as f:
             yaml.dump(doc, f)
 
+    def submit_payu_run(self, n_runs: int = None) -> str:
+        """
+        Submit a payu run job.
+
+        Parameters
+        ----------
+        n_runs: int
+            The number of runs to submit with --nruns.
+
+        Returns
+        ----------
+        str
+            The job ID of the submitted payu run job
+        """
+        if self.disable_payu_run:
+            return
+
+        owd = Path.cwd()
+        try:
+            # Change to experiment directory and run.
+            os.chdir(self.control_path)
+
+            print("Running payu setup and payu sweep commands")
+            sp.check_output(["payu", "setup", "--lab", self.lab_path])
+            sp.check_output(["payu", "sweep", "--lab", self.lab_path])
+
+            run_command = ["payu", "run", "--lab", str(self.lab_path)]
+            if n_runs:
+                run_command.extend(["--nruns", str(n_runs)])
+            print(f"Running payu run command: {' '.join(run_command)}")
+            result = sp.run(run_command, capture_output=True, text=True, check=True)
+            self.run_id = parse_run_id(result.stdout)
+            print(f"Run Job ID: {self.run_id}")
+        except sp.CalledProcessError as e:
+            raise RuntimeError(f"Failed to submit payu run. Error: {e}")
+        finally:
+            # Change back to original working directory
+            os.chdir(owd)
+
+        return self.run_id
+
+    def wait_for_payu_run(self, run_id: str = None) -> None:
+        """Given a run ID, wait for all the payu run jobs to finish.
+
+        Parameters
+        ----------
+        run_id: str
+            The job ID of the payu run job to wait for. If None, use the
+            run ID saved in the class.
+        """
+        if self.disable_payu_run:
+            return
+
+        if run_id is None:
+            run_id = self.run_id
+
+        # Wait for payu PBS jobs to complete
+        wait_for_payu_jobs(
+            control_path=self.control_path,
+            run_id=run_id,
+            wait_for_qsub_func=wait_for_qsub,
+        )
+
     def run(self):
         """
         Run the experiment using payu and check output.
