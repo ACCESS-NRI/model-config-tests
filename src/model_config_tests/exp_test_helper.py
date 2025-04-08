@@ -125,8 +125,8 @@ class ExpTestHelper:
             os.chdir(self.control_path)
 
             print("Running payu setup and payu sweep commands")
-            sp.check_output(["payu", "setup", "--lab", self.lab_path])
-            sp.check_output(["payu", "sweep", "--lab", self.lab_path])
+            sp.run(["payu", "setup", "--lab", str(self.lab_path)], check=True)
+            sp.run(["payu", "sweep", "--lab", str(self.lab_path)], check=True)
 
             run_command = ["payu", "run", "--lab", str(self.lab_path)]
             if n_runs:
@@ -143,7 +143,7 @@ class ExpTestHelper:
 
         return self.run_id
 
-    def wait_for_payu_run(self, run_id: str = None) -> None:
+    def wait_for_payu_run(self, run_id: str = None) -> list[str]:
         """Given a run ID, wait for all the payu run jobs to finish.
 
         Parameters
@@ -151,6 +151,12 @@ class ExpTestHelper:
         run_id: str
             The job ID of the payu run job to wait for. If None, use the
             run ID saved in the class.
+
+        Returns
+        ----------
+        list[str]
+            A list of filepaths to the output log files created by the run and
+            collate jobs.
         """
         if self.disable_payu_run:
             return
@@ -159,11 +165,12 @@ class ExpTestHelper:
             run_id = self.run_id
 
         # Wait for payu PBS jobs to complete
-        wait_for_payu_jobs(
+        output_files = wait_for_payu_jobs(
             control_path=self.control_path,
             run_id=run_id,
             wait_for_qsub_func=wait_for_qsub,
         )
+        return output_files
 
 
 class Experiments:
@@ -382,13 +389,39 @@ def parse_exit_status_from_file(stdout: str) -> Optional[int]:
     return int(matches[-1])
 
 
+def check_n_ids(
+    job_ids: list[str],
+    n_ids: int,
+) -> None:
+    """
+    Check the number of job IDs found in the stdout file. Raises a RuntimeError
+    if the number of job IDs found is less than the expected number.
+
+    Parameters
+    ----------
+    job_ids: list[str]
+        The list of job IDs found in the stdout file
+    n_ids: int
+        The expected number of job IDs
+    """
+    if len(job_ids) < n_ids:
+        raise RuntimeError(
+            f"Expected {n_ids} job IDs in stdout file, but found {len(job_ids)}"
+        )
+    elif len(job_ids) > n_ids:
+        # There could be a post-script job ID, for example.
+        print(f"Found more than {n_ids} job IDs in stdout file (IDs: {job_ids})")
+
+
 def parse_pbs_submitted_jobs(stdout: str) -> tuple[str, str]:
     """
     Parse a payu STDOUT file for run and collate job IDs
 
-    TODO: This function assumes collate IDs are printed before run IDs.
-    It also does not support userscripts printing out job ids to stdout,
-    or if there was a payu-sync job submitted.
+    TODO: This function assumes collate IDs are printed first (collate runs
+    before payu sync and postscripts), and run IDs are print last (subsequent
+    payu run jobs are submitted at the end of a job).
+    It does not support userscripts printing out job ids to stdout
+    before the collate job is submitted.
     This can removed once there's some support in payu for mapping job ids to
     specific jobs: https://github.com/payu-org/payu/issues/520
 
@@ -412,25 +445,14 @@ def parse_pbs_submitted_jobs(stdout: str) -> tuple[str, str]:
 
     run_id = collate_id = None
     if collate_submitted and run_submitted:
-        if len(job_ids) != 2:
-            raise RuntimeError(
-                "Expected 2 job IDs in stdout file when both collate"
-                " and run jobs are submitted."
-            )
-        collate_id, run_id = job_ids
+        check_n_ids(job_ids, n_ids=2)
+        collate_id, run_id = job_ids[0], job_ids[-1]
     elif collate_submitted:
-        if len(job_ids) != 1:
-            raise RuntimeError(
-                "Expected 1 job ID in stdout file when collate job is submitted."
-            )
+        check_n_ids(job_ids, n_ids=1)
         collate_id = job_ids[0]
     elif run_submitted:
-        if len(job_ids) != 1:
-            raise RuntimeError(
-                "Expected 1 job ID in stdout file when run job is submitted."
-            )
-        run_id = job_ids[0]
-
+        check_n_ids(job_ids, n_ids=1)
+        run_id = job_ids[-1]
     return run_id, collate_id
 
 
@@ -465,7 +487,8 @@ def read_job_output_file(
 
     if len(filename) != 1:
         raise RuntimeError(
-            f"There are too many stdout files for {file_type} job ID {job_id}"
+            f"Expected 1 {file_type} file for job ID {job_id}, "
+            f"but found {len(filename)}. Files: {filename}"
         )
 
     with open(filename[0]) as f:
@@ -520,9 +543,7 @@ def wait_for_qsub_job(
             f"--- stdout ---\n{stdout}\n"
             f"--- stderr ---\n{stderr}\n"
         )
-        raise RuntimeError(
-            "Payu {job_type} job failed with exit status {exit_status}\n"
-        )
+        raise RuntimeError(f"Payu {job_type} job failed with exit status {exit_status}")
 
     return stdout, stderr, output_files
 
@@ -567,7 +588,6 @@ def wait_for_payu_jobs(
         run_stdout, _, run_output_files = wait_for_qsub_job(
             control_path, run_id, wait_for_qsub_func
         )
-
         # Check whether collate and run jobs were submitted
         next_run_id, collate_id = parse_pbs_submitted_jobs(run_stdout)
 
@@ -588,5 +608,4 @@ def wait_for_payu_jobs(
             )
 
         run_id = next_run_id
-
     return output_files
