@@ -20,10 +20,10 @@ LOG_DIR = RESOURCES_DIR / "experiment-logs"
 
 
 @pytest.fixture
-def exp(tmpdir):
+def exp(tmp_path):
     # Create control and lab directories
-    control_path = Path(tmpdir / "control")
-    lab_path = Path(tmpdir / "lab")
+    control_path = tmp_path / "control"
+    lab_path = tmp_path / "lab"
     control_path.mkdir()
     lab_path.mkdir()
 
@@ -36,13 +36,13 @@ def exp(tmpdir):
     return experiment
 
 
-def test_experiment_init(exp, tmpdir):
+def test_experiment_init(exp, tmp_path):
     assert exp.exp_name == "control"
-    assert exp.control_path == tmpdir / "control"
-    assert exp.lab_path == tmpdir / "lab"
-    assert exp.config_path == tmpdir / "control" / "config.yaml"
-    assert exp.archive_path == tmpdir / "lab" / "archive" / "control"
-    assert exp.work_path == tmpdir / "lab" / "work" / "control"
+    assert exp.control_path == tmp_path / "control"
+    assert exp.lab_path == tmp_path / "lab"
+    assert exp.config_path == tmp_path / "control" / "config.yaml"
+    assert exp.archive_path == tmp_path / "lab" / "archive" / "control"
+    assert exp.work_path == tmp_path / "lab" / "work" / "control"
     assert exp.output000 == exp.archive_path / "output000"
     assert exp.output001 == exp.archive_path / "output001"
     assert exp.restart000 == exp.archive_path / "restart000"
@@ -53,7 +53,7 @@ def test_experiment_init(exp, tmpdir):
     assert exp.model_name == "access-om2"
 
 
-def test_experiment_setup_for_test_run(exp, tmpdir):
+def test_experiment_setup_for_test_run(exp, tmp_path):
     exp.setup_for_test_run()
     with open(exp.control_path / "config.yaml") as f:
         config = yaml.safe_load(f)
@@ -63,7 +63,7 @@ def test_experiment_setup_for_test_run(exp, tmpdir):
         "runlog": False,
         "metadata": {"enable": False},
         "experiment": "control",
-        "laboratory": str(Path(tmpdir / "lab")),
+        "laboratory": str(tmp_path / "lab"),
     }
 
     assert config == expected_config
@@ -298,45 +298,45 @@ def test_wait_for_payu_jobs(job_id, expected_output_filenames):
     assert output_filenames == expected_output_filenames
 
 
-def test_read_job_output_file_no_stdout_files(tmpdir):
+def test_read_job_output_file_no_stdout_files(tmp_path):
     """Test error raised when there is no stdout files."""
     job_id = "1234.gadi-pbs"
     expected_msg = r"Expected 1 stdout file for job ID 1234, but found 0.*"
     with pytest.raises(RuntimeError, match=expected_msg):
-        wait_for_payu_jobs(tmpdir, job_id, mock_wait_for_qsub)
+        wait_for_payu_jobs(tmp_path, job_id, mock_wait_for_qsub)
 
 
-def test_read_job_output_file_multiple_stdout_files(tmpdir):
+def test_read_job_output_file_multiple_stdout_files(tmp_path):
     """Test error raised when there is multiple stdout files."""
     job_id = "1234.gadi-pbs"
     # Create multiple stdout files with the same job ID
-    stdout_file_1 = tmpdir / "example_job.o1234"
+    stdout_file_1 = tmp_path / "example_job.o1234"
     stdout_file_1.write_text("Test stdout file 1", encoding="utf-8")
-    stdout_file_2 = tmpdir / "example_job2.o1234"
+    stdout_file_2 = tmp_path / "example_job2.o1234"
     stdout_file_2.write_text("Test stdout file 2", encoding="utf-8")
     expected_msg = r"Expected 1 stdout file for job ID 1234, but found 2.*"
     with pytest.raises(RuntimeError, match=expected_msg):
-        wait_for_payu_jobs(tmpdir, job_id, mock_wait_for_qsub)
+        wait_for_payu_jobs(tmp_path, job_id, mock_wait_for_qsub)
 
 
-def test_wait_for_qsub_job_exited_with_error(tmpdir):
+def test_wait_for_qsub_job_exited_with_error(tmp_path):
     """
     Test that the wait_for_qsub function raises an exception when the job exits with an error.
     """
     failed_job_id = "1234.gadi-pbs"
     failed_job_stdout = "example_failed_job.o1234"
     # Copy failed job stdout file to the tmp directory
-    shutil.copy(LOG_DIR / failed_job_stdout, tmpdir)
+    shutil.copy(LOG_DIR / failed_job_stdout, tmp_path)
     # Create an stderr file
-    stderr_file = tmpdir / "example_failed_job.e1234"
+    stderr_file = tmp_path / "example_failed_job.e1234"
     stderr_file.write_text("Test stderr file", encoding="utf-8")
 
     expected_msg = "Payu run job failed with exit status 1"
     with pytest.raises(RuntimeError, match=expected_msg):
-        wait_for_payu_jobs(tmpdir, failed_job_id, mock_wait_for_qsub)
+        wait_for_payu_jobs(tmp_path, failed_job_id, mock_wait_for_qsub)
 
 
-def test_experiment_wait_for_payu_run(exp, tmpdir):
+def test_experiment_wait_for_payu_run(exp, tmp_path):
     """
     Test that wait_for_payu_run waits for the payu run to finish.
     """
@@ -348,7 +348,7 @@ def test_experiment_wait_for_payu_run(exp, tmpdir):
         "pre-industria_c.e137777140",
     ]
     for file in test_files:
-        shutil.copy(LOG_DIR / file, tmpdir / "control")
+        shutil.copy(LOG_DIR / file, tmp_path / "control")
 
     # Mock the wait_for_qsub function so it returns immediately
     with patch(

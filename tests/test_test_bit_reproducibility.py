@@ -3,7 +3,9 @@
 import shlex
 import shutil
 import subprocess
+import warnings
 from pathlib import Path
+from unittest.mock import Mock, patch
 
 import f90nml
 import pytest
@@ -12,6 +14,164 @@ from netCDF4 import Dataset
 from payu.models.cesm_cmeps import Runconfig
 
 from tests.common import RESOURCES_DIR
+
+# Disable unknown marker warnings when importing _experiments
+warnings.filterwarnings("ignore", category=pytest.PytestUnknownMarkWarning)
+from model_config_tests.exp_test_helper import ExpTestHelper
+from model_config_tests.test_bit_reproducibility import _experiments
+
+ACCESS_OM2_CONFIGS_REPO = "https://github.com/ACCESS-NRI/access-om2-configs.git"
+TEST_ACCESS_OM2_CONFIG_TAG = "release-1deg_jra55_iaf-2.0"
+
+
+# Below is an option to use config files rather than the storing copies in this
+# repository.
+@pytest.fixture(scope="session")
+def access_om2_config(tmp_path_factory):
+    """Clone an ACCESS-OM2 base config for testing"""
+    config_path = tmp_path_factory.mktemp("access_om2_config") / "base-experiment"
+    try:
+        # Clone access-om2-configs repository
+        subprocess.run(
+            ["git", "clone", ACCESS_OM2_CONFIGS_REPO, str(config_path)], check=True
+        )
+
+        # Checkout the specific tag and disable detached head warning
+        subprocess.run(
+            [
+                "git",
+                "-C",
+                str(config_path),
+                "-c",
+                "advice.detachedHead=false",
+                "checkout",
+                TEST_ACCESS_OM2_CONFIG_TAG,
+            ],
+            check=True,
+        )
+    except subprocess.CalledProcessError as e:
+        print("Error cloning repository and checking out tag in test setup")
+        raise e
+    return config_path
+
+
+def exp_test_helper_factory(*args, **kwargs):
+    """Factory function to create a new mock for each ExpTestHelper"""
+    mock_instance = Mock(autospec=ExpTestHelper)
+    print(f"Creating mock ExpTestHelper instance: {mock_instance}")
+    return mock_instance
+
+
+@pytest.mark.parametrize(
+    "requested_tests, expected_experiments",
+    [
+        (
+            ["test_bit_repro_historical"],
+            {
+                "exp_default_runtime": {
+                    "n_runs": None,  # Expect default n_runs (which is once)
+                    "runtime": None,  # Expect default model runtime (set by the model class)
+                }
+            },
+        ),
+        (
+            ["test_bit_repro_repeat"],
+            {
+                "exp_1d_runtime": {
+                    "n_runs": None,
+                    "runtime": 86400,  # 1 day in seconds
+                },
+                "exp_1d_runtime_repeat": {
+                    "n_runs": None,
+                    "runtime": 86400,
+                },
+            },
+        ),
+        (
+            ["test_restart_repro"],
+            {
+                "exp_1d_runtime": {
+                    "n_runs": 2,  # Runs twice
+                    "runtime": 86400,
+                },
+                "exp_2d_runtime": {
+                    "n_runs": None,
+                    "runtime": 172800,
+                },
+            },
+        ),
+        (
+            [
+                "test_bit_repro_historical",
+                "test_bit_repro_repeat",
+                "test_restart_repro",
+            ],
+            {
+                "exp_default_runtime": {
+                    "n_runs": None,
+                    "runtime": None,
+                },
+                "exp_1d_runtime": {
+                    "n_runs": 2,
+                    "runtime": 86400,
+                },
+                "exp_1d_runtime_repeat": {
+                    "n_runs": None,
+                    "runtime": 86400,
+                },
+                "exp_2d_runtime": {
+                    "n_runs": None,
+                    "runtime": 172800,
+                },
+            },
+        ),
+    ],
+)
+def test_experiments_fixture(requested_tests, expected_experiments, tmp_path):
+    """Test the experiments function for setting up requested experiments,
+    including model runtime set and number of seconds for model runtime
+    """
+    # Create base experiment/config to test
+    control_path = tmp_path / "control"
+    control_path.mkdir()
+
+    # Create an output path
+    output_path = tmp_path / "output"
+    output_path.mkdir()
+
+    # Mock the test request session items - what tests are requested
+    mock_request = Mock()
+    items = []
+    for test in requested_tests:
+        mock_test = Mock()
+        mock_test.name = test
+        items.append(mock_test)
+    mock_request.session.items = items
+
+    # Create a mock for each ExpTestHelper instance stored in experiments
+    with patch(
+        "model_config_tests.exp_test_helper.ExpTestHelper",
+        side_effect=exp_test_helper_factory,
+    ):
+        # Call the experiments function
+        exps = _experiments(mock_request, output_path, control_path, keep_archive=True)
+
+    # Check that expected experiments were created
+    assert len(exps.experiments) == len(expected_experiments)
+    for exp_name in expected_experiments:
+        assert exp_name in exps.experiments
+        exp_mock = exps.experiments[exp_name]
+
+        # Check the n_runs passed to the submit_payu_run method
+        exp_mock.submit_payu_run.assert_called_once()
+        n_runs = exp_mock.submit_payu_run.call_args[1].get("n_runs", None)
+        assert n_runs == expected_experiments[exp_name]["n_runs"]
+
+        # Check model runtime passed to set_model_runtime method
+        exp_mock.model.set_model_runtime.assert_called_once()
+        runtime = exp_mock.model.set_model_runtime.call_args[1].get("seconds", None)
+        assert runtime == expected_experiments[exp_name]["runtime"]
+
 
 # Importing the test file test_bit_reproducibility.py, will run all the
 # tests in the current pytest session. So to run only one test, and to

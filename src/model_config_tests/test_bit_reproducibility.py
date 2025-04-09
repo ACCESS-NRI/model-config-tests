@@ -51,13 +51,32 @@ def read_historical_checksums(
     return hist_checksums
 
 
-@pytest.fixture(scope="class")
-def experiments(
+def _experiments(
     request, output_path: Path, control_path: Path, keep_archive: Optional[bool]
-):
-    """Start experiments conditionally based on the tests that are going to run.
+) -> Experiments:
+    """
+    Start experiments conditionally based on the tests that are going to run.
     The scope is class so the experiments are only run once before all repro
     tests.
+
+    Parameters
+    ----------
+    request: pytest.request
+        The pytest request object
+    output_path: Path
+        Output directory for test output and where the control and
+        lab directories are stored for the payu experiments.
+    control_path: Path
+        Path to the model configuration to test. This is copied for
+        for control directories in experiments.
+    keep_archive: Optional[bool]
+        Whether to keep the previous archive for each experiment and
+        disable calls to payu run. This is used in testing.
+
+    Returns
+    -------
+    Experiments
+        Object that stores the shared experiments
     """
     # Get the list of test names that are scheduled to run
     scheduled_tests = {item.name for item in request.session.items}
@@ -79,7 +98,7 @@ def experiments(
         test in scheduled_tests
         for test in ("test_bit_repro_repeat", "test_restart_repro")
     ):
-        if "test_bit_repro_repeat" in scheduled_tests:
+        if "test_restart_repro" in scheduled_tests:
             print("Running experiment with 1 day model runtime twice")
             experiments.setup_and_submit(
                 exp_name=EXP_1D_RUNTIME, model_runtime=DAY_IN_SECONDS, n_runs=2
@@ -121,6 +140,17 @@ def experiments(
     return experiments
 
 
+@pytest.fixture(scope="class")
+def experiments(
+    request, output_path: Path, control_path: Path, keep_archive: Optional[bool]
+):
+    """
+    This is a wrapper around _experiments() so it is easier to test without
+    the @pytest.fixture decorator.
+    """
+    return _experiments(request, output_path, control_path, keep_archive)
+
+
 class TestBitReproducibility:
 
     @pytest.mark.repro
@@ -140,11 +170,11 @@ class TestBitReproducibility:
         output_path: Path
             Output directory for test output and where the control and
             lab directories are stored for the payu experiments. Default is
-            set in conftest.py. This is a fixture defined in conftests.py
+            set in conftest.py.
         control_path: Path
             Path to the model configuration to test. This is copied for
             for control directories in experiments. Default is set in
-            conftests.py. This is a fixture defined in conftests.py
+            conftests.py.
         experiments: Experiments
             Class that manages the shared experiments. This is a fixture
             defined in this file.
