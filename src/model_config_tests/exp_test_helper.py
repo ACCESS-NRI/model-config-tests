@@ -588,6 +588,8 @@ def wait_for_payu_jobs(
         run_stdout, _, run_output_files = wait_for_qsub_job(
             control_path, run_id, wait_for_qsub_func
         )
+        output_files.extend(run_output_files)
+
         # Check whether collate and run jobs were submitted
         next_run_id, collate_id = parse_pbs_submitted_jobs(run_stdout)
 
@@ -596,10 +598,7 @@ def wait_for_payu_jobs(
             _, _, collate_output_files = wait_for_qsub_job(
                 control_path, collate_id, wait_for_qsub_func, job_type="collate"
             )
-
-        # Add job log files to the list of output files
-        output_files.extend(run_output_files)
-        output_files.extend(collate_output_files)
+            output_files.extend(collate_output_files)
 
         if next_run_id is not None:
             run_count += 1

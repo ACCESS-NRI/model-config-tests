@@ -288,6 +288,11 @@ def mock_wait_for_qsub(job_id):
                 "pre-industria_c.e137777140",
             ],
         ),
+        # Test with stdout with no payu runs and collate jobs submitted
+        (
+            "137777140.gadi-pbs",
+            ["pre-industria_c.o137777140", "pre-industria_c.e137777140"],
+        ),
     ],
 )
 def test_wait_for_payu_jobs(job_id, expected_output_filenames):
