@@ -6,6 +6,7 @@ import os
 import re
 import shutil
 import subprocess as sp
+import warnings
 from collections.abc import Callable
 from pathlib import Path
 from typing import Optional
@@ -99,6 +100,15 @@ class ExpTestHelper:
         # Set laboratory path
         doc["laboratory"] = str(self.lab_path)
 
+        # Disable post-processing
+        doc["collate"] = {"enable": False}
+        doc["sync"] = {"enable": False}
+        if "postscript" in doc:
+            doc.pop("postscript")
+        if "userscripts" in doc:
+            if "archive" in doc["userscripts"]:
+                doc["userscripts"].pop("archive")
+
         with open(self.config_path, "w") as f:
             yaml.dump(doc, f)
 
@@ -155,8 +165,7 @@ class ExpTestHelper:
         Returns
         ----------
         list[str]
-            A list of filepaths to the output log files created by the run and
-            collate jobs.
+            A list of filepaths to the output log files created by the run jobs
         """
         if self.disable_payu_run:
             return
@@ -389,41 +398,10 @@ def parse_exit_status_from_file(stdout: str) -> Optional[int]:
     return int(matches[-1])
 
 
-def check_n_ids(
-    job_ids: list[str],
-    n_ids: int,
-) -> None:
+def parse_pbs_submitted_jobs(stdout: str) -> Optional[str]:
     """
-    Check the number of job IDs found in the stdout file. Raises a RuntimeError
-    if the number of job IDs found is less than the expected number.
-
-    Parameters
-    ----------
-    job_ids: list[str]
-        The list of job IDs found in the stdout file
-    n_ids: int
-        The expected number of job IDs
-    """
-    if len(job_ids) < n_ids:
-        raise RuntimeError(
-            f"Expected {n_ids} job IDs in stdout file, but found {len(job_ids)}"
-        )
-    elif len(job_ids) > n_ids:
-        # There could be a post-script job ID, for example.
-        print(f"Found more than {n_ids} job IDs in stdout file (IDs: {job_ids})")
-
-
-def parse_pbs_submitted_jobs(stdout: str) -> tuple[str, str]:
-    """
-    Parse a payu STDOUT file for run and collate job IDs
-
-    TODO: This function assumes collate IDs are printed first (collate runs
-    before payu sync and postscripts), and run IDs are print last (subsequent
-    payu run jobs are submitted at the end of a job).
-    It does not support userscripts printing out job ids to stdout
-    before the collate job is submitted.
-    This can removed once there's some support in payu for mapping job ids to
-    specific jobs: https://github.com/payu-org/payu/issues/520
+    Parse a payu STDOUT file for run job ID. If there are multiple job IDs,
+    assume payu run is the last one found.
 
     Parameters
     ----------
@@ -432,28 +410,27 @@ def parse_pbs_submitted_jobs(stdout: str) -> tuple[str, str]:
 
     Returns
     ----------
-    tuple[str, str]
-        A tuple of (run_id, collate_id). If a run and/or collate job were
-        not submitted, the id/s will be None.
+    Optional[str]
+        Any submitted payu run ID. If a subsequent run job was
+        not submitted, the id will be None.
     """
-    collate_pattern = r"^qsub.*/bin/payu-collate$"
-    collate_submitted = re.search(collate_pattern, stdout, re.MULTILINE) is not None
     run_pattern = r"^qsub.*/bin/payu-run$"
     run_submitted = re.search(run_pattern, stdout, re.MULTILINE) is not None
 
     job_ids = parse_gadi_pbs_ids(stdout)
 
-    run_id = collate_id = None
-    if collate_submitted and run_submitted:
-        check_n_ids(job_ids, n_ids=2)
-        collate_id, run_id = job_ids[0], job_ids[-1]
-    elif collate_submitted:
-        check_n_ids(job_ids, n_ids=1)
-        collate_id = job_ids[0]
-    elif run_submitted:
-        check_n_ids(job_ids, n_ids=1)
+    run_id = None
+    if run_submitted:
+        if len(job_ids) < 1:
+            raise RuntimeError(
+                "No job ID found in stdout file for subsequent payu run job"
+            )
+        elif len(job_ids) > 1:
+            # Warning as post-processing is currently disabled
+            warnings.warn(f"Found more than 1 job IDs in stdout file (IDs: {job_ids})")
         run_id = job_ids[-1]
-    return run_id, collate_id
+
+    return run_id
 
 
 def read_job_output_file(
@@ -516,7 +493,7 @@ def wait_for_qsub_job(
     wait_for_qsub_func: Callable[[str], None]
         A function that waits for a PBS job to complete
     job_type: str
-        The type of job to wait for - e.g. "run" or "collate"
+        The type of job to wait for - e.g. "run"
 
     Returns
     ----------
@@ -553,17 +530,10 @@ def wait_for_payu_jobs(
 ) -> list[str]:
     """
     Wait for a initial payu run PBS job to finsh, then waits
-    for any subsequent collate and run jobs.
+    for any subsequent run jobs.
 
     Raises an Runtime Error if any of the jobs fail, or unable to parse
     STDOUT/STDERR files for job IDs.
-
-    TODO: These functions can be simplified once there's support in payu for
-     storing information on jobs submitted, JOB_IDs, and exit statuses
-    (see https://github.com/payu-org/payu/issues/520)
-
-    This will allow better support for waiting for post-scripts, and less
-    reliance on the format of payu STDOUT/STDERR files.
 
     Parameters
     ----------
@@ -578,8 +548,7 @@ def wait_for_payu_jobs(
     Returns
     ----------
     list[str]
-        A list of filepaths to the output log files created by the run and
-        collate jobs.
+        A list of filepaths to the output log files created by the run jobs.
     """
     output_files = []
     run_count = 0
@@ -590,15 +559,8 @@ def wait_for_payu_jobs(
         )
         output_files.extend(run_output_files)
 
-        # Check whether collate and run jobs were submitted
-        next_run_id, collate_id = parse_pbs_submitted_jobs(run_stdout)
-
-        if collate_id is not None:
-            # Wait for collate job to finish
-            _, _, collate_output_files = wait_for_qsub_job(
-                control_path, collate_id, wait_for_qsub_func, job_type="collate"
-            )
-            output_files.extend(collate_output_files)
+        # Check whether a job job was submitted
+        next_run_id = parse_pbs_submitted_jobs(run_stdout)
 
         if next_run_id is not None:
             run_count += 1

@@ -64,6 +64,42 @@ def test_experiment_setup_for_test_run(exp, tmp_path):
         "metadata": {"enable": False},
         "experiment": "control",
         "laboratory": str(tmp_path / "lab"),
+        "collate": {"enable": False},
+        "sync": {"enable": False},
+    }
+
+    assert config == expected_config
+
+
+def test_experiment_setup_for_test_run_remove_postprocessing(exp, tmp_path):
+    postprocessing_config = {
+        "model": "access-om2",
+        "collate": {"restart": True, "enable": True},
+        "sync": {"enable": True},
+        "postscript": "some_postscript.sh",
+        "userscripts": {
+            "setup": "some_setup.sh",
+            "archive": "some_archive.sh",
+        },
+    }
+    with open(exp.control_path / "config.yaml", "w") as f:
+        yaml.dump(postprocessing_config, f)
+
+    exp.setup_for_test_run()
+    with open(exp.control_path / "config.yaml") as f:
+        config = yaml.safe_load(f)
+
+    expected_config = expected_config = {
+        "model": "access-om2",
+        "runlog": False,
+        "metadata": {"enable": False},
+        "experiment": "control",
+        "laboratory": str(tmp_path / "lab"),
+        "collate": {"enable": False},
+        "sync": {"enable": False},
+        "userscripts": {
+            "setup": "some_setup.sh",
+        },
     }
 
     assert config == expected_config
@@ -143,9 +179,8 @@ def test_parse_run_id():
 @pytest.mark.parametrize(
     "stdout_filename, expected_ids",
     [
-        ("pre-industrial.o137768371", ["137776067.gadi-pbs", "137776068.gadi-pbs"]),
-        ("pre-industrial.o137776068", ["137777140.gadi-pbs"]),
-        ("pre-industria_c.o137776067", []),
+        ("pre-industrial.o137768371", ["137776068.gadi-pbs"]),
+        ("pre-industrial.o137776068", []),
     ],
 )
 def test_parse_gadi_pbs_ids(stdout_filename, expected_ids):
@@ -155,88 +190,64 @@ def test_parse_gadi_pbs_ids(stdout_filename, expected_ids):
 
 
 @pytest.mark.parametrize(
-    "stdout_filename, expected_job_id, expected_collate_id",
+    "stdout_filename, expected_job_id",
     [
-        (
-            "pre-industrial.o137768371",
-            "137776068.gadi-pbs",
-            "137776067.gadi-pbs",
-        ),
-        ("pre-industrial.o137776068", None, "137777140.gadi-pbs"),
-        ("pre-industria_c.o137776067", None, None),
+        ("pre-industrial.o137768371", "137776068.gadi-pbs"),
+        ("pre-industrial.o137776068", None),
     ],
 )
-def test_parse_pbs_submitted_jobs(
-    stdout_filename, expected_job_id, expected_collate_id
-):
+def test_parse_pbs_submitted_jobs(stdout_filename, expected_job_id):
     with open(LOG_DIR / stdout_filename) as f:
         stdout = f.read()
-    run_id, collate_id = parse_pbs_submitted_jobs(stdout)
+    run_id = parse_pbs_submitted_jobs(stdout)
     assert run_id == expected_job_id
-    assert collate_id == expected_collate_id
 
 
 @pytest.mark.parametrize(
-    "stdout, expected_error",
+    "stdout",
     [
+        ("qsub -q normal ... - path/to/env/bin/python /path/to/env/bin/payu-run\n"),
         (
-            "qsub -q normal ... - path/to/env/bin/python /path/to/env/bin/payu-run\n",
-            "Expected 1 job IDs in stdout file, but found 0",
-        ),
-        (
-            "qsub -q normal ... - path/to/env/bin/python /path/to/env/bin/payu-collate\n",
-            "Expected 1 job IDs in stdout file, but found 0",
-        ),
-        (
-            "qsub -q normal ... - path/to/env/bin/python /path/to/env/bin/payu-collate\n"
-            "qsub -q normal ... - path/to/env/bin/python /path/to/env/bin/payu-run\n",
-            "Expected 2 job IDs in stdout file, but found 0",
-        ),
-        (
-            "qsub -q normal ... - path/to/env/bin/python /path/to/env/bin/payu-collate\n"
-            "123456789.gadi-pbs\n"
-            "qsub -q normal ... - path/to/env/bin/python /path/to/env/bin/payu-run\n",
-            "Expected 2 job IDs in stdout file, but found 1",
+            "some test output\n"
+            "qsub -q normal ... - path/to/env/bin/python /path/to/env/bin/payu-run\n"
+            "exit status: 0"
         ),
     ],
 )
-def test_parse_pbs_submitted_jobs_no_job_id_error(stdout, expected_error):
+def test_parse_pbs_submitted_jobs_no_job_id_error(stdout):
     """
     Test that parse_pbs_submitted_jobs raise an error when there's
-    no job_ids for the collate and run jobs in the stdout"""
+    no job_ids for submitted run jobs in the stdout"""
+    expected_error = "No job ID found in stdout file for subsequent payu run job"
     with pytest.raises(RuntimeError, match=expected_error):
         parse_pbs_submitted_jobs(stdout)
 
 
 @pytest.mark.parametrize(
-    "stdout, expected_collate_id, expected_run_id",
+    "stdout, expected_run_id",
     [
         (
-            "qsub -q normal ... - path/to/env/bin/python /path/to/env/bin/payu-run\n"
             "123456.gadi-pbs\n"
-            "654321.gadi-pbs\n",
-            None,
+            "qsub -q normal ... - path/to/env/bin/python /path/to/env/bin/payu-run\n"
+            "654321.gadi-pbs",
             "654321.gadi-pbs",
         ),
         (
-            "qsub -q normal ... - path/to/env/bin/python /path/to/env/bin/payu-collate\n"
             "qsub -q normal ... - path/to/env/bin/python /path/to/env/bin/payu-run\n"
             "123456.gadi-pbs\n654321.gadi-pbs\n67890.gadi-pbs\n",
-            "123456.gadi-pbs",
             "67890.gadi-pbs",
         ),
     ],
 )
-def test_parse_pbs_submitted_jobs_more_job_ids(
-    stdout, expected_collate_id, expected_run_id
-):
+def test_parse_pbs_submitted_jobs_more_job_ids(stdout, expected_run_id):
     """
-    When there are more job IDs the payu collate and run jobs,
-    don't raise an error as there could be a postscript job ID
+    When there are more job IDs the payu run jobs,
+    raise a warning - maybe the setup/run userscripts submitted a PBS job?
     """
-    run_id, collate_id = parse_pbs_submitted_jobs(stdout)
+    expected_error_msg = r"Found more than 1 job IDs in stdout file .*"
+    with pytest.warns(UserWarning, match=expected_error_msg):
+        run_id = parse_pbs_submitted_jobs(stdout)
     assert run_id == expected_run_id
-    assert collate_id == expected_collate_id
 
 
 @pytest.mark.parametrize(
@@ -244,7 +255,6 @@ def test_parse_pbs_submitted_jobs_more_job_ids(
     [
         ("pre-industrial.o137768371", 0),
         ("pre-industrial.o137776068", 0),
-        ("pre-industria_c.o137776067", 0),
         ("example_failed_job.o1234", 1),
     ],
 )
@@ -270,12 +280,8 @@ def mock_wait_for_qsub(job_id):
             [
                 "pre-industrial.o137768371",
                 "pre-industrial.e137768371",
-                "pre-industria_c.o137776067",
-                "pre-industria_c.e137776067",
                 "pre-industrial.o137776068",
                 "pre-industrial.e137776068",
-                "pre-industria_c.o137777140",
-                "pre-industria_c.e137777140",
             ],
         ),
         # Test with job_id of the second payu run
@@ -284,14 +290,7 @@ def mock_wait_for_qsub(job_id):
             [
                 "pre-industrial.o137776068",
                 "pre-industrial.e137776068",
-                "pre-industria_c.o137777140",
-                "pre-industria_c.e137777140",
             ],
-        ),
-        # Test with stdout with no payu runs and collate jobs submitted
-        (
-            "137777140.gadi-pbs",
-            ["pre-industria_c.o137777140", "pre-industria_c.e137777140"],
         ),
     ],
 )
@@ -349,8 +348,6 @@ def test_experiment_wait_for_payu_run(exp, tmp_path):
     test_files = [
         "pre-industrial.o137776068",
         "pre-industrial.e137776068",
-        "pre-industria_c.o137777140",
-        "pre-industria_c.e137777140",
     ]
     for file in test_files:
         shutil.copy(LOG_DIR / file, tmp_path / "control")

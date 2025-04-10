@@ -14,12 +14,10 @@ Setting up ocean
 Setting up ice
 Setting up coupler
 Checking exe, input and restart manifests
-137777140.gadi-pbs
 Loading input manifest: manifests/input.yaml
 Loading restart manifest: manifests/restart.yaml
 Loading exe manifest: manifests/exe.yaml
 payu: Found modules in /opt/Modules/v4.3.0
-qsub -q copyq -P testProject -l walltime=3600 -l ncpus=1 -l mem=4GB -l jobfs=1500MB -N pre-industria_c -l wd -j n -v PAYU_PATH=/g/data/vk83/prerelease/apps/base_conda/envs/payu-dev-20250220T210827Z-39e4b9b/bin,PAYU_CURRENT_RUN=1,MODULESHOME=/opt/Modules/v4.3.0,MODULES_CMD=/opt/Modules/v4.3.0/libexec/modulecmd.tcl,MODULEPATH=/g/data/vk83/modules:/g/data/vk83/prerelease/modules:/etc/scl/modulefiles:/opt/Modules/modulefiles:/opt/Modules/v4.3.0/modulefiles:/apps/Modules/modulefiles -W umask=027 -l storage=gdata/vk83+scratch/testProject -- /g/data/vk83/prerelease/./apps/conda_scripts/payu-dev-20250220T210827Z-39e4b9b.d/bin/python /g/data/vk83/prerelease/apps/base_conda/envs/payu-dev-20250220T210827Z-39e4b9b/bin/payu-collate
 Writing manifests/restart.yaml
 mod cice4/2024.05.21
 mod mom5/access-esm1.5_2024.08.23
