@@ -96,18 +96,29 @@ def _experiments(
     # Check whether to run experiment with 1 day runtime
     if any(
         test in scheduled_tests
-        for test in ("test_bit_repro_repeat", "test_restart_repro")
+        for test in ("test_restart_repro", "test_restart_repro_repeat")
     ):
-        if "test_restart_repro" in scheduled_tests:
-            print("Running experiment with 1 day model runtime twice")
-            experiments.setup_and_submit(
-                exp_name=EXP_1D_RUNTIME, model_runtime=DAY_IN_SECONDS, n_runs=2
-            )
-        else:
-            print("Running experiment with 1 day model runtime")
-            experiments.setup_and_submit(
-                exp_name=EXP_1D_RUNTIME, model_runtime=DAY_IN_SECONDS
-            )
+        print("Running experiment with 1 day model runtime twice")
+        experiments.setup_and_submit(
+            exp_name=EXP_1D_RUNTIME, model_runtime=DAY_IN_SECONDS, n_runs=2
+        )
+    elif "test_bit_repro_repeat" in scheduled_tests:
+        print("Running experiment with 1 day model runtime")
+        experiments.setup_and_submit(
+            exp_name=EXP_1D_RUNTIME, model_runtime=DAY_IN_SECONDS
+        )
+
+    # Check whether to run a repeat experiment with 1 day runtime
+    if "test_restart_repro_repeat" in scheduled_tests:
+        print("Running repeat experiment with 1 day model runtime twice")
+        experiments.setup_and_submit(
+            exp_name=EXP_1D_RUNTIME_REPEAT, model_runtime=DAY_IN_SECONDS, n_runs=2
+        )
+    elif "test_bit_repro_repeat" in scheduled_tests:
+        print("Running repeat experiment with 1 day model runtime")
+        experiments.setup_and_submit(
+            exp_name=EXP_1D_RUNTIME_REPEAT, model_runtime=DAY_IN_SECONDS
+        )
 
     # Check whether to run experiment with 2 day runtime
     if "test_restart_repro" in scheduled_tests:
@@ -115,22 +126,6 @@ def _experiments(
         experiments.setup_and_submit(
             exp_name=EXP_2D_RUNTIME, model_runtime=(2 * DAY_IN_SECONDS)
         )
-
-    # Check whether to run a repeat experiment with 1 day runtime
-    if any(
-        test in scheduled_tests
-        for test in ("test_bit_repro_repeat", "test_restart_repro_repeat")
-    ):
-        if "test_restart_repro_repeat" in scheduled_tests:
-            print("Running repeat experiment with 1 day model runtime twice")
-            experiments.setup_and_submit(
-                exp_name=EXP_1D_RUNTIME_REPEAT, model_runtime=DAY_IN_SECONDS, n_runs=2
-            )
-        else:
-            print("Running repeat experiment with 1 day model runtime")
-            experiments.setup_and_submit(
-                exp_name=EXP_1D_RUNTIME_REPEAT, model_runtime=DAY_IN_SECONDS
-            )
 
     # Wait for experiments to finish here and catching errors as some
     # some experiments may finish without errors so errors will be raised
@@ -279,3 +274,21 @@ class TestBitReproducibility:
                 json.dump(checksums_2d, file, indent=2)
 
         assert matching_checksums
+
+    @pytest.mark.repro_restart_repeat
+    def test_restart_repro_repeat(self, experiments: Experiments):
+        """
+        Test that when a model is run twice for two runs
+        have the same checksums
+        """
+        experiments.check_experiments([EXP_1D_RUNTIME, EXP_1D_RUNTIME_REPEAT])
+        exp_1d_runtime = experiments.get_experiment(EXP_1D_RUNTIME)
+        exp_1d_runtime_repeat = experiments.get_experiment(EXP_1D_RUNTIME_REPEAT)
+
+        # Extract checksums, using the output from the second model run
+        expected = exp_1d_runtime.extract_checksums(exp_1d_runtime.model.output_1)
+        produced = exp_1d_runtime_repeat.extract_checksums(
+            exp_1d_runtime_repeat.model.output_1
+        )
+
+        assert produced == expected

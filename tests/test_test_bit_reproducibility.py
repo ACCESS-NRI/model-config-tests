@@ -20,40 +20,6 @@ warnings.filterwarnings("ignore", category=pytest.PytestUnknownMarkWarning)
 from model_config_tests.exp_test_helper import ExpTestHelper
 from model_config_tests.test_bit_reproducibility import _experiments
 
-ACCESS_OM2_CONFIGS_REPO = "https://github.com/ACCESS-NRI/access-om2-configs.git"
-TEST_ACCESS_OM2_CONFIG_TAG = "release-1deg_jra55_iaf-2.0"
-
-
-# Below is an option to use config files rather than the storing copies in this
-# repository.
-@pytest.fixture(scope="session")
-def access_om2_config(tmp_path_factory):
-    """Clone an ACCESS-OM2 base config for testing"""
-    config_path = tmp_path_factory.mktemp("access_om2_config") / "base-experiment"
-    try:
-        # Clone access-om2-configs repository
-        subprocess.run(
-            ["git", "clone", ACCESS_OM2_CONFIGS_REPO, str(config_path)], check=True
-        )
-
-        # Checkout the specific tag and disable detached head warning
-        subprocess.run(
-            [
-                "git",
-                "-C",
-                str(config_path),
-                "-c",
-                "advice.detachedHead=false",
-                "checkout",
-                TEST_ACCESS_OM2_CONFIG_TAG,
-            ],
-            check=True,
-        )
-    except subprocess.CalledProcessError as e:
-        print("Error cloning repository and checking out tag in test setup")
-        raise e
-    return config_path
-
 
 def exp_test_helper_factory(*args, **kwargs):
     """Factory function to create a new mock for each ExpTestHelper"""
@@ -101,10 +67,24 @@ def exp_test_helper_factory(*args, **kwargs):
             },
         ),
         (
+            ["test_restart_repro_repeat"],
+            {
+                "exp_1d_runtime": {
+                    "n_runs": 2,
+                    "runtime": 86400,
+                },
+                "exp_1d_runtime_repeat": {
+                    "n_runs": 2,
+                    "runtime": 86400,
+                },
+            },
+        ),
+        (
             [
                 "test_bit_repro_historical",
                 "test_bit_repro_repeat",
                 "test_restart_repro",
+                "test_restart_repro_repeat",
             ],
             {
                 "exp_default_runtime": {
@@ -116,7 +96,7 @@ def exp_test_helper_factory(*args, **kwargs):
                     "runtime": 86400,
                 },
                 "exp_1d_runtime_repeat": {
-                    "n_runs": None,
+                    "n_runs": 2,
                     "runtime": 86400,
                 },
                 "exp_2d_runtime": {

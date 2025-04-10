@@ -127,6 +127,10 @@ def pytest_configure(config):
     config.addinivalue_line(
         "markers", "repro_restart: mark tests that check restart reproducibility"
     )
+    config.addinivalue_line(
+        "markers",
+        "repro_restart_repeat: mark tests that check restart reproducibility with repeated runs",
+    )
     config.addinivalue_line("markers", "slow: mark tests that are slow to run")
     config.addinivalue_line(
         "markers",
