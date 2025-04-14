@@ -60,6 +60,9 @@ Council grant LP200100406."
 https://scholar.google.com/citations?hl=en&user=inVqu_4AAAAJ
 (e) Tell ACCESS-NRI that you are using ACCESS-NRI infrastructure: https://www.access-nri.org.au/resources/user-reporting/"""
 
+# Expected metadata model name
+EXPECTED_METADATA_MODEL = "ACCESS-OM2"
+
 
 class AccessOM2Branch:
     """Use the naming patterns of the branch name to infer information of
@@ -226,16 +229,10 @@ class TestAccessOM2:
             config=config,
         )
 
-    def test_access_om2_metadata_model(self, metadata, branch):
-        if branch.resolution == "025deg":
-            expected_model = "ACCESS-OM2-025"
-        elif branch.resolution == "01deg":
-            expected_model = "ACCESS-OM2-01"
-        else:
-            expected_model = "ACCESS-OM2"
+    def test_access_om2_metadata_model(self, metadata):
         assert (
-            "model" in metadata and metadata["model"] == expected_model
-        ), f"Expected model field set to: {branch.module_name}"
+            "model" in metadata and metadata["model"] == EXPECTED_METADATA_MODEL
+        ), f"Expected metadata model field set to: {EXPECTED_METADATA_MODEL}"
 
     def test_access_om2_metadata_notes(self, metadata):
         assert "notes" in metadata and metadata["notes"] == EXPECTED_METADATA_NOTES, (
