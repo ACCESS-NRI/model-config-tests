@@ -10,7 +10,9 @@ from typing import Any
 import f90nml
 import pytest
 
-from model_config_tests.qa.test_config import check_manifest_exes_in_spack_location
+from model_config_tests.config_tests.qa.test_config import (
+    check_manifest_exes_in_spack_location,
+)
 from model_config_tests.util import get_git_branch_name
 
 # Name of module on NCI
