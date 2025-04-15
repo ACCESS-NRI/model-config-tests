@@ -30,7 +30,7 @@ test = [
 ]
 
 [project.scripts]
-model-config-tests = "model_config_tests.__main__:main"
+model-config-tests = "model_config_tests.config_tests_cmd:main"
 
 [project.urls]
 Homepage = "https://github.com/ACCESS-NRI/model-config-tests/"
