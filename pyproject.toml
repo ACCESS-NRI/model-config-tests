@@ -30,7 +30,8 @@ test = [
 ]
 
 [project.scripts]
-model-config-tests = "model_config_tests.config_tests_cmd:main"
+model-config-tests = "model_config_tests.cmds.config_tests_cmd:main"
+compare-exp-tests = "model_config_tests.cmds.compare_exp_tests_cmd:main"
 
 [project.urls]
 Homepage = "https://github.com/ACCESS-NRI/model-config-tests/"
