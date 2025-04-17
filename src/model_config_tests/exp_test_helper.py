@@ -6,8 +6,10 @@ import os
 import re
 import shutil
 import subprocess as sp
-import sys
+import warnings
+from collections.abc import Callable
 from pathlib import Path
+from typing import Optional
 
 import yaml
 
@@ -16,8 +18,26 @@ from model_config_tests.util import wait_for_qsub
 
 
 class ExpTestHelper:
+    """
+    Helper class to manage a payu experiment
 
-    def __init__(self, control_path: Path, lab_path: Path, disable_payu_run=False):
+    Parameters
+    ----------
+    control_path: Path
+        The path to the payu control directory
+    lab_path: Path
+        The path to the payu lab directory
+    disable_payu_run: bool
+        Whether to disable the payu run. This is useful for testing
+        where we don't want to submit any PBS jobs
+    """
+
+    def __init__(
+        self,
+        control_path: Path,
+        lab_path: Path,
+        disable_payu_run: Optional[bool] = False,
+    ):
 
         self.exp_name = control_path.name
         self.control_path = control_path
@@ -25,6 +45,8 @@ class ExpTestHelper:
         self.config_path = control_path / "config.yaml"
         self.archive_path = lab_path / "archive" / self.exp_name
         self.work_path = lab_path / "work" / self.exp_name
+
+        # Output directories that are accessed in tests
         self.output000 = self.archive_path / "output000"
         self.output001 = self.archive_path / "output001"
         self.restart000 = self.archive_path / "restart000"
@@ -36,6 +58,8 @@ class ExpTestHelper:
         self.set_model()
 
         self.disable_payu_run = disable_payu_run
+
+        self.run_id = None
 
     def set_model(self):
         """Set model based on payu config. Currently only setting top-level
@@ -76,113 +100,211 @@ class ExpTestHelper:
         # Set laboratory path
         doc["laboratory"] = str(self.lab_path)
 
+        # Disable post-processing
+        doc["collate"] = {"enable": False}
+        doc["sync"] = {"enable": False}
+        if "postscript" in doc:
+            doc.pop("postscript")
+        if "userscripts" in doc:
+            if "archive" in doc["userscripts"]:
+                doc["userscripts"].pop("archive")
+
         with open(self.config_path, "w") as f:
             yaml.dump(doc, f)
 
-    def run(self):
+    def submit_payu_run(self, n_runs: int = None) -> str:
         """
-        Run the experiment using payu and check output.
+        Submit a payu run job.
 
-        Don't do any work if it has already run.
-        """
-        # Skip running payu if it's disabled, or if output already exists
-        if self.disable_payu_run or self.has_run():
-            return 0, None, None, None
-        else:
-            return self.force_qsub_run()
+        Parameters
+        ----------
+        n_runs: int
+            The number of runs to submit with --nruns.
 
-    def force_qsub_run(self):
-        """
-        Run using qsub
+        Returns
+        ----------
+        str
+            The job ID of the submitted payu run job
         """
         if self.disable_payu_run:
-            # Skip running payu if it's disabled.
-            return 0, None, None, None
+            return
 
-        # Change to experiment directory and run.
         owd = Path.cwd()
         try:
+            # Change to experiment directory and run.
             os.chdir(self.control_path)
-            sp.check_output(["payu", "sweep", "--lab", self.lab_path])
-            run_id = sp.check_output(["payu", "run", "--lab", self.lab_path])
-            run_id = run_id.decode().splitlines()[0]
-        except sp.CalledProcessError:
-            print("Error: call to payu run failed.", file=sys.stderr)
-            return 1, None, None, None
+
+            print("Running payu setup and payu sweep commands")
+            sp.run(["payu", "setup", "--lab", str(self.lab_path)], check=True)
+            sp.run(["payu", "sweep", "--lab", str(self.lab_path)], check=True)
+
+            run_command = ["payu", "run", "--lab", str(self.lab_path)]
+            if n_runs:
+                run_command.extend(["--nruns", str(n_runs)])
+            print(f"Running payu run command: {' '.join(run_command)}")
+            result = sp.run(run_command, capture_output=True, text=True, check=True)
+            self.run_id = parse_run_id(result.stdout)
+            print(f"Run Job ID: {self.run_id}")
+        except sp.CalledProcessError as e:
+            raise RuntimeError(f"Failed to submit payu run. Error: {e}")
         finally:
+            # Change back to original working directory
             os.chdir(owd)
 
-        wait_for_qsub(run_id)
-        run_id = run_id.split(".")[0]
+    def wait_for_payu_run(self, run_id: str = None) -> list[str]:
+        """Given a run ID, wait for all the payu run jobs to finish.
 
-        output_files = []
-        # Read qsub stdout file
-        stdout_filename = glob.glob(str(self.control_path / f"*.o{run_id}"))
-        print(stdout_filename)
-        if len(stdout_filename) != 1:
-            print("Error: there are too many stdout files.", file=sys.stderr)
-            return 2, None, None, None
+        Parameters
+        ----------
+        run_id: str
+            The job ID of the payu run job to wait for. If None, use the
+            run ID saved in the class.
 
-        stdout_filename = stdout_filename[0]
-        output_files.append(stdout_filename)
-        stdout = ""
-        with open(stdout_filename) as f:
-            stdout = f.read()
+        Returns
+        ----------
+        list[str]
+            A list of filepaths to the output log files created by the run jobs
+        """
+        if self.disable_payu_run:
+            return
 
-        # Read qsub stderr file
-        stderr_filename = glob.glob(str(self.control_path / f"*.e{run_id}"))
-        stderr = ""
-        if len(stderr_filename) == 1:
-            stderr_filename = stderr_filename[0]
-            output_files.append(stderr_filename)
-            with open(stderr_filename) as f:
-                stderr = f.read()
+        if run_id is None:
+            run_id = self.run_id
 
-        # TODO: Early return if not collating
-
-        # Read the qsub id of the collate job from the stdout.
-        # Payu puts this here.
-
-        # TODO: Fish out the exit code from the run logs and early
-        # return if status != 0
-
-        m = re.search(r"(\d+.gadi-pbs)\n", stdout)
-        if m is None:
-            print("Error: qsub id of collate job.", file=sys.stderr)
-            return 3, stdout, stderr, output_files
-
-        # Wait for the collate to complete.
-        run_id = m.group(1)
-        wait_for_qsub(run_id)
-
-        # Return files created by qsub so caller can read or delete.
-        collate_files = self.control_path / f"*.[oe]{run_id}"
-        output_files += glob.glob(str(collate_files))
-
-        return 0, stdout, stderr, output_files
-
-    def setup_and_run(self):
-        self.setup_for_test_run()
-        return self.run()
-
-    def print_run_logs(self, status, stdout, stderr, output_files):
-        """Print run information"""
-        run_info = (
-            f"Experiment run: {self.exp_name}\n"
-            f"Status: {status}\n"
-            f"Control directory: {self.control_path}\n"
-            f"Output files: {output_files}\n"
-            f"--- stdout ---\n{stdout}\n"
-            f"--- stderr ---\n{stderr}\n"
+        # Wait for payu PBS jobs to complete
+        output_files = wait_for_payu_jobs(
+            control_path=self.control_path,
+            run_id=run_id,
+            wait_for_qsub_func=wait_for_qsub,
         )
-        print(run_info)
+        return output_files
+
+
+class Experiments:
+    """
+    Class to manage the shared payu experiments
+
+    Parameters
+    ----------
+    control_path: Path
+        The path to the configuration to that is being tested - this will
+        be copied to the control directory for the test experiments
+    output_path: Path
+        The path to store all test output. e.g. control and lab directories
+        for the test experiments
+    keep_archive: bool
+        Whether to keep previous test output. This is useful for testing
+    """
+
+    def __init__(
+        self,
+        control_path: Path,
+        output_path: Path,
+        keep_archive: Optional[bool] = False,
+    ):
+        self.control_path = control_path
+        self.output_path = output_path
+        self.keep_archive = keep_archive
+        self.experiments = {}
+        self.successful_experiments = []
+
+    def setup_and_submit(
+        self,
+        exp_name: str,
+        model_runtime: Optional[int] = None,
+        n_runs: Optional[int] = None,
+    ) -> ExpTestHelper:
+        """Setup and submit a payu experiment
+
+        Parameters
+        ----------
+        exp_name: str
+            The name of the experiment to run
+        model_runtime: int
+            The model runtime in seconds. If None, use the default
+            model runtime defined in the model class
+        n_runs: int
+            The number of runs to submit with --nruns. If None, submit once
+
+        Returns
+        ----------
+        ExpTestHelper
+            The experiment helper object for the submitted experiment
+        """
+        # Setup experiment
+        exp = setup_exp(
+            self.control_path, self.output_path, exp_name, self.keep_archive
+        )
+
+        print(f"-----Setting up experiment {exp_name}-----")
+        print(f"Control path: {exp.control_path}")
+        print(f"Lab path: {exp.lab_path}")
+        print(f"Archive path: {exp.archive_path}")
+
+        if model_runtime is not None:
+            # Set model runtime in seconds
+            exp.model.set_model_runtime(seconds=model_runtime)
+        else:
+            # Set the default model runtime defined in the model class
+            exp.model.set_model_runtime()
+
+        # Add experiment  to dictionary of saved experiments
+        self.experiments[exp_name] = exp
+
+        # Submit the experiment
+        if n_runs is not None:
+            exp.submit_payu_run(n_runs=n_runs)
+        else:
+            exp.submit_payu_run()
+
+        return exp
+
+    def get_experiment(self, exp_name: str) -> ExpTestHelper:
+        """
+        Return the experiment object for the given experiment name
+        """
+        return self.experiments.get(exp_name)
+
+    def wait_for_all_experiments(self, catch_errors=True) -> None:
+        """
+        Wait for all experiments to finish
+
+        Parameters
+        ----------
+        catch_errors: bool
+            Whether to catch errors and continue waiting for other test
+            experiments, or raise an error and stop the tests. Default is True.
+        """
+        for exp_name, exp in self.experiments.items():
+            print(f"-----Waiting for experiment {exp_name} to complete-----")
+            try:
+                exp.wait_for_payu_run()
+                print(f"Experiment {exp_name} completed successfully")
+                self.successful_experiments.append(exp_name)
+            except RuntimeError as e:
+                if catch_errors:
+                    print(f"Error in experiment {exp_name}: {e}")
+                else:
+                    raise e
+
+    def check_experiments(self, exp_names=list[str]) -> None:
+        """
+        Check whether given experiments names have run successfully
+        """
+        for exp_name in exp_names:
+            # TODO: Is there other useful information to display here?
+            assert (
+                exp_name in self.successful_experiments
+            ), f"There was an error running experiment: {exp_name}"
 
 
 def setup_exp(
     control_path: Path, output_path: Path, exp_name: str, keep_archive: bool = False
-):
+) -> ExpTestHelper:
     """
-    Create a exp by copying over base config
+    Create a experiment by copying over a base configuration to the control
+    directory, and setting up the lab and archive directories, and
+    the config.yaml file
     """
     # Set experiment control path
     if control_path.name != "base-experiment":
@@ -214,4 +336,235 @@ def setup_exp(
         except FileNotFoundError:
             pass
 
+    # Set up experiment config
+    exp.setup_for_test_run()
+
     return exp
+
+
+def parse_run_id(stdout: str) -> str:
+    """Parses the run ID from the subprocess stdout that submits payu run.
+    The run ID is the first line of the stdout."""
+    run_id = stdout.splitlines()[0]
+    return run_id
+
+
+def parse_gadi_pbs_ids(stdout: str) -> list[str]:
+    """
+    Parse all Gadi PBS job IDs that are printed out in to a line
+    in the payu stdout file
+
+    Parameters
+    ----------
+    stdout: str
+        The contents of a payu PBS job stdout file
+
+    Returns
+    ----------
+    list[str]
+        A list of jobs IDs printed out to a line
+    """
+    # Define the regex pattern, e.g. 137776067.gadi-pbs
+    pattern = r"^(\d+\.gadi-pbs)$"
+
+    # Find all matches in the text
+    matches = re.findall(pattern, stdout, re.MULTILINE)
+    return matches
+
+
+def parse_exit_status_from_file(stdout: str) -> Optional[int]:
+    """
+    Parse the exit status from the payu stdout file
+
+    Parameters
+    ----------
+    stdout: str
+        The contents of a payu PBS job stdout file
+
+    Returns
+    ----------
+    int
+        The exit status of the job. If not found, return None.
+    """
+    # Regex pattern for exit status - allow spaces before and after
+    pattern = r"^\s*Exit Status:\s*(\d+)\s*$"
+
+    # Find all matches in the text
+    matches = re.findall(pattern, stdout, re.MULTILINE)
+    if len(matches) == 0:
+        return None
+    return int(matches[-1])
+
+
+def parse_pbs_submitted_jobs(stdout: str) -> Optional[str]:
+    """
+    Parse a payu STDOUT file for run job ID. If there are multiple job IDs,
+    assume payu run is the last one found.
+
+    Parameters
+    ----------
+    stdout: str
+        The contents of a payu job stdout file
+
+    Returns
+    ----------
+    Optional[str]
+        Any submitted payu run ID. If a subsequent run job was
+        not submitted, the id will be None.
+    """
+    run_pattern = r"^qsub.*/bin/payu-run$"
+    run_submitted = re.search(run_pattern, stdout, re.MULTILINE) is not None
+
+    job_ids = parse_gadi_pbs_ids(stdout)
+
+    run_id = None
+    if run_submitted:
+        if len(job_ids) < 1:
+            raise RuntimeError(
+                "No job ID found in stdout file for subsequent payu run job"
+            )
+        elif len(job_ids) > 1:
+            # Warning as post-processing is currently disabled
+            warnings.warn(f"Found more than 1 job IDs in stdout file (IDs: {job_ids})")
+        run_id = job_ids[-1]
+
+    return run_id
+
+
+def read_job_output_file(
+    control_path: Path, job_id: str, file_type: str = "stdout"
+) -> tuple[str, str]:
+    """
+    Read the output file of a job
+
+    Parameters
+    ----------
+    control_path: str
+        The path to the control directory
+    job_id: str
+        The ID of the job to read the output file for.
+    file_type: str
+        The type of file to read ("stdout" or "stderr")
+
+    Returns
+    ----------
+    tuple[str, str]
+        A tuple of (contents, filename) where contents of the stdout/stderr
+        file and filename is the path to the file.
+    """
+    job_id = job_id.split(".")[0]
+    if file_type == "stdout":
+        filename = glob.glob(str(control_path / f"*.o{job_id}"))
+    elif file_type == "stderr":
+        filename = glob.glob(str(control_path / f"*.e{job_id}"))
+    else:
+        raise ValueError("file_type must be 'stdout' or 'stderr'")
+
+    if len(filename) != 1:
+        raise RuntimeError(
+            f"Expected 1 {file_type} file for job ID {job_id}, "
+            f"but found {len(filename)}. Files: {filename}"
+        )
+
+    with open(filename[0]) as f:
+        contents = f.read()
+
+    return contents, filename[0]
+
+
+def wait_for_qsub_job(
+    control_path: Path,
+    job_id: str,
+    wait_for_qsub_func: Callable[[str], None],
+    job_type: str = "run",
+) -> tuple[str, str, list]:
+    """
+    Wait for a qsub job to finish, checks the exit status,
+    and returns the job output files.
+
+    Parameters
+    ----------
+    control_path: str
+        The path to the control directory
+    job_id: str
+        The ID of the job to wait for.
+    wait_for_qsub_func: Callable[[str], None]
+        A function that waits for a PBS job to complete
+    job_type: str
+        The type of job to wait for - e.g. "run"
+
+    Returns
+    ----------
+    tuple[str, str, list]
+        A tuple of (stdout, stderr, output_files) where stdout and stderr
+        are the contents of the stdout and stderr files, and output_files
+        is a list of filepaths to the output files
+    """
+    # Wait for job to complete
+    print(f"Waiting for {job_type} job to finish. Job ID: {job_id}")
+    wait_for_qsub_func(job_id)
+
+    # Read stdout/stderr files
+    stdout, stdout_filename = read_job_output_file(control_path, job_id, "stdout")
+    stderr, stderr_filename = read_job_output_file(control_path, job_id, "stderr")
+    output_files = [stdout_filename, stderr_filename]
+
+    # Check whether the run job was successful
+    exit_status = parse_exit_status_from_file(stdout)
+    if exit_status != 0:
+        print(
+            f"Job_ID: {job_id}\n"
+            f"Output files: {output_files}\n"
+            f"--- stdout ---\n{stdout}\n"
+            f"--- stderr ---\n{stderr}\n"
+        )
+        raise RuntimeError(f"Payu {job_type} job failed with exit status {exit_status}")
+
+    return stdout, stderr, output_files
+
+
+def wait_for_payu_jobs(
+    control_path: Path, run_id: str, wait_for_qsub_func: Callable[[str], None]
+) -> list[str]:
+    """
+    Wait for a initial payu run PBS job to finsh, then waits
+    for any subsequent run jobs.
+
+    Raises an Runtime Error if any of the jobs fail, or unable to parse
+    STDOUT/STDERR files for job IDs.
+
+    Parameters
+    ----------
+    control_path: str
+        The path to the control directory. This is where to find the
+        STDOUT/STDERR files for the jobs.
+    run_id: str
+        The ID of the run job to wait for.
+    wait_for_qsub_func: Callable[[str], None]
+        A function that waits for a PBS job to complete
+
+    Returns
+    ----------
+    list[str]
+        A list of filepaths to the output log files created by the run jobs.
+    """
+    output_files = []
+    run_count = 0
+    while run_id is not None:
+        # Wait for run to complete
+        run_stdout, _, run_output_files = wait_for_qsub_job(
+            control_path, run_id, wait_for_qsub_func
+        )
+        output_files.extend(run_output_files)
+
+        # Check whether a job job was submitted
+        next_run_id = parse_pbs_submitted_jobs(run_stdout)
+
+        if next_run_id is not None:
+            run_count += 1
+            print(
+                f"Waiting for subsequent submitted payu run job (run_count: {run_count})"
+            )
+
+        run_id = next_run_id
+    return output_files

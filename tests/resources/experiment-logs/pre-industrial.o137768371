@@ -1,0 +1,68 @@
+laboratory path:  /scratch/testProject/testUser/access-esm
+binary path:  /scratch/testProject/testUser/access-esm/bin
+input path:  /scratch/testProject/testUser/access-esm/input
+work path:  /scratch/testProject/testUser/access-esm/work
+archive path:  /scratch/testProject/testUser/access-esm/archive
+Found experiment archive: /scratch/testProject/testUser/access-esm/archive/access-esm1.5-configs-release-preindustrial+concentrations-1d-69630b07
+nruns: 2 nruns_per_submit: 1 subrun: 1
+payu: Found modules in /opt/Modules/v4.3.0
+Loading input manifest: manifests/input.yaml
+Loading restart manifest: manifests/restart.yaml
+Loading exe manifest: manifests/exe.yaml
+Setting up atmosphere
+Setting up ocean
+Setting up ice
+Setting up coupler
+Checking exe, input and restart manifests
+Loading input manifest: manifests/input.yaml
+Loading restart manifest: manifests/restart.yaml
+Loading exe manifest: manifests/exe.yaml
+payu: Found modules in /opt/Modules/v4.3.0
+137776068.gadi-pbs
+Loading input manifest: manifests/input.yaml
+Loading restart manifest: manifests/restart.yaml
+Loading exe manifest: manifests/exe.yaml
+payu: Found modules in /opt/Modules/v4.3.0
+qsub -q normal -P testProject -l walltime=9000 -l ncpus=384 -l mem=1536GB -l jobfs=1500MB -N pre-industrial -l wd -j n -v PAYU_PATH=/g/data/vk83/prerelease/apps/base_conda/envs/payu-dev-20250220T210827Z-39e4b9b/bin,PAYU_CURRENT_RUN=1,PAYU_N_RUNS=1,MODULESHOME=/opt/Modules/v4.3.0,MODULES_CMD=/opt/Modules/v4.3.0/libexec/modulecmd.tcl,MODULEPATH=/g/data/vk83/modules:/g/data/vk83/prerelease/modules:/etc/scl/modulefiles:/opt/Modules/modulefiles:/opt/Modules/v4.3.0/modulefiles:/apps/Modules/modulefiles -W umask=027 -l storage=gdata/vk83 -- /g/data/vk83/prerelease/./apps/conda_scripts/payu-dev-20250220T210827Z-39e4b9b.d/bin/python /g/data/vk83/prerelease/apps/base_conda/envs/payu-dev-20250220T210827Z-39e4b9b/bin/payu-run
+mod cice4/2024.05.21
+mod mom5/access-esm1.5_2024.08.23
+mod um7/2024.07.03
+mod access-esm1p5/2024.05.1
+git add /home/189/testUser/test-payu/access-esm1.5-configs/config.yaml
+git add /home/189/testUser/test-payu/access-esm1.5-configs/atmosphere/errflag
+git add /home/189/testUser/test-payu/access-esm1.5-configs/atmosphere/hnlist
+git add /home/189/testUser/test-payu/access-esm1.5-configs/atmosphere/ihist
+git add /home/189/testUser/test-payu/access-esm1.5-configs/atmosphere/namelists
+git add /home/189/testUser/test-payu/access-esm1.5-configs/atmosphere/prefix.PRESM_A
+git add /home/189/testUser/test-payu/access-esm1.5-configs/atmosphere/STASHC
+git add /home/189/testUser/test-payu/access-esm1.5-configs/atmosphere/UAFILES_A
+git add /home/189/testUser/test-payu/access-esm1.5-configs/atmosphere/UAFLDS_A
+git add /home/189/testUser/test-payu/access-esm1.5-configs/atmosphere/cable.nml
+git add /home/189/testUser/test-payu/access-esm1.5-configs/atmosphere/um_env.yaml
+git add /home/189/testUser/test-payu/access-esm1.5-configs/atmosphere/input_atm.nml
+git add /home/189/testUser/test-payu/access-esm1.5-configs/ocean/data_table
+git add /home/189/testUser/test-payu/access-esm1.5-configs/ocean/diag_table
+git add /home/189/testUser/test-payu/access-esm1.5-configs/ocean/field_table
+git add /home/189/testUser/test-payu/access-esm1.5-configs/ocean/input.nml
+git add /home/189/testUser/test-payu/access-esm1.5-configs/ice/cice_in.nml
+git add /home/189/testUser/test-payu/access-esm1.5-configs/ice/input_ice.nml
+git add /home/189/testUser/test-payu/access-esm1.5-configs/coupler/namcouple
+git add manifests/input.yaml
+git add manifests/restart.yaml
+git add manifests/exe.yaml
+git commit -am "2025-03-27 17:37:04: Run 0"
+git commit --no-gpg-sign -am "2025-03-27 17:37:04: Run 0"
+mpirun  -wdir /scratch/testProject/testUser/access-esm/work/access-esm1.5-configs-release-preindustrial+concentrations-1d-69630b07/atmosphere -np 192  /scratch/testProject/testUser/access-esm/work/access-esm1.5-configs-release-preindustrial+concentrations-1d-69630b07/atmosphere/um_hg3.exe : -wdir /scratch/testProject/testUser/access-esm/work/access-esm1.5-configs-release-preindustrial+concentrations-1d-69630b07/ocean -np 180  /scratch/testProject/testUser/access-esm/work/access-esm1.5-configs-release-preindustrial+concentrations-1d-69630b07/ocean/fms_ACCESS-CM.x : -wdir /scratch/testProject/testUser/access-esm/work/access-esm1.5-configs-release-preindustrial+concentrations-1d-69630b07/ice -np 12  /scratch/testProject/testUser/access-esm/work/access-esm1.5-configs-release-preindustrial+concentrations-1d-69630b07/ice/cice_access_360x300_12x1_12p.exe
+
+======================================================================================
+                  Resource Usage on 2025-03-27 17:38:02:
+   Job Id:             137768371.gadi-pbs
+   Project:            testProject
+   Exit Status:        0
+   Service Units:      13.01
+   NCPUs Requested:    384                    NCPUs Used: 384             
+                                           CPU Time Used: 02:24:47        
+   Memory Requested:   1.5TB                 Memory Used: 151.26GB        
+   Walltime requested: 02:30:00            Walltime Used: 00:01:01        
+   JobFS requested:    1.46GB                 JobFS used: 0B              
+======================================================================================

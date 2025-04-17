@@ -127,6 +127,10 @@ def pytest_configure(config):
     config.addinivalue_line(
         "markers", "repro_restart: mark tests that check restart reproducibility"
     )
+    config.addinivalue_line(
+        "markers",
+        "repro_restart_repeat: mark tests that check restart reproducibility with repeated runs",
+    )
     config.addinivalue_line("markers", "slow: mark tests that are slow to run")
     config.addinivalue_line(
         "markers",
@@ -148,4 +152,8 @@ def pytest_configure(config):
     config.addinivalue_line(
         "markers",
         "access_esm1p6: mark as access-esm1.6 specific tests in quick QA CI checks",
+    )
+    config.addinivalue_line(
+        "markers",
+        "experiments: configure shared experiments for reproducibility tests",
     )

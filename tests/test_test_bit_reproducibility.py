@@ -3,7 +3,9 @@
 import shlex
 import shutil
 import subprocess
+import warnings
 from pathlib import Path
+from unittest.mock import Mock, patch
 
 import f90nml
 import pytest
@@ -12,6 +14,126 @@ from netCDF4 import Dataset
 from payu.models.cesm_cmeps import Runconfig
 
 from tests.common import RESOURCES_DIR
+
+# Disable unknown marker warnings when importing _experiments
+warnings.filterwarnings("ignore", category=pytest.PytestUnknownMarkWarning)
+from model_config_tests.exp_test_helper import ExpTestHelper
+from model_config_tests.test_bit_reproducibility import _experiments
+
+
+def exp_test_helper_factory(*args, **kwargs):
+    """Factory function to create a new mock for each ExpTestHelper"""
+    mock_instance = Mock(autospec=ExpTestHelper)
+    print(f"Creating mock ExpTestHelper instance: {mock_instance}")
+    return mock_instance
+
+
+@pytest.mark.parametrize(
+    "requested_markers, expected_experiments",
+    [
+        (
+            [{"exp1": {"n_runs": 1}}],
+            {
+                "exp1": {
+                    "n_runs": 1,
+                    "model_runtime": None,  # Expect default model runtime (set by the model class)
+                }
+            },
+        ),
+        (
+            [{"exp1": {"n_runs": 1}}, {"exp2": {"n_runs": 2, "model_runtime": 86400}}],
+            {
+                "exp1": {"n_runs": 1, "model_runtime": None},
+                "exp2": {
+                    "n_runs": 2,
+                    "model_runtime": 86400,
+                },
+            },
+        ),
+        (
+            [{"exp1": {"n_runs": 1}, "exp2": {}}, {"exp1": {"n_runs": 2}}],
+            {
+                "exp1": {
+                    "n_runs": 2,
+                    "model_runtime": None,
+                },
+                "exp2": {
+                    "n_runs": 1,
+                    "model_runtime": None,
+                },
+            },
+        ),
+        (
+            [{"exp": {"model_runtime": 100}}, {"exp": {"model_runtime": 100}}],
+            {
+                "exp": {
+                    "n_runs": 1,
+                    "model_runtime": 100,
+                },
+            },
+        ),
+    ],
+)
+def test_experiments_fixture(requested_markers, expected_experiments, tmp_path):
+    """Test the experiments function for setting up requested experiments,
+    including model runtime set and number of seconds for model runtime
+    """
+    # Create base experiment/config to test
+    control_path = tmp_path / "control"
+    control_path.mkdir()
+
+    # Create an output path
+    output_path = tmp_path / "output"
+    output_path.mkdir()
+
+    # Create a mock for each ExpTestHelper instance stored in experiments
+    with patch(
+        "model_config_tests.exp_test_helper.ExpTestHelper",
+        side_effect=exp_test_helper_factory,
+    ):
+        # Call the experiments function
+        exps = _experiments(
+            requested_markers, output_path, control_path, keep_archive=True
+        )
+
+    # Check that expected experiments were created
+    assert len(exps.experiments) == len(expected_experiments)
+    for exp_name in expected_experiments:
+        assert exp_name in exps.experiments
+        exp_mock = exps.experiments[exp_name]
+
+        # Check the n_runs passed to the submit_payu_run method
+        exp_mock.submit_payu_run.assert_called_once()
+        n_runs = exp_mock.submit_payu_run.call_args[1].get("n_runs", None)
+        assert n_runs == expected_experiments[exp_name]["n_runs"]
+
+        # Check model runtime passed to set_model_runtime method
+        exp_mock.model.set_model_runtime.assert_called_once()
+        runtime = exp_mock.model.set_model_runtime.call_args[1].get("seconds", None)
+        assert runtime == expected_experiments[exp_name]["model_runtime"]
+
+
+def test_experiments_fixture_conflict_runtimes(tmp_path):
+    """Test the experiments function for setting up requested experiments,
+    raises an error if the same experiment name has different runtimes
+    """
+    request_markers_conflict = [
+        {"exp": {"model_runtime": 100}},
+        {"exp": {"model_runtime": 86400}},
+    ]
+
+    with pytest.raises(
+        ValueError,
+        match="Experiment exp has conflicting model runtimes: 100 and 86400",
+    ):
+        # Call the experiments function
+        _experiments(
+            request_markers_conflict,
+            tmp_path / "output",
+            tmp_path / "control",
+            keep_archive=True,
+        )
+
 
 # Importing the test file test_bit_reproducibility.py, will run all the
 # tests in the current pytest session. So to run only one test, and to
@@ -42,8 +164,9 @@ def tmp_dir():
 class CommonTestHelper:
     """Helper function to store all paths for a test run"""
 
-    def __init__(self, test_name, model_name, tmp_dir):
+    def __init__(self, test_name, exp_name, model_name, tmp_dir):
         self.test_name = test_name
+        self.exp_name = exp_name
         self.model_name = model_name
 
         # Output path for storing test output - resolve to a full path
@@ -53,9 +176,9 @@ class CommonTestHelper:
         # pytest calls (Except for the archive path which is provided with
         # mock model output)
         self.lab_path = self.output_path / "lab"
-        self.test_control_path = self.output_path / "control" / test_name
+        self.test_control_path = self.output_path / "control" / exp_name
         self.test_config_path = self.test_control_path / "config.yaml"
-        self.test_archive_path = self.lab_path / "archive" / test_name
+        self.test_archive_path = self.lab_path / "archive" / exp_name
 
         # Setup model configuration to run tests from
         self.control_path = tmp_dir / "base-experiment"
@@ -129,10 +252,11 @@ def test_test_bit_repro_historical_access_checksums_saved_on_config(tmp_dir):
     configuration under testing/checksum), and the default for control
     directory fixture (use current working directory of subprocess call)"""
     test_name = "test_bit_repro_historical"
+    exp_name = "exp_default_runtime"
     model_name = "access"
 
     # Setup test Helper
-    helper = CommonTestHelper(test_name, model_name, tmp_dir)
+    helper = CommonTestHelper(test_name, exp_name, model_name, tmp_dir)
     helper.copy_config("release-preindustrial+concentrations")
 
     # Copy checksums from resources to model configuration
@@ -169,10 +293,11 @@ def test_test_bit_repro_historical_access_no_reference_checksums(tmp_dir):
     """Check when a reference file for checksums does not exist, that
     checksums from the output are written out"""
     test_name = "test_bit_repro_historical"
+    exp_name = "exp_default_runtime"
     model_name = "access"
 
     # Setup test Helper
-    helper = CommonTestHelper(test_name, model_name, tmp_dir)
+    helper = CommonTestHelper(test_name, exp_name, model_name, tmp_dir)
     helper.copy_config("release-preindustrial+concentrations")
 
     # Put some expected output in the archive directory (as we are skipping
@@ -197,10 +322,11 @@ def test_test_bit_repro_historical_access_no_model_output(tmp_dir):
     """Check when a test exits, that there are no checksums in the output
     directory- similar to when payu run exits with an error"""
     test_name = "test_bit_repro_historical"
+    exp_name = "exp_default_runtime"
     model_name = "access"
 
     # Setup test Helper
-    helper = CommonTestHelper(test_name, model_name, tmp_dir)
+    helper = CommonTestHelper(test_name, exp_name, model_name, tmp_dir)
     helper.write_config()
 
     # Test any pre-existing test output checksums are removed in test call
@@ -237,9 +363,10 @@ def test_test_bit_repro_historical(tmp_dir, model_name, output_0, configuration,
     output and configuration directory, optionally checking that things
     fail when the outputs are modified to give different checksums"""
     test_name = "test_bit_repro_historical"
+    exp_name = "exp_default_runtime"
 
     # Setup test Helper
-    helper = CommonTestHelper(test_name, model_name, tmp_dir)
+    helper = CommonTestHelper(test_name, exp_name, model_name, tmp_dir)
 
     # Use config in resources dir if provided
     if configuration:
@@ -272,7 +399,7 @@ def test_test_bit_repro_historical(tmp_dir, model_name, output_0, configuration,
     # Check general config.yaml settings for test
     with open(helper.test_control_path / "config.yaml") as f:
         test_config = yaml.safe_load(f)
-    assert test_config["experiment"] == test_name
+    assert test_config["experiment"] == exp_name
     assert not test_config["runlog"]
     assert not test_config["metadata"]["enable"]
     assert test_config["laboratory"] == str(helper.lab_path)
@@ -288,9 +415,10 @@ def test_test_access_om3_ocean_model(tmp_dir):
     dedicated tests for experiment setup when they exist. See
     https://github.com/ACCESS-NRI/model-config-tests/issues/115"""
     test_name = "test_bit_repro_historical"
+    exp_name = "exp_default_runtime"
 
     # Setup test Helper
-    helper = CommonTestHelper(test_name, "access-om3", tmp_dir)
+    helper = CommonTestHelper(test_name, exp_name, "access-om3", tmp_dir)
 
     helper.copy_config("om3-dev-1deg_jra55do_ryf")
 
