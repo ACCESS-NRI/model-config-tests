@@ -66,7 +66,7 @@ def _experiments(
         lab directories are stored for the payu experiments.
     control_path: Path
         Path to the model configuration to test. This is copied for
-        for control directories in experiments.
+        control directories in experiments.
     keep_archive: Optional[bool]
         Whether to keep the previous archive for each experiment and
         disable calls to payu run. This is used in testing.

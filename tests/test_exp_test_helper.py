@@ -110,7 +110,7 @@ def test_experiment_submit_payu_run(mock_run, exp):
     mock_run.return_value.stdout = "1234567.gadi-pbs\nsome other output"
 
     current_working_dir = Path.cwd()
-    job_id = exp.submit_payu_run()
+    exp.submit_payu_run()
 
     lab_path = str(exp.lab_path)
 
@@ -121,7 +121,6 @@ def test_experiment_submit_payu_run(mock_run, exp):
     # Latest call
     assert mock_run.call_args[0][0] == ["payu", "run", "--lab", lab_path]
 
-    assert job_id == "1234567.gadi-pbs"
     assert exp.run_id == "1234567.gadi-pbs"
 
     # Check that the working directory is restored

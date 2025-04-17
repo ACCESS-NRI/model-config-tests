@@ -52,8 +52,7 @@ def qstat_all_jobs() -> dict:
     except sp.CalledProcessError as e:
         raise RuntimeError(f"qstat command failed: {e}")
 
-    qstat_json = json.loads(qstat_out.stdout)
-    return qstat_json
+    return json.loads(qstat_out.stdout)
 
 
 def extract_job_info(qstat_json: dict) -> dict:

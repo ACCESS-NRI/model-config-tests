@@ -151,8 +151,6 @@ class ExpTestHelper:
             # Change back to original working directory
             os.chdir(owd)
 
-        return self.run_id
-
     def wait_for_payu_run(self, run_id: str = None) -> list[str]:
         """Given a run ID, wait for all the payu run jobs to finish.
 
