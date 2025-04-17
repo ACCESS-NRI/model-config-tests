@@ -52,17 +52,15 @@ def read_historical_checksums(
 
 
 def _experiments(
-    request, output_path: Path, control_path: Path, keep_archive: Optional[bool]
+    markers: list, output_path: Path, control_path: Path, keep_archive: Optional[bool]
 ) -> Experiments:
     """
-    Start experiments conditionally based on the tests that are going to run.
-    The scope is class so the experiments are only run once before all repro
-    tests.
+    Run all requested experiments
 
     Parameters
     ----------
-    request: pytest.request
-        The pytest request object
+    markers: list
+        A list of requested experiments markers
     output_path: Path
         Output directory for test output and where the control and
         lab directories are stored for the payu experiments.
@@ -78,53 +76,44 @@ def _experiments(
     Experiments
         Object that stores the shared experiments
     """
-    # Get the list of test names that are scheduled to run
-    scheduled_tests = {item.name for item in request.session.items}
+    # Check for common experiments
+    requested_experiments = {}
+    for marker in markers:
+        for exp_name, config in marker.items():
+            n_runs = config.get("n_runs", 1)
+            model_runtime = config.get("model_runtime", None)
 
-    experiments = Experiments(control_path, output_path, keep_archive)
+            if exp_name not in requested_experiments:
+                requested_experiments[exp_name] = {
+                    "n_runs": n_runs,
+                    "model_runtime": model_runtime,
+                }
+            else:
+                requested_experiment = requested_experiments[exp_name]
+                # Check model runtime is the same for all experiments
+                # with the same name
+                if requested_experiment["model_runtime"] != model_runtime:
+                    raise ValueError(
+                        f"Experiment {exp_name} has conflicting model runtimes: "
+                        f"{requested_experiment['model_runtime']} and {model_runtime}"
+                    )
+
+                # Set the max number of runs
+                requested_experiments[exp_name]["n_runs"] = max(
+                    requested_experiment["n_runs"], n_runs
+                )
+
+    # Cleaning up any pre-existing historical checksums output first
+    # incase there's failures in setup
+    set_checksum_output_dir(output_path=output_path)
 
     print("Submitting all requested experiments")
-
-    # Check whether to run experiment with default runtime
-    if "test_bit_repro_historical" in scheduled_tests:
-        # Cleaning up any pre-existing historical checksums output first
-        # incase there's failures in setup
-        set_checksum_output_dir(output_path=output_path)
-        print("Running experiment with test default model runtime")
-        experiments.setup_and_submit(exp_name=EXP_DEFAULT_RUNTIME)
-
-    # Check whether to run experiment with 1 day runtime
-    if any(
-        test in scheduled_tests
-        for test in ("test_restart_repro", "test_restart_repro_repeat")
-    ):
-        print("Running experiment with 1 day model runtime twice")
+    experiments = Experiments(control_path, output_path, keep_archive)
+    for exp_name, config in requested_experiments.items():
         experiments.setup_and_submit(
-            exp_name=EXP_1D_RUNTIME, model_runtime=DAY_IN_SECONDS, n_runs=2
-        )
-    elif "test_bit_repro_repeat" in scheduled_tests:
-        print("Running experiment with 1 day model runtime")
-        experiments.setup_and_submit(
-            exp_name=EXP_1D_RUNTIME, model_runtime=DAY_IN_SECONDS
-        )
-
-    # Check whether to run a repeat experiment with 1 day runtime
-    if "test_restart_repro_repeat" in scheduled_tests:
-        print("Running repeat experiment with 1 day model runtime twice")
-        experiments.setup_and_submit(
-            exp_name=EXP_1D_RUNTIME_REPEAT, model_runtime=DAY_IN_SECONDS, n_runs=2
-        )
-    elif "test_bit_repro_repeat" in scheduled_tests:
-        print("Running repeat experiment with 1 day model runtime")
-        experiments.setup_and_submit(
-            exp_name=EXP_1D_RUNTIME_REPEAT, model_runtime=DAY_IN_SECONDS
-        )
-
-    # Check whether to run experiment with 2 day runtime
-    if "test_restart_repro" in scheduled_tests:
-        print("Running experiment with 2 day model runtime")
-        experiments.setup_and_submit(
-            exp_name=EXP_2D_RUNTIME, model_runtime=(2 * DAY_IN_SECONDS)
+            exp_name=exp_name,
+            model_runtime=config["model_runtime"],
+            n_runs=config["n_runs"],
         )
 
     # Wait for experiments to finish here and catching errors as some
@@ -140,16 +129,33 @@ def experiments(
     request, output_path: Path, control_path: Path, keep_archive: Optional[bool]
 ):
     """
-    This is a wrapper around _experiments() so it is easier to test without
-    the @pytest.fixture decorator.
+    Parse the experiments markers from the requested tests and
+    submit all necessary experiments at the same time.
+
+    The scope is class so the experiments are only run once before all repro
+    tests.
     """
-    return _experiments(request, output_path, control_path, keep_archive)
+
+    # Parse the experiments markers from the requested tests
+    experiments_markers = []
+    for item in request.session.items:
+        if item.parent == request.node:
+            marker = item.get_closest_marker("experiments")
+            if marker:
+                experiments_markers.append(marker.args[0])
+
+    return _experiments(experiments_markers, output_path, control_path, keep_archive)
 
 
 class TestBitReproducibility:
 
     @pytest.mark.repro
     @pytest.mark.repro_historical
+    @pytest.mark.experiments(
+        {
+            EXP_DEFAULT_RUNTIME: {"n_runs": 1},
+        }
+    )
     def test_bit_repro_historical(
         self,
         output_path: Path,
@@ -221,6 +227,12 @@ class TestBitReproducibility:
     @pytest.mark.repro
     @pytest.mark.repro_repeat
     @pytest.mark.slow
+    @pytest.mark.experiments(
+        {
+            EXP_1D_RUNTIME: {"n_runs": 1, "model_runtime": DAY_IN_SECONDS},
+            EXP_1D_RUNTIME_REPEAT: {"n_runs": 1, "model_runtime": DAY_IN_SECONDS},
+        }
+    )
     def test_bit_repro_repeat(self, experiments: Experiments):
         """
         Test that a run has same checksums when ran twice
@@ -241,6 +253,12 @@ class TestBitReproducibility:
     @pytest.mark.repro
     @pytest.mark.repro_restart
     @pytest.mark.slow
+    @pytest.mark.experiments(
+        {
+            EXP_1D_RUNTIME: {"n_runs": 2, "model_runtime": DAY_IN_SECONDS},
+            EXP_2D_RUNTIME: {"n_runs": 1, "model_runtime": 2 * DAY_IN_SECONDS},
+        }
+    )
     def test_restart_repro(self, output_path: Path, experiments: Experiments):
         """
         Test that a run reproduces across restarts.
@@ -276,6 +294,12 @@ class TestBitReproducibility:
         assert matching_checksums
 
     @pytest.mark.repro_restart_repeat
+    @pytest.mark.experiments(
+        {
+            EXP_1D_RUNTIME: {"n_runs": 2, "model_runtime": DAY_IN_SECONDS},
+            EXP_1D_RUNTIME_REPEAT: {"n_runs": 2, "model_runtime": DAY_IN_SECONDS},
+        }
+    )
     def test_restart_repro_repeat(self, experiments: Experiments):
         """
         Test that when a model is run twice for two runs

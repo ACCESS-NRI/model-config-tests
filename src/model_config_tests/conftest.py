@@ -153,3 +153,7 @@ def pytest_configure(config):
         "markers",
         "access_esm1p6: mark as access-esm1.6 specific tests in quick QA CI checks",
     )
+    config.addinivalue_line(
+        "markers",
+        "experiments: configure shared experiments for reproducibility tests",
+    )

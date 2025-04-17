@@ -29,85 +29,52 @@ def exp_test_helper_factory(*args, **kwargs):
 
 
 @pytest.mark.parametrize(
-    "requested_tests, expected_experiments",
+    "requested_markers, expected_experiments",
     [
         (
-            ["test_bit_repro_historical"],
+            [{"exp1": {"n_runs": 1}}],
             {
-                "exp_default_runtime": {
-                    "n_runs": None,  # Expect default n_runs (which is once)
-                    "runtime": None,  # Expect default model runtime (set by the model class)
+                "exp1": {
+                    "n_runs": 1,
+                    "model_runtime": None,  # Expect default model runtime (set by the model class)
                 }
             },
         ),
         (
-            ["test_bit_repro_repeat"],
+            [{"exp1": {"n_runs": 1}}, {"exp2": {"n_runs": 2, "model_runtime": 86400}}],
             {
-                "exp_1d_runtime": {
-                    "n_runs": None,
-                    "runtime": 86400,  # 1 day in seconds
-                },
-                "exp_1d_runtime_repeat": {
-                    "n_runs": None,
-                    "runtime": 86400,
+                "exp1": {"n_runs": 1, "model_runtime": None},
+                "exp2": {
+                    "n_runs": 2,
+                    "model_runtime": 86400,
                 },
             },
         ),
         (
-            ["test_restart_repro"],
+            [{"exp1": {"n_runs": 1}, "exp2": {}}, {"exp1": {"n_runs": 2}}],
             {
-                "exp_1d_runtime": {
-                    "n_runs": 2,  # Runs twice
-                    "runtime": 86400,
+                "exp1": {
+                    "n_runs": 2,
+                    "model_runtime": None,
                 },
-                "exp_2d_runtime": {
-                    "n_runs": None,
-                    "runtime": 172800,
+                "exp2": {
+                    "n_runs": 1,
+                    "model_runtime": None,
                 },
             },
         ),
         (
-            ["test_restart_repro_repeat"],
+            [{"exp": {"model_runtime": 100}}, {"exp": {"model_runtime": 100}}],
             {
-                "exp_1d_runtime": {
-                    "n_runs": 2,
-                    "runtime": 86400,
-                },
-                "exp_1d_runtime_repeat": {
-                    "n_runs": 2,
-                    "runtime": 86400,
-                },
-            },
-        ),
-        (
-            [
-                "test_bit_repro_historical",
-                "test_bit_repro_repeat",
-                "test_restart_repro",
-                "test_restart_repro_repeat",
-            ],
-            {
-                "exp_default_runtime": {
-                    "n_runs": None,
-                    "runtime": None,
-                },
-                "exp_1d_runtime": {
-                    "n_runs": 2,
-                    "runtime": 86400,
-                },
-                "exp_1d_runtime_repeat": {
-                    "n_runs": 2,
-                    "runtime": 86400,
-                },
-                "exp_2d_runtime": {
-                    "n_runs": None,
-                    "runtime": 172800,
+                "exp": {
+                    "n_runs": 1,
+                    "model_runtime": 100,
                 },
             },
         ),
     ],
 )
-def test_experiments_fixture(requested_tests, expected_experiments, tmp_path):
+def test_experiments_fixture(requested_markers, expected_experiments, tmp_path):
     """Test the experiments function for setting up requested experiments,
     including model runtime set and number of seconds for model runtime
     """
@@ -119,22 +86,15 @@ def test_experiments_fixture(requested_tests, expected_experiments, tmp_path):
     output_path = tmp_path / "output"
     output_path.mkdir()
 
-    # Mock the test request session items - what tests are requested
-    mock_request = Mock()
-    items = []
-    for test in requested_tests:
-        mock_test = Mock()
-        mock_test.name = test
-        items.append(mock_test)
-    mock_request.session.items = items
-
     # Create a mock for each ExpTestHelper instance stored in experiments
     with patch(
         "model_config_tests.exp_test_helper.ExpTestHelper",
         side_effect=exp_test_helper_factory,
     ):
         # Call the experiments function
-        exps = _experiments(mock_request, output_path, control_path, keep_archive=True)
+        exps = _experiments(
+            requested_markers, output_path, control_path, keep_archive=True
+        )
 
     # Check that expected experiments were created
     assert len(exps.experiments) == len(expected_experiments)
@@ -150,7 +110,7 @@ def test_experiments_fixture(requested_tests, expected_experiments, tmp_path):
         # Check model runtime passed to set_model_runtime method
         exp_mock.model.set_model_runtime.assert_called_once()
         runtime = exp_mock.model.set_model_runtime.call_args[1].get("seconds", None)
-        assert runtime == expected_experiments[exp_name]["runtime"]
+        assert runtime == expected_experiments[exp_name]["model_runtime"]
 
 
 # Importing the test file test_bit_reproducibility.py, will run all the
