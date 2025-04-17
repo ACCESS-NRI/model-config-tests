@@ -167,7 +167,13 @@ def test_experiment_submit_payu_run_error(mock_run, exp):
     assert exp.run_id is None
 
 
-TEST_RUN_STDOUT = "137650670.gadi-pbs\nLoading input manifest: manifests/input.yaml\nLoading restart manifest: manifests/restart.yaml\nLoading exe manifest: manifests/exe.yaml\npayu: Found modules in /opt/Modules/v4.3.0\nqsub -q express -- /path/to/env/bin/python /path/to/env/bin/payu-run\n"
+TEST_RUN_STDOUT = """137650670.gadi-pbs
+Loading input manifest: manifests/input.yaml
+Loading restart manifest: manifests/restart.yaml
+Loading exe manifest: manifests/exe.yaml
+payu: Found modules in /opt/Modules/v4.3.0
+qsub -q express -- /path/to/env/bin/python /path/to/env/bin/payu-run
+"""
 
 
 def test_parse_run_id():

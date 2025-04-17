@@ -113,6 +113,28 @@ def test_experiments_fixture(requested_markers, expected_experiments, tmp_path):
         assert runtime == expected_experiments[exp_name]["model_runtime"]
 
 
+def test_experiments_fixture_conflict_runtimes(tmp_path):
+    """Test the experiments function for setting up requested experiments,
+    raises an error if the same experiment name has different runtimes
+    """
+    request_markers_conflict = [
+        {"exp": {"model_runtime": 100}},
+        {"exp": {"model_runtime": 86400}},
+    ]
+
+    with pytest.raises(
+        ValueError,
+        match="Experiment exp has conflicting model runtimes: 100 and 86400",
+    ):
+        # Call the experiments function
+        _experiments(
+            request_markers_conflict,
+            tmp_path / "output",
+            tmp_path / "control",
+            keep_archive=True,
+        )
+
+
 # Importing the test file test_bit_reproducibility.py, will run all the
 # tests in the current pytest session. So to run only one test, and to
 # configure fixtures correctly, the `model-config-tests` is called
