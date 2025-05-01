@@ -12,6 +12,19 @@ def pytest_addoption(parser):
         action="store",
         help="Specify a space separated list of experiment control dirctories to compare",
     )
+    parser.addoption("--cwd", action="store", default=None)
+
+
+import os
+
+import pytest
+
+
+@pytest.fixture(autouse=True, scope="session")
+def restore_cwd(request):
+    orig_cwd = request.config.getoption("--cwd")
+    if orig_cwd:
+        os.chdir(orig_cwd)
 
 
 def pytest_generate_tests(metafunc):
@@ -22,14 +35,15 @@ def pytest_generate_tests(metafunc):
     ):
         # Generate pairs of experiments from command input
         input_dirs = metafunc.config.getoption("dirs")
-        dir_pairs = get_experiment_pairs(input_dirs)
+        cwd = Path(metafunc.config.getoption("--cwd"))
+        dir_pairs = get_experiment_pairs(input_dirs, cwd)
 
         # Generate some readable IDs for the pairs
         ids = [f"{exp1.name} vs {exp2.name}" for exp1, exp2 in dir_pairs]
         metafunc.parametrize("experiment_1,experiment_2", dir_pairs, ids=ids)
 
 
-def get_experiment_pairs(dirs):
+def get_experiment_pairs(dirs, cwd):
     """Return a set of absolute paths to directories to compare"""
     if dirs is None:
         raise ValueError(
@@ -42,6 +56,8 @@ def get_experiment_pairs(dirs):
     for dir in dirs:
         # Check if the path exists and is a directory
         path = Path(dir)
+        if not path.is_absolute():
+            path = cwd / path
         if not path.exists():
             raise ValueError(f"Directory {dir} does not exist")
         if not path.is_dir():

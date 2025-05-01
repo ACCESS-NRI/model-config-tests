@@ -1,5 +1,6 @@
 """Tests for comparing multiple experiments results"""
 
+import os
 import sys
 from pathlib import Path
 
@@ -13,9 +14,15 @@ COMPARE_EXP_TESTS_DIR = "compare_exp_tests"
 def main():
     import pytest
 
-    test_path = str(HERE.parent.parent / COMPARE_EXP_TESTS_DIR)
+    original_cwd = os.getcwd()
 
-    errcode = pytest.main([test_path] + sys.argv[1:])
+    test_path = str(HERE.parent.parent / COMPARE_EXP_TESTS_DIR)
+    os.chdir(test_path)
+
+    errcode = pytest.main([test_path] + sys.argv[1:] + [f"--cwd={original_cwd}"])
+
+    os.chdir(original_cwd)
+
     sys.exit(errcode)
 
 
