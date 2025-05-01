@@ -6,15 +6,6 @@ The checksum pytests are used for reproducibility CI checks in this repository. 
 
 Code from these pytests is adapted from COSIMAS's ACCESS-OM2's [bit reproducibility tests](https://github.com/COSIMA/access-om2/blob/master/test/test_bit_reproducibility.py).
 
-## Definitions for reproducibility
-It is helpful if we work from the same definitions of what 'reproducibility' means, we consider four kinds:
- 1. _Determinism_: an identical calculation run under the same conditions should produce the same result. Some sub-categories of specific interest to earth-system models:
-      1. _Determinism rest_: Repeated runs give the same result from rest;
-      1. _Determinism restart_: Repeated runs give the same result from a restart file;
- 1. _Restart reproducibility_: Two short runs match a single longer run, in other words, reproducibility across a restart boundary;
- 1. _Historical reproducibility_: Match a stored previous result;
- 2. _Build reproducibilty_: Match a stored previous result when using the same build description files on the same machine.
-
 ## Pytests
 
 ### How to run pytests manually on NCI
@@ -101,6 +92,19 @@ e.g.:
 ```sh
 model-config-tests -m "config or access_om2"
 ```
+
+## Definitions for reproducibility
+<a name="definitions_reproducibility"></a>
+
+It is helpful if we work from the same definitions of what 'reproducibility' means, we consider four kinds:
+ 1. _Determinism_: an identical calculation run under the same conditions should produce the same result. Some sub-categories of specific interest to earth-system models:
+      1. _Determinism rest_: Repeated runs give the same result from rest;
+      1. _Determinism restart_ `repro_repeat`: Repeated runs give the same result from a restart file;
+ 1. _Restart reproducibility_ `repro_restart`: Two short runs match a single longer run, in other words, reproducibility across a restart boundary;
+ 1. _Historical reproducibility_ `repro_historical`: Match a stored previous result;
+ 2. _Build reproducibilty_: Match a stored previous result when using the same build description files on the same machine.
+
+Code block names above indicate tests that are currently available using the CI/CD system, see [pytest markers](#pytest_markers)
 
 ## CI/CD
 
@@ -213,6 +217,10 @@ The configuration properties needed to run the tests are:
 | payu-version | `string` | The Payu version used to run the model | `1.1.5` |
 
 Pytest markers select what pytests to run in `model-config-tests`. Current markers include:
+
+See this [earlier Section](#definitions_reproducibility) for definitions that are applied below.
+
+<a name="pytest_markers"></a>
 
 - `repro`: All available reproducibility tests.
 - `repro_historical`: Historical reproducibility test that confirms results from a model run match a stored previous result.
