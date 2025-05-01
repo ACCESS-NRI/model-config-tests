@@ -8,7 +8,7 @@ Code from these pytests is adapted from COSIMAS's ACCESS-OM2's [bit reproducibil
 
 ## Definitions for reproducibility
 It is helpful if we work from the same definitions of what 'reproducibility' means, we consider four kinds:
- 1. _Determinism_.
+ 1. _Determinism_: an identical calculation run under the same conditions should produce the same result. Some sub-categories of specific interest to earth-system models:
       1. _Determinism rest_: Repeated runs give the same result from rest;
       1. _Determinism restart_: Repeated runs give the same result from a restart file;
  1. _Restart reproducibility_: Two short runs match a single longer run, in other words, reproducibility across a restart boundary;
