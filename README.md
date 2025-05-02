@@ -14,7 +14,7 @@ Code from these pytests is adapted from COSIMAS's ACCESS-OM2's [bit reproducibil
 
     ```sh
     module use /g/data/vk83/modules
-    module load payu/1.1.4
+    module load payu/1.1.6
     ```
 
 2. Create and activate a python virtual environment for installing and running tests
@@ -27,7 +27,7 @@ Code from these pytests is adapted from COSIMAS's ACCESS-OM2's [bit reproducibil
 3. Either pip install a released version of `model-config-tests`,
 
     ```sh
-    pip install model-config-tests==0.0.1
+    pip install model-config-tests==0.1.1
     ```
 
     Or to install `model-config-tests` in "editable" mode, first clone the repository, and then run pip install from the repository. This means any changes to the code are reflected in the installed package.
@@ -48,7 +48,7 @@ Code from these pytests is adapted from COSIMAS's ACCESS-OM2's [bit reproducibil
 5. Run the pytests
 
     ```sh
-    model-config-tests
+    model-config-tests --help
     ```
 
 6. Once done with testing, deactivate the virtual environment, and if the environment is no longer needed, remove the environment
@@ -232,10 +232,10 @@ The configuration properties needed to run the tests are:
 
 | Name | Type | Description |  Example |
 | ---- | ---- | ----------- | -------- |
-| markers | `string` | Markers used for pytest, in the Python format | `checksum` |
-| model-config-tests-version | `string` | The version of the model-config-tests | `0.0.1` |
+| markers | `string` | Markers used for pytest, in the Python format | `repro` |
+| model-config-tests-version | `string` | The version of the model-config-tests | `0.1.1` |
 | python-version | `string` | The python version used to create test virtual environment on GitHub hosted tests | `3.11.0` |
-| payu-version | `string` | The Payu version used to run the model | `1.1.5` |
+| payu-version | `string` | The Payu version used to run the model | `1.1.6` |
 
 Pytest markers select what pytests to run in `model-config-tests`. For more infomation on tests currently available, see [pytest markers](#pytest_markers).
 
@@ -259,22 +259,22 @@ For example, given the following `config/ci.json` file:
     "scheduled": {
         "release-1deg_jra55_ryf-2.0": {},
         "default": {
-            "markers": "checksum"
+            "markers": "repro"
         },
     },
     "reproducibility": {
         "dev-1deg_jra55do_ryf": {
-            "markers": "checksum or checksum_slow"
+            "markers": "repro"
         },
         "release-1deg_jra55do_ryf": {
-            "markers": "checksum or checksum_slow"
+            "markers": "repro"
         },
         "dev-example-branch": {
             "payu-version": "dev",
             "model-config-tests-version": "main"
         },
         "default": {
-            "markers": "checksum"
+            "markers": "repro and (not slow)"
         },
     },
     "qa": {
@@ -296,9 +296,9 @@ For example, given the following `config/ci.json` file:
 }
 ```
 
-The above configuration triggers monthly scheduled tests for `release-1deg_jra55_ryf-2.0` GitHub tag. This scheduled test will run with `checksum` test marker, and the top-level defaults for `model-config-tests-version`, `python-version` and `payu-version`.
+The above configuration triggers monthly scheduled tests for `release-1deg_jra55_ryf-2.0` GitHub tag. This scheduled test will run with `repro` test marker, and the top-level defaults for `model-config-tests-version`, `python-version` and `payu-version`.
 
-If a PR was being merged into a `release-1deg_jra55do_ryf` branch, the QA tests run on the GitHub runner would use the `config or dev_config` test markers and the repro tests on NCI, would select the `checksum or checksum_slow` tests.
+If a PR was being merged into a `release-1deg_jra55do_ryf` branch, the QA tests run on the GitHub runner would use the `config` test markers and the repro tests on NCI, would select the `repro` tests.
 
-If a PR was being merged into a `dev-example-branch`, the QA tests that run automatically would use the `dev_config` tests and if repro tests were triggered manually, then it would use the `checksum` tests.
+If a PR was being merged into a `dev-example-branch`, the QA tests that run automatically would use the `dev_config` tests and if repro tests were triggered manually, then it would use the `repro and (not slow)` tests.
 For both test types, it would use the latest changes in the `model-config-tests` repository. For repro tests, it would use the `payu/dev` module on NCI for running the model.
