@@ -122,14 +122,14 @@ def pytest_configure(config):
         "markers", "repro_historical: mark tests that check historical reproducibility"
     )
     config.addinivalue_line(
-        "markers", "repro_repeat: mark tests that check repeat reproducibility"
+        "markers", "repro_determinism: mark tests that check determinism"
     )
     config.addinivalue_line(
         "markers", "repro_restart: mark tests that check restart reproducibility"
     )
     config.addinivalue_line(
         "markers",
-        "repro_restart_repeat: mark tests that check restart reproducibility with repeated runs",
+        "repro_determinism_restart: mark tests that check determinism restart",
     )
     config.addinivalue_line("markers", "slow: mark tests that are slow to run")
     config.addinivalue_line(
