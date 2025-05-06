@@ -57,6 +57,7 @@ def get_experiment_pairs(dirs, cwd):
         # Check if the path exists and is a directory
         path = Path(dir)
         if not path.is_absolute():
+            # Assume path is relative to the original current working directory
             path = cwd / path
         if not path.exists():
             raise ValueError(f"Directory {dir} does not exist")
