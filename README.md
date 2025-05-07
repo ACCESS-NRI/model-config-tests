@@ -85,10 +85,10 @@ Running all tests in the pytest suite on a configuration will likely fail as the
 
 <a name="pytest_markers"></a>
 
-- `repro`: All available reproducibility tests (excluding `repro_restart_repeat`).
+- `repro`: All available reproducibility tests (all `repro_` test markers but `repro_determinism_restart`).
 - `repro_historical`: Historical reproducibility test that confirms results from a model run match a stored previous result.
-- `repro_repeat`: Determinism test that confirms repeated model runs give the same result.
-- `repro_restart_repeat`: Determinism test that confirms repeated model runs starting from a restart give the same result.
+- `repro_determinism`: Determinism test that confirms repeated model runs give the same result.
+- `repro_determinism_restart`: Determinism test that confirms repeated experiments with two consecutive runs give the same result.
 - `repro_restart`: Restart reproducibility test that confirms two short consecutive model runs give the same result as a longer single model run.
 - `slow`: Tests that are slow to run
 - `dev_config`: General configuration QA tests.
@@ -118,9 +118,9 @@ model-config-tests -m "config or access_om2"
 <a name="definitions_reproducibility"></a>
 
 It is helpful if we work from the same definitions of what 'reproducibility' means, we consider four kinds:
- 1. _Determinism_: an identical calculation run under the same conditions should produce the same result. Some sub-categories of specific interest to earth-system models:
-      1. _Determinism rest_ `repro_repeat`: Repeated runs give the same result from rest;
-      1. _Determinism restart_ `repro_restart_repeat`: Repeated runs give the same result from a restart file;
+ 1. _Determinism_ `repro_determinism`: an identical calculation run under the same conditions should produce the same result. Some sub-categories of specific interest to earth-system models:
+      1. _Determinism rest_: Repeated runs give the same result from rest;
+      1. _Determinism restart_: Repeated runs give the same result from a restart file;
  1. _Restart reproducibility_ `repro_restart`: Two short runs match a single longer run, in other words, reproducibility across a restart boundary;
  1. _Historical reproducibility_ `repro_historical`: Match a stored previous result;
  2. _Build reproducibilty_: Match a stored previous result when using the same build description files on the same machine.
