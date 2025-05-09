@@ -247,11 +247,11 @@ class CommonTestHelper:
                 raise ValueError(f"Unrecognised model: {self.model_name}")
 
 
-def test_test_bit_repro_historical_access_checksums_saved_on_config(tmp_dir):
+def test_test_repro_historical_access_checksums_saved_on_config(tmp_dir):
     """Check the default settings for checksum path (saved on the
     configuration under testing/checksum), and the default for control
     directory fixture (use current working directory of subprocess call)"""
-    test_name = "test_bit_repro_historical"
+    test_name = "test_repro_historical"
     exp_name = "exp_default_runtime"
     model_name = "access"
 
@@ -289,10 +289,10 @@ def test_test_bit_repro_historical_access_checksums_saved_on_config(tmp_dir):
     assert result.returncode == 0
 
 
-def test_test_bit_repro_historical_access_no_reference_checksums(tmp_dir):
+def test_test_repro_historical_access_no_reference_checksums(tmp_dir):
     """Check when a reference file for checksums does not exist, that
     checksums from the output are written out"""
-    test_name = "test_bit_repro_historical"
+    test_name = "test_repro_historical"
     exp_name = "exp_default_runtime"
     model_name = "access"
 
@@ -318,10 +318,10 @@ def test_test_bit_repro_historical_access_no_reference_checksums(tmp_dir):
     check_checksum(helper.output_path, checksum_path, helper.model_name)
 
 
-def test_test_bit_repro_historical_access_no_model_output(tmp_dir):
+def test_test_repro_historical_access_no_model_output(tmp_dir):
     """Check when a test exits, that there are no checksums in the output
     directory- similar to when payu run exits with an error"""
-    test_name = "test_bit_repro_historical"
+    test_name = "test_repro_historical"
     exp_name = "exp_default_runtime"
     model_name = "access"
 
@@ -358,11 +358,11 @@ def test_test_bit_repro_historical_access_no_model_output(tmp_dir):
     ],
 )
 @pytest.mark.parametrize("fail", [False, True])
-def test_test_bit_repro_historical(tmp_dir, model_name, output_0, configuration, fail):
+def test_test_repro_historical(tmp_dir, model_name, output_0, configuration, fail):
     """Test ACCESS-OM classes with historical repro test with some mock
     output and configuration directory, optionally checking that things
     fail when the outputs are modified to give different checksums"""
-    test_name = "test_bit_repro_historical"
+    test_name = "test_repro_historical"
     exp_name = "exp_default_runtime"
 
     # Setup test Helper
@@ -414,7 +414,7 @@ def test_test_access_om3_ocean_model(tmp_dir):
     """Test that an error is thrown when the ocean model is not MOM. This should be moved into
     dedicated tests for experiment setup when they exist. See
     https://github.com/ACCESS-NRI/model-config-tests/issues/115"""
-    test_name = "test_bit_repro_historical"
+    test_name = "test_repro_historical"
     exp_name = "exp_default_runtime"
 
     # Setup test Helper

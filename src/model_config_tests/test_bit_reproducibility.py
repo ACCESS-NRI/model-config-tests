@@ -156,7 +156,7 @@ class TestBitReproducibility:
             EXP_DEFAULT_RUNTIME: {"n_runs": 1},
         }
     )
-    def test_bit_repro_historical(
+    def test_repro_historical(
         self,
         output_path: Path,
         control_path: Path,
@@ -164,7 +164,9 @@ class TestBitReproducibility:
         checksum_path: Optional[Path],
     ):
         """
-        Test that a run reproduces historical checksums
+        Historical reproducibility test that confirms results from a model
+        run match a stored previous result. Any generated results are
+        added to a "checksum" subdirectory in the output directory.
 
         Parameters
         ----------
@@ -225,7 +227,7 @@ class TestBitReproducibility:
         ), f"Checksums were not equal. The new checksums have been written to {checksum_output_file}."
 
     @pytest.mark.repro
-    @pytest.mark.repro_repeat
+    @pytest.mark.repro_determinism
     @pytest.mark.slow
     @pytest.mark.experiments(
         {
@@ -233,9 +235,10 @@ class TestBitReproducibility:
             EXP_1D_RUNTIME_REPEAT: {"n_runs": 1, "model_runtime": DAY_IN_SECONDS},
         }
     )
-    def test_bit_repro_repeat(self, experiments: Experiments):
+    def test_repro_determinism(self, experiments: Experiments):
         """
-        Test that a run has same checksums when ran twice
+        Determinism test that confirms repeated model runs for 1 day
+        give the same results
         """
         experiments.check_experiments([EXP_1D_RUNTIME, EXP_1D_RUNTIME_REPEAT])
         exp_1d_runtime = experiments.get_experiment(EXP_1D_RUNTIME)
@@ -259,9 +262,11 @@ class TestBitReproducibility:
             EXP_2D_RUNTIME: {"n_runs": 1, "model_runtime": 2 * DAY_IN_SECONDS},
         }
     )
-    def test_restart_repro(self, output_path: Path, experiments: Experiments):
+    def test_repro_restart(self, output_path: Path, experiments: Experiments):
         """
-        Test that a run reproduces across restarts.
+        Restart reproducibility test that confirms two short consecutive
+        1-day model runs give the same results as a longer single 2-day model
+        run.
         """
         # Get experiments with 2x1 day and 2 day runtimes
         experiments.check_experiments([EXP_1D_RUNTIME, EXP_2D_RUNTIME])
@@ -293,17 +298,17 @@ class TestBitReproducibility:
 
         assert matching_checksums
 
-    @pytest.mark.repro_restart_repeat
+    @pytest.mark.repro_determinism_restart
     @pytest.mark.experiments(
         {
             EXP_1D_RUNTIME: {"n_runs": 2, "model_runtime": DAY_IN_SECONDS},
             EXP_1D_RUNTIME_REPEAT: {"n_runs": 2, "model_runtime": DAY_IN_SECONDS},
         }
     )
-    def test_restart_repro_repeat(self, experiments: Experiments):
+    def test_repro_determinism_restart(self, experiments: Experiments):
         """
-        Test that when a model is run twice for two runs
-        have the same checksums
+        Determinism test that confirms repeated experiments with two
+        consecutive 1-day model runs give the same results
         """
         experiments.check_experiments([EXP_1D_RUNTIME, EXP_1D_RUNTIME_REPEAT])
         exp_1d_runtime = experiments.get_experiment(EXP_1D_RUNTIME)
