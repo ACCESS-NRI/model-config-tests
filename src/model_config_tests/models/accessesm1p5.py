@@ -14,6 +14,8 @@ from model_config_tests.util import DAY_IN_SECONDS
 # Default model runtime (24 hrs)
 DEFAULT_RUNTIME_SECONDS = DAY_IN_SECONDS
 
+UM_OUTPUT_FILE = "atm.fort6.pe0"
+
 
 class AccessEsm1p5(Model):
     def __init__(self, experiment):
@@ -26,7 +28,8 @@ class AccessEsm1p5(Model):
             for submodel in self.experiment.config["submodels"]
         }
 
-        self.set_output_files(model_std_file="access.out")
+        self.model_std_file = "access.out"
+        self.set_output_files(model_std_file=self.model_std_file)
 
     def set_output_files(self, model_std_file: str):
         """
@@ -37,7 +40,7 @@ class AccessEsm1p5(Model):
             self.output_filename = model_std_file
         elif "um" in self.submodels:
             # UM output is stored in submodel ouptut sub-directory
-            self.output_filename = Path(self.submodels["um"]) / "atm.fort6.pe0"
+            self.output_filename = Path(self.submodels["um"]) / UM_OUTPUT_FILE
         else:
             raise RuntimeError(
                 "Failed to find suitable submodel for checksum extraction."
@@ -103,23 +106,47 @@ class AccessEsm1p5(Model):
         return self.output_file.exists()
 
     def extract_checksums(
-        self, output_directory: Path = None, schema_version: str = None
+        self,
+        output_directory: Path = None,
+        schema_version: str = None,
+        extract_all_checksums=False,
     ) -> dict[str, Any]:
-        """Parse output file and create checksum using defined schema"""
-        if output_directory is not None:
-            output_filepath = output_directory / self.output_filename
-        else:
-            output_filepath = self.output_file
+        """
+        Parse output files and create checksums using defined schema
+
+        Parameters
+        ----------
+        output_directory: str
+            The output directory for the experiment run.
+        schema_version: str
+            The schema version to use for the checksum output.
+        extract_all_checksums: bool, default=False
+            If True, extract all available checksums from the output
+
+        Returns
+        ----------
+        dict[str, Any]
+            Dictionary of the formatted checksums
+        """
+        if output_directory is None:
+            output_directory = self.output_0
 
         # Extract checksums from output, preferentially using mom5
-        submodel_extract_checksums = None
+        output_checksums = {}
         if "mom" in self.submodels:
-            submodel_extract_checksums = mom5_extract_checksums
-        elif "um" in self.submodels:
-            # UM output is stored in submodel ouptut sub-directory
-            submodel_extract_checksums = um7_extract_norms
+            output_checksums.update(
+                mom5_extract_checksums(output_directory / self.model_std_file)
+            )
 
-        output_checksums = submodel_extract_checksums(output_filepath)
+        if "um" in self.submodels:
+            # Additionally add um7 checksums if all available checksums
+            # are requested, or if no mom5 checksums are available
+            if extract_all_checksums or output_checksums == {}:
+                um_output = output_directory / self.submodels["um"] / UM_OUTPUT_FILE
+                output_checksums.update(um7_extract_norms(um_output))
+
+        if output_checksums == {}:
+            raise RuntimeError("Failed to parse any checksums from output files")
 
         # Format checksums
         if schema_version is None:

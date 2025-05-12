@@ -26,8 +26,30 @@ class Model:
         self.output_0 = self.experiment.output000
         self.output_1 = self.experiment.output001
 
-    def extract_checksums(self, output_directory: Path, schema_version: str):
-        """Extract checksums from output directory"""
+    def extract_checksums(
+        self,
+        output_directory: Path,
+        schema_version: str,
+        extract_all_checksums: bool = False,
+    ):
+        """Parse output files and create checksums using defined schema
+
+        Parameters
+        ----------
+        output_directory: str
+            The output directory for the experiment run. The default output
+            directory is set in the model class
+        schema_version: str
+            The schema version to use for the checksum output. The default
+            schema is set in the model class
+        extract_all_checksums: bool, default=False
+            If True, extract all available checksums from the output
+
+        Returns
+        ----------
+        dict[str, Any]
+            Dictionary of the formatted checksums
+        """
         raise NotImplementedError
 
     def set_model_runtime(
