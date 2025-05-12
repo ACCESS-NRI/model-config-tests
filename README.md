@@ -14,7 +14,7 @@ Code from these pytests is adapted from COSIMAS's ACCESS-OM2's [bit reproducibil
 
     ```sh
     module use /g/data/vk83/modules
-    module load payu/1.1.4
+    module load payu/1.1.6
     ```
 
 2. Create and activate a python virtual environment for installing and running tests
@@ -27,7 +27,7 @@ Code from these pytests is adapted from COSIMAS's ACCESS-OM2's [bit reproducibil
 3. Either pip install a released version of `model-config-tests`,
 
     ```sh
-    pip install model-config-tests==0.0.1
+    pip install model-config-tests==0.1.1
     ```
 
     Or to install `model-config-tests` in "editable" mode, first clone the repository, and then run pip install from the repository. This means any changes to the code are reflected in the installed package.
@@ -48,7 +48,7 @@ Code from these pytests is adapted from COSIMAS's ACCESS-OM2's [bit reproducibil
 5. Run the pytests
 
     ```sh
-    model-config-tests
+    model-config-tests --help
     ```
 
 6. Once done with testing, deactivate the virtual environment, and if the environment is no longer needed, remove the environment
@@ -79,19 +79,53 @@ By default, the control directory, e.g. the model configuration to test, is the 
 The path containing the checksum file to check against can also be set using
 `--checksum-path` command flag. The default is the `testing/checksum/historical-<default-model-runtime>hr-checksums.json` file which is stored in the control directory.
 
-To run only CI reproducibility checksum tests, use `-m checksum`, e.g.
+### Selecting tests using markers
+
+Running all tests in the pytest suite on a configuration will likely fail as there's specific tests for some model configurations. Pytest markers are used to selectively run different types of tests. Current markers include:
+
+<a name="pytest_markers"></a>
+
+- `repro`: All available reproducibility tests (all `repro_` test markers but `repro_determinism_restart`).
+- `repro_historical`: Historical reproducibility test that confirms results from a model run match a stored previous result.
+- `repro_determinism`: Determinism test that confirms repeated model runs give the same result.
+- `repro_determinism_restart`: Determinism test that confirms repeated experiments with two consecutive runs give the same result.
+- `repro_restart`: Restart reproducibility test that confirms two short consecutive model runs give the same result as a longer single model run.
+- `slow`: Tests that are slow to run
+- `dev_config`: General configuration QA tests.
+- `config`: Configuration QA tests for released branches. This includes the `dev_config` tests.
+
+There are also model-specific markers for configuration QA tests, e.g., `access_om2`, `access_esm1p5`, `access_om3` and `access_esm1p6`. For a list of all available markers,
+run:
 
 ```sh
-model-config-tests -m checksum
+model-config-tests --markers
 ```
 
-To run quick configuration tests, use the `config` marker. To additionally run
-ACCESS-OM2 specific quick configuration tests, use `access_om2` marker,
-e.g.:
+The `-m` command-line option is used to run tests with specific markers. For example, to run only the `repro` marked tests:
+
+```sh
+model-config-tests -m repro
+```
+
+To select a combination of tests, use logical operators such as `or`, `and` and `not`.
+For example, to run both of the general release configuration QA tests and the ACCESS-OM2 specific QA tests:
 
 ```sh
 model-config-tests -m "config or access_om2"
 ```
+
+## Definitions for reproducibility
+<a name="definitions_reproducibility"></a>
+
+It is helpful if we work from the same definitions of what 'reproducibility' means, we consider four kinds:
+ 1. _Determinism_ `repro_determinism`: an identical calculation run under the same conditions should produce the same result. Some sub-categories of specific interest to earth-system models:
+      1. _Determinism rest_: Repeated runs give the same result from rest;
+      1. _Determinism restart_: Repeated runs give the same result from a restart file;
+ 1. _Restart reproducibility_ `repro_restart`: Two short runs match a single longer run, in other words, reproducibility across a restart boundary;
+ 1. _Historical reproducibility_ `repro_historical`: Match a stored previous result;
+ 2. _Build reproducibilty_: Match a stored previous result when using the same build description files on the same machine.
+
+Code block names above indicate tests that are currently available using the CI/CD system, see [pytest markers](#pytest_markers)
 
 ## CI/CD
 
@@ -113,7 +147,6 @@ Currently, these repositories make use of the reusable CI:
 - [access-esm1.5-configs](https://github.com/ACCESS-NRI/access-esm1.5-configs)
 - [access-esm1.6-configs](https://github.com/ACCESS-NRI/access-esm1.6-configs)
 - [access-om3-configs](https://github.com/ACCESS-NRI/access-om3-configs)
-- [access-om3-wav-configs](https://github.com/ACCESS-NRI/access-om3-wav-configs)
 
 Below is information on the use of these workflows.
 
@@ -199,21 +232,12 @@ The configuration properties needed to run the tests are:
 
 | Name | Type | Description |  Example |
 | ---- | ---- | ----------- | -------- |
-| markers | `string` | Markers used for pytest, in the Python format | `checksum` |
-| model-config-tests-version | `string` | The version of the model-config-tests | `0.0.1` |
+| markers | `string` | Markers used for pytest, in the Python format | `repro` |
+| model-config-tests-version | `string` | The version of the model-config-tests | `0.1.1` |
 | python-version | `string` | The python version used to create test virtual environment on GitHub hosted tests | `3.11.0` |
-| payu-version | `string` | The Payu version used to run the model | `1.1.5` |
+| payu-version | `string` | The Payu version used to run the model | `1.1.6` |
 
-Pytest markers select what pytests to run in `model-config-tests`. Current markers include:
-
-- `checksum`: Historical reproducibility test that runs a model and compares checksums with a stored previous result.
-- `checksum_slow`: Restart reproducibility tests. These include model determinism, by repeating running a configuration from initial conditions to check it reproduces the same output, and checking reproducibility by confirming two short consecutive model runs give the same result as a longer single model run.
-- `dev_config`: General configuration QA tests.
-- `config`: Configuration QA tests for released branches. This includes the `dev_config` tests.
-
-There are also model-specific markers for configuration QA tests, e.g., `access_om2`, `access_esm1p5`, `access_om3` and `access_esm1p6`.
-
-To select a combination of tests, use the `or` keyword, e.g. `"markers": "access_om2 or config"`.
+Pytest markers select what pytests to run in `model-config-tests`. For more infomation on tests currently available, see [pytest markers](#pytest_markers).
 
 The Payu version is the module version loaded on NCI to build the base of the test virtual environment and is only relevant for tests run on NCI. To use the development Payu module which has all the latest changes in Payu repository, set `"payu-version": "dev"`.
 
@@ -235,22 +259,22 @@ For example, given the following `config/ci.json` file:
     "scheduled": {
         "release-1deg_jra55_ryf-2.0": {},
         "default": {
-            "markers": "checksum"
+            "markers": "repro"
         },
     },
     "reproducibility": {
         "dev-1deg_jra55do_ryf": {
-            "markers": "checksum or checksum_slow"
+            "markers": "repro"
         },
         "release-1deg_jra55do_ryf": {
-            "markers": "checksum or checksum_slow"
+            "markers": "repro"
         },
         "dev-example-branch": {
             "payu-version": "dev",
             "model-config-tests-version": "main"
         },
         "default": {
-            "markers": "checksum"
+            "markers": "repro and (not slow)"
         },
     },
     "qa": {
@@ -272,9 +296,9 @@ For example, given the following `config/ci.json` file:
 }
 ```
 
-The above configuration triggers monthly scheduled tests for `release-1deg_jra55_ryf-2.0` GitHub tag. This scheduled test will run with `checksum` test marker, and the top-level defaults for `model-config-tests-version`, `python-version` and `payu-version`.
+The above configuration triggers monthly scheduled tests for `release-1deg_jra55_ryf-2.0` GitHub tag. This scheduled test will run with `repro` test marker, and the top-level defaults for `model-config-tests-version`, `python-version` and `payu-version`.
 
-If a PR was being merged into a `release-1deg_jra55do_ryf` branch, the QA tests run on the GitHub runner would use the `config or dev_config` test markers and the repro tests on NCI, would select the `checksum or checksum_slow` tests.
+If a PR was being merged into a `release-1deg_jra55do_ryf` branch, the QA tests run on the GitHub runner would use the `config` test markers and the repro tests on NCI, would select the `repro` tests.
 
-If a PR was being merged into a `dev-example-branch`, the QA tests that run automatically would use the `dev_config` tests and if repro tests were triggered manually, then it would use the `checksum` tests.
+If a PR was being merged into a `dev-example-branch`, the QA tests that run automatically would use the `dev_config` tests and if repro tests were triggered manually, then it would use the `repro and (not slow)` tests.
 For both test types, it would use the latest changes in the `model-config-tests` repository. For repro tests, it would use the `payu/dev` module on NCI for running the model.
