@@ -2,11 +2,12 @@
 
 import shlex
 import subprocess
+import xml.etree.ElementTree as ET
 
 import yaml
 
 
-def setup_exp(tmp_path, exp_name):
+def setup_exp(tmp_path, exp_name, fake_output):
     """Create a temporary experiment directory for testing"""
     exp_path = tmp_path / exp_name
     exp_path.mkdir(parents=True)
@@ -27,35 +28,80 @@ def setup_exp(tmp_path, exp_name):
             f,
         )
 
-    # Create an access-om2.out file
-    (output_path / "access-om2.out").write_text(
-        """[chksum] test_checksum               0"""
-    )
+    # Create a fake access-om2.out file
+    (output_path / "access-om2.out").write_text(fake_output)
 
     return exp_path
 
 
-def test_test_pairwise_repro(tmp_path):
-    """Test for pairwise reproducibility of two experiments"""
-    # Create two temporary experiment directories
-    setup_exp(tmp_path, "exp1")
-    setup_exp(tmp_path, "exp2")
+def parse_pytest_xml(xml_file):
+    """
+    Parse pytest XML output to extract test names, and statuses.
 
-    test_cmd = "compare-exp-tests " "-k test_pairwise_repro " '--dirs "exp1 exp2"'
+    Parameters
+    ----------
+    xml_file : str
+        Path to the pytest XML output file.
+
+    Returns
+    -------
+    dict[str, str]
+        Mapping of test names to test status (passed, failed, error, skipped).
+    """
+    tree = ET.parse(xml_file)
+    root = tree.getroot()
+
+    test_results = {}
+    for testcase in root.iter("testcase"):
+        test_name = testcase.attrib.get("name")
+        status = "passed"
+
+        # Check for failure, error, or skipped status
+        if testcase.find("failure") is not None:
+            status = "failed"
+        elif testcase.find("error") is not None:
+            status = "error"
+        elif testcase.find("skipped") is not None:
+            status = "skipped"
+
+        test_results[test_name] = status
+
+    return test_results
+
+
+def test_test_pairwise_repro(tmp_path):
+    """Test for pairwise reproducibility of 3 experiments"""
+    # Create two temporary experiment directories
+    setup_exp(tmp_path, "exp1", "[chksum] test_checksum               0")
+    setup_exp(tmp_path, "exp2", "[chksum] test_checksum               0")
+    setup_exp(tmp_path, "exp3", "[chksum] test_checksum               1")
+
+    test_cmd = (
+        'compare-exp-tests -k test_pairwise_repro --dirs "exp1 exp2 exp3" -vvv'
+        f" --junit-xml {tmp_path}/test_results.xml"
+    )
 
     # Run test
-    result = subprocess.run(
+    subprocess.run(
         shlex.split(test_cmd),
         capture_output=True,
         text=True,
         cwd=str(tmp_path),
     )
 
-    # Expect the tests to have passed
-    if result.returncode:
-        # Print out test logs if there are errors
-        print(f"Test stdout: {result.stdout}\nTest stderr: {result.stderr}")
-    assert result.returncode == 0
+    # To print out test results, uncomment the following line and assign
+    # the above subprocess to a result variable
+    # print(f"Test stdout: {result.stdout}\nTest stderr: {result.stderr}")
 
-    # Tests have passed, but how to check what tests were run?
-    # Could parse the xml output files for the test results
+    # Parse xml output file from the tests to check generated test results
+    test_results = parse_pytest_xml(tmp_path / "test_results.xml")
+
+    assert len(test_results) == 3
+    assert "test_pairwise_repro[exp1 vs exp2]" in test_results
+    assert test_results["test_pairwise_repro[exp1 vs exp2]"] == "passed"
+
+    assert "test_pairwise_repro[exp1 vs exp3]" in test_results
+    assert test_results["test_pairwise_repro[exp1 vs exp3]"] == "failed"
+
+    assert "test_pairwise_repro[exp2 vs exp3]" in test_results
+    assert test_results["test_pairwise_repro[exp2 vs exp3]"] == "failed"

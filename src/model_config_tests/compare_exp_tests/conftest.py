@@ -1,7 +1,10 @@
 # Copyright 2024 ACCESS-NRI and contributors. See the top-level COPYRIGHT file for details.
 # SPDX-License-Identifier: Apache-2.0
+import os
 from itertools import combinations
 from pathlib import Path
+
+import pytest
 
 
 # Set up command line options and default for directory paths
@@ -10,25 +13,30 @@ def pytest_addoption(parser):
     parser.addoption(
         "--dirs",
         action="store",
-        help="Specify a space separated list of experiment control dirctories to compare",
+        help="Specify a space separated list of experiment control directories to compare",
     )
-    parser.addoption("--cwd", action="store", default=None)
-
-
-import os
-
-import pytest
+    parser.addoption(
+        "--cwd",
+        action="store",
+        default=None,
+        help=(
+            "Specify the original current working directory. "
+            "This is set automatically in the compare_exp_tests command"
+        ),
+    )
 
 
 @pytest.fixture(autouse=True, scope="session")
 def restore_cwd(request):
+    """Fixture to restore the original working directory in tests"""
     orig_cwd = request.config.getoption("--cwd")
     if orig_cwd:
         os.chdir(orig_cwd)
 
 
 def pytest_generate_tests(metafunc):
-    # Set up dynamic parametrisation for testing pairwise comparisons
+    """Set up dynamic parametrisation for testing pairwise comparisons
+    of input directories"""
     if (
         "experiment_1" in metafunc.fixturenames
         and "experiment_2" in metafunc.fixturenames
@@ -44,7 +52,20 @@ def pytest_generate_tests(metafunc):
 
 
 def get_experiment_pairs(dirs, cwd):
-    """Return a set of absolute paths to directories to compare"""
+    """Generate experiment directory pairs
+
+    Parameters
+    ----------
+    dirs : str
+        Space separated list of directories to compare
+    cwd : Path
+        Original current working directory to resolve relative paths
+
+    Returns
+    -------
+    list[tuple[Path, Path]]
+        List of pairs of directories to compare
+    """
     if dirs is None:
         raise ValueError(
             "No directories specified, use --dirs to specify a space separated list"
@@ -71,5 +92,6 @@ def get_experiment_pairs(dirs, cwd):
     if len(paths) < 2:
         raise ValueError("Need at least two directories with --dirs to compare")
 
+    paths = sorted(list(paths))
     dir_pairs = list(combinations(paths, 2))
     return dir_pairs

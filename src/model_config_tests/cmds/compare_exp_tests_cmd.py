@@ -16,11 +16,15 @@ def main():
 
     original_cwd = os.getcwd()
 
+    # Set the current working directory to the test directory
+    # so the pytest output uses relative paths to this directory
     test_path = str(HERE.parent.parent / COMPARE_EXP_TESTS_DIR)
     os.chdir(test_path)
 
+    # Run pytests
     errcode = pytest.main([test_path] + sys.argv[1:] + [f"--cwd={original_cwd}"])
 
+    # Restore the original working directory
     os.chdir(original_cwd)
 
     sys.exit(errcode)
