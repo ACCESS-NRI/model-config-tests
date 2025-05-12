@@ -30,7 +30,6 @@ class Model:
         self,
         output_directory: Path,
         schema_version: str,
-        extract_all_checksums: bool = False,
     ):
         """Parse output files and create checksums using defined schema
 
@@ -42,8 +41,25 @@ class Model:
         schema_version: str
             The schema version to use for the checksum output. The default
             schema is set in the model class
-        extract_all_checksums: bool, default=False
-            If True, extract all available checksums from the output
+
+        Returns
+        ----------
+        dict[str, Any]
+            Dictionary of the formatted checksums
+        """
+        raise NotImplementedError
+
+    def extract_full_checksums(
+        self,
+        output_directory: Path,
+    ):
+        """
+        Parse all available checksums from the output files.
+
+        Parameters
+        ----------
+        output_directory: str
+            The output directory for the experiment run.
 
         Returns
         ----------

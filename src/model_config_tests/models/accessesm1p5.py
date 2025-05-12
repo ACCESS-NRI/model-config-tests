@@ -109,7 +109,6 @@ class AccessEsm1p5(Model):
         self,
         output_directory: Path = None,
         schema_version: str = None,
-        extract_all_checksums=False,
     ) -> dict[str, Any]:
         """
         Parse output files and create checksums using defined schema
@@ -120,33 +119,25 @@ class AccessEsm1p5(Model):
             The output directory for the experiment run.
         schema_version: str
             The schema version to use for the checksum output.
-        extract_all_checksums: bool, default=False
-            If True, extract all available checksums from the output
 
         Returns
         ----------
         dict[str, Any]
             Dictionary of the formatted checksums
         """
-        if output_directory is None:
-            output_directory = self.output_0
+        if output_directory is not None:
+            output_filepath = output_directory / self.output_filename
+        else:
+            output_filepath = self.output_file
 
         # Extract checksums from output, preferentially using mom5
-        output_checksums = {}
         if "mom" in self.submodels:
-            output_checksums.update(
-                mom5_extract_checksums(output_directory / self.model_std_file)
-            )
+            submodel_extract_checksums = mom5_extract_checksums
+        elif "um" in self.submodels:
+            # UM output is stored in submodel ouptut sub-directory
+            submodel_extract_checksums = um7_extract_norms
 
-        if "um" in self.submodels:
-            # Additionally add um7 checksums if all available checksums
-            # are requested, or if no mom5 checksums are available
-            if extract_all_checksums or output_checksums == {}:
-                um_output = output_directory / self.submodels["um"] / UM_OUTPUT_FILE
-                output_checksums.update(um7_extract_norms(um_output))
-
-        if output_checksums == {}:
-            raise RuntimeError("Failed to parse any checksums from output files")
+        output_checksums = submodel_extract_checksums(output_filepath)
 
         # Format checksums
         if schema_version is None:
@@ -163,3 +154,32 @@ class AccessEsm1p5(Model):
             )
 
         return checksums
+
+    def extract_full_checksums(self, output_directory: Path = None) -> dict[str, Any]:
+        """
+        Parse all available checksums from the output files.
+
+        Parameters
+        ----------
+        output_directory: str
+            The output directory for the experiment run
+
+        Returns
+        ----------
+        dict[str, Any]
+            Dictionary of the formatted checksums
+        """
+        if output_directory is None:
+            output_directory = self.output_0
+
+        output_checksums = {}
+        if "mom" in self.submodels:
+            output_checksums["mom"] = mom5_extract_checksums(
+                output_directory / self.model_std_file
+            )
+
+        if "um" in self.submodels:
+            um_output = output_directory / self.submodels["um"] / UM_OUTPUT_FILE
+            output_checksums["um"] = um7_extract_norms(um_output)
+
+        return output_checksums
