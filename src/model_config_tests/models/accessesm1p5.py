@@ -131,6 +131,7 @@ class AccessEsm1p5(Model):
             output_filepath = self.output_file
 
         # Extract checksums from output, preferentially using mom5
+        submodel_extract_checksums = None
         if "mom" in self.submodels:
             submodel_extract_checksums = mom5_extract_checksums
         elif "um" in self.submodels:
@@ -174,12 +175,12 @@ class AccessEsm1p5(Model):
 
         output_checksums = {}
         if "mom" in self.submodels:
-            output_checksums["mom"] = mom5_extract_checksums(
-                output_directory / self.model_std_file
+            output_checksums["mom"] = dict(
+                mom5_extract_checksums(output_directory / self.model_std_file)
             )
 
         if "um" in self.submodels:
             um_output = output_directory / self.submodels["um"] / UM_OUTPUT_FILE
-            output_checksums["um"] = um7_extract_norms(um_output)
+            output_checksums["um"] = dict(um7_extract_norms(um_output))
 
         return output_checksums
