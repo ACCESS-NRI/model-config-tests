@@ -7,9 +7,9 @@ import pytest
 
 from tests.common import RESOURCES_DIR
 
-# Disable specific warnings from the model_config_tests.qa.test_config module
+# Disable specific warnings from test_config tests
 warnings.filterwarnings("ignore", category=pytest.PytestUnknownMarkWarning)
-from model_config_tests.qa.test_config import get_spack_location_file
+from model_config_tests.config_tests.qa.test_config import get_spack_location_file
 
 
 def test_test_config_access_om2():

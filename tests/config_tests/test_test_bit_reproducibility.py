@@ -17,8 +17,8 @@ from tests.common import RESOURCES_DIR
 
 # Disable unknown marker warnings when importing _experiments
 warnings.filterwarnings("ignore", category=pytest.PytestUnknownMarkWarning)
+from model_config_tests.config_tests.test_bit_reproducibility import _experiments
 from model_config_tests.exp_test_helper import ExpTestHelper
-from model_config_tests.test_bit_reproducibility import _experiments
 
 
 def exp_test_helper_factory(*args, **kwargs):

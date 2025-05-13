@@ -40,6 +40,7 @@ def um7_extract_norms(
                 output_norms[FINAL_ABSOLUTE_NORM].append(match.group(1).strip())
 
     # Save last n_norms
-    output_norms[FINAL_ABSOLUTE_NORM] = output_norms[FINAL_ABSOLUTE_NORM][-n_norms:]
+    if FINAL_ABSOLUTE_NORM in output_norms:
+        output_norms[FINAL_ABSOLUTE_NORM] = output_norms[FINAL_ABSOLUTE_NORM][-n_norms:]
 
     return output_norms

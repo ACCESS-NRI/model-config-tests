@@ -79,7 +79,9 @@ class AccessOm3(Model):
         return self.mom_restart_pointer.exists()
 
     def extract_checksums(
-        self, output_directory: Path = None, schema_version: str = None
+        self,
+        output_directory: Path = None,
+        schema_version: str = None,
     ) -> dict[str, Any]:
         """Parse output file and create checksum using defined schema"""
         if output_directory:
@@ -115,3 +117,10 @@ class AccessOm3(Model):
             )
 
         return checksums
+
+    def extract_full_checksums(self, output_directory: Path = None) -> dict[str, Any]:
+        """Parse output file for all available checksums"""
+        return self.extract_checksums(
+            output_directory=output_directory,
+            schema_version=SCHEMA_VERSION_1_0_0,
+        )["output"]
