@@ -1,10 +1,7 @@
 # Copyright 2024 ACCESS-NRI and contributors. See the top-level COPYRIGHT file for details.
 # SPDX-License-Identifier: Apache-2.0
-import os
 from itertools import combinations
 from pathlib import Path
-
-import pytest
 
 
 # Set up command line options and default for directory paths
@@ -15,23 +12,6 @@ def pytest_addoption(parser):
         action="store",
         help="Specify a space separated list of experiment control directories to compare",
     )
-    parser.addoption(
-        "--cwd",
-        action="store",
-        default=None,
-        help=(
-            "Specify the original current working directory. "
-            "This is set automatically in the compare_exp_tests command"
-        ),
-    )
-
-
-@pytest.fixture(autouse=True, scope="session")
-def restore_cwd(request):
-    """Fixture to restore the original working directory in tests"""
-    orig_cwd = request.config.getoption("--cwd")
-    if orig_cwd:
-        os.chdir(orig_cwd)
 
 
 def pytest_generate_tests(metafunc):
@@ -43,23 +23,20 @@ def pytest_generate_tests(metafunc):
     ):
         # Generate pairs of experiments from command input
         input_dirs = metafunc.config.getoption("dirs")
-        cwd = Path(metafunc.config.getoption("--cwd"))
-        dir_pairs = get_experiment_pairs(input_dirs, cwd)
+        dir_pairs = get_experiment_pairs(input_dirs)
 
         # Generate some readable IDs for the pairs
         ids = [f"{exp1.name} vs {exp2.name}" for exp1, exp2 in dir_pairs]
         metafunc.parametrize("experiment_1,experiment_2", dir_pairs, ids=ids)
 
 
-def get_experiment_pairs(dirs, cwd):
+def get_experiment_pairs(dirs):
     """Generate experiment directory pairs
 
     Parameters
     ----------
     dirs : str
         Space separated list of directories to compare
-    cwd : Path
-        Original current working directory to resolve relative paths
 
     Returns
     -------
@@ -77,9 +54,6 @@ def get_experiment_pairs(dirs, cwd):
     for dir in dirs:
         # Check if the path exists and is a directory
         path = Path(dir)
-        if not path.is_absolute():
-            # Assume path is relative to the original current working directory
-            path = cwd / path
         if not path.exists():
             raise ValueError(f"Directory {dir} does not exist")
         if not path.is_dir():

@@ -1,6 +1,5 @@
 """Tests for comparing multiple experiments results"""
 
-import os
 import sys
 from pathlib import Path
 
@@ -14,20 +13,10 @@ COMPARE_EXP_TESTS_DIR = "compare_exp_tests"
 def main():
     import pytest
 
-    original_cwd = os.getcwd()
-
-    # Set the current working directory to the test directory
-    # so the pytest output uses relative paths to this directory
     test_path = str(HERE.parent.parent / COMPARE_EXP_TESTS_DIR)
 
-    try:
-        os.chdir(test_path)
-
-        # Run pytests
-        errcode = pytest.main([test_path] + sys.argv[1:] + [f"--cwd={original_cwd}"])
-    finally:
-        # Restore the original working directory
-        os.chdir(original_cwd)
+    # Specify --rootdir to shorten relative paths in displayed test output
+    errcode = pytest.main([test_path] + sys.argv[1:] + [f"--rootdir={test_path}"])
 
     sys.exit(errcode)
 
