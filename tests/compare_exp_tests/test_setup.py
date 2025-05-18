@@ -34,6 +34,11 @@ def cd_tmp_path(tmp_path):
         ),
         # Test duplicates are removed
         ("exp1 exp2 exp1 exp2", [("exp1", "exp2")]),
+        # Test extra spaces are ignored
+        (
+            "exp1   exp2      exp3",
+            [("exp1", "exp2"), ("exp1", "exp3"), ("exp2", "exp3")],
+        ),
     ],
 )
 def test_get_experiment_pairs_relative_paths(tmp_path, dirs, expected_pairs_names):

@@ -48,7 +48,7 @@ def get_experiment_pairs(dirs):
             "No directories specified, use --dirs to specify a space separated list"
         )
 
-    dirs = dirs.split(" ")
+    dirs = dirs.split()
 
     paths = set()
     for dir in dirs:
