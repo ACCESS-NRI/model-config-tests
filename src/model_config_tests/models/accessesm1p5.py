@@ -14,6 +14,8 @@ from model_config_tests.util import DAY_IN_SECONDS
 # Default model runtime (24 hrs)
 DEFAULT_RUNTIME_SECONDS = DAY_IN_SECONDS
 
+UM_OUTPUT_FILE = "atm.fort6.pe0"
+
 
 class AccessEsm1p5(Model):
     def __init__(self, experiment):
@@ -26,7 +28,8 @@ class AccessEsm1p5(Model):
             for submodel in self.experiment.config["submodels"]
         }
 
-        self.set_output_files(model_std_file="access.out")
+        self.model_std_file = "access.out"
+        self.set_output_files(model_std_file=self.model_std_file)
 
     def set_output_files(self, model_std_file: str):
         """
@@ -37,7 +40,7 @@ class AccessEsm1p5(Model):
             self.output_filename = model_std_file
         elif "um" in self.submodels:
             # UM output is stored in submodel ouptut sub-directory
-            self.output_filename = Path(self.submodels["um"]) / "atm.fort6.pe0"
+            self.output_filename = Path(self.submodels["um"]) / UM_OUTPUT_FILE
         else:
             raise RuntimeError(
                 "Failed to find suitable submodel for checksum extraction."
@@ -103,9 +106,25 @@ class AccessEsm1p5(Model):
         return self.output_file.exists()
 
     def extract_checksums(
-        self, output_directory: Path = None, schema_version: str = None
+        self,
+        output_directory: Path = None,
+        schema_version: str = None,
     ) -> dict[str, Any]:
-        """Parse output file and create checksum using defined schema"""
+        """
+        Parse output files and create checksums using defined schema
+
+        Parameters
+        ----------
+        output_directory: str
+            The output directory for the experiment run.
+        schema_version: str
+            The schema version to use for the checksum output.
+
+        Returns
+        ----------
+        dict[str, Any]
+            Dictionary of the formatted checksums
+        """
         if output_directory is not None:
             output_filepath = output_directory / self.output_filename
         else:
@@ -136,3 +155,32 @@ class AccessEsm1p5(Model):
             )
 
         return checksums
+
+    def extract_full_checksums(self, output_directory: Path = None) -> dict[str, Any]:
+        """
+        Parse all available checksums from the output files.
+
+        Parameters
+        ----------
+        output_directory: str
+            The output directory for the experiment run
+
+        Returns
+        ----------
+        dict[str, Any]
+            Dictionary of the formatted checksums
+        """
+        if output_directory is None:
+            output_directory = self.output_0
+
+        output_checksums = {}
+        if "mom" in self.submodels:
+            output_checksums["mom"] = dict(
+                mom5_extract_checksums(output_directory / self.model_std_file)
+            )
+
+        if "um" in self.submodels:
+            um_output = output_directory / self.submodels["um"] / UM_OUTPUT_FILE
+            output_checksums["um"] = dict(um7_extract_norms(um_output))
+
+        return output_checksums

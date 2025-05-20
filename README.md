@@ -6,7 +6,7 @@ The checksum pytests are used for reproducibility CI checks in this repository. 
 
 Code from these pytests is adapted from COSIMAS's ACCESS-OM2's [bit reproducibility tests](https://github.com/COSIMA/access-om2/blob/master/test/test_bit_reproducibility.py).
 
-## Pytests
+## model-config-tests Pytests
 
 ### How to run pytests manually on NCI
 
@@ -126,6 +126,21 @@ It is helpful if we work from the same definitions of what 'reproducibility' mea
  2. _Build reproducibilty_: Match a stored previous result when using the same build description files on the same machine.
 
 Code block names above indicate tests that are currently available using the CI/CD system, see [pytest markers](#pytest_markers)
+
+## Check for pairwise reproducibility between multiple experiments
+
+To compare output/checksums between pairs of
+experiment directories, use the `compare-exp-tests` command. For example
+
+```
+compare-exp-tests --dirs "path/to/exp1 path/to/exp2 path/to/exp3"
+```
+
+The `--dirs` option specifies a space separated list of experiment directories to compare. These can be relative or absolute paths and should point to payu control directories. The above example generates three pairwise tests: "exp1 vs exp2", "exp1 vs exp3", and "exp2 vs exp3".
+
+To enable more detailed output during the test runs, add the `-vvv` flag to the command.
+
+Currently these tests only compare the first model run output directory.
 
 ## CI/CD
 

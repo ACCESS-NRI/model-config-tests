@@ -5,7 +5,9 @@
 
 import pytest
 
-from model_config_tests.qa.test_config import check_manifest_exes_in_spack_location
+from model_config_tests.config_tests.qa.test_config import (
+    check_manifest_exes_in_spack_location,
+)
 
 
 @pytest.mark.access_om3
