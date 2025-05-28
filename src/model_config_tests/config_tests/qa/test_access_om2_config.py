@@ -42,6 +42,20 @@ ACCESS_OM2_BGC_MODULE_NAME = "access-om2-bgc"
 ACCESS_OM2_REPOSITORY_NAME = "ACCESS-OM2"
 ACCESS_OM2_BGC_REPOSITORY_NAME = "ACCESS-OM2-BGC"
 
+# Expected metadata notes with conditions of use
+EXPECTED_METADATA_NOTES = """COSIMA request that users of this or other ACCESS-OM2 model code or output data:
+(a) add a project description to COSIMA's list:
+https://docs.google.com/spreadsheets/d/18BDyZlHTSy6EOaf_5o9CwGBOu4pBj88XsS2vNW4R_2o
+(b) consider citing Kiss et al. (2020) [http://doi.org/10.5194/gmd-13-401-2020] and papers describing relevant
+configuration updates - see https://forum.access-hive.org.au/t/access-om2-control-experiments/258
+(c) include an acknowledgement such as that suggested here: https://cosima.org.au/index.php/get-involved/
+(d) let COSIMA know of any publications which use these models or data so they can add them to their list:
+https://scholar.google.com/citations?hl=en&user=inVqu_4AAAAJ
+(e) Tell ACCESS-NRI that you are using ACCESS-NRI infrastructure: https://www.access-nri.org.au/resources/user-reporting/"""
+
+# Expected metadata model name
+EXPECTED_METADATA_MODEL = "ACCESS-OM2"
+
 
 class AccessOM2Branch:
     """Use the naming patterns of the branch name to infer information of
@@ -206,4 +220,14 @@ class TestAccessOM2:
             model_repo_name=branch.model_repository_name,
             control_path=control_path,
             config=config,
+        )
+
+    def test_access_om2_metadata_model(self, metadata):
+        assert (
+            "model" in metadata and metadata["model"] == EXPECTED_METADATA_MODEL
+        ), f"Expected metadata model field set to: {EXPECTED_METADATA_MODEL}"
+
+    def test_access_om2_metadata_notes(self, metadata):
+        assert "notes" in metadata and metadata["notes"] == EXPECTED_METADATA_NOTES, (
+            "Expected metadata notes field set to:\n" + EXPECTED_METADATA_NOTES
         )
