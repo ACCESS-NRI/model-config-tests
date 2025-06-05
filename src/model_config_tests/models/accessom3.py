@@ -8,11 +8,11 @@ import f90nml
 from netCDF4 import Dataset
 from payu.models.cesm_cmeps import Runconfig
 
-from model_config_tests.models.model import (
-    DEFAULT_RUNTIME_SECONDS,
-    SCHEMA_VERSION_1_0_0,
-    Model,
-)
+from model_config_tests.models.model import SCHEMA_VERSION_1_0_0, Model
+from model_config_tests.util import HOUR_IN_SECONDS
+
+# Default model runtime (6 hrs)
+DEFAULT_RUNTIME_SECONDS = 6 * HOUR_IN_SECONDS
 
 
 class AccessOm3(Model):
