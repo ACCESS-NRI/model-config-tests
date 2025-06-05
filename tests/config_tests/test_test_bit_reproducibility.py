@@ -19,6 +19,11 @@ from tests.common import RESOURCES_DIR
 warnings.filterwarnings("ignore", category=pytest.PytestUnknownMarkWarning)
 from model_config_tests.config_tests.test_bit_reproducibility import _experiments
 from model_config_tests.exp_test_helper import ExpTestHelper
+from model_config_tests.models.accessesm1p5 import (
+    DEFAULT_RUNTIME_SECONDS as ESM_RUNTIME,
+)
+from model_config_tests.models.accessom2 import DEFAULT_RUNTIME_SECONDS as OM2_RUNTIME
+from model_config_tests.models.accessom3 import DEFAULT_RUNTIME_SECONDS as OM3_RUNTIME
 
 
 def exp_test_helper_factory(*args, **kwargs):
@@ -449,12 +454,11 @@ def check_runtime(control_path, model_name):
     if model_name in ["access", "access-esm1.6"]:
         with open(control_path / "config.yaml") as f:
             test_config = yaml.safe_load(f)
-        # Check runtime of 24hr hours is set
         assert test_config["calendar"]["runtime"] == {
             "years": 0,
             "months": 0,
             "days": 0,
-            "seconds": 86400,
+            "seconds": ESM_RUNTIME,
         }
     elif model_name == "access-om2":
         with open(control_path / "accessom2.nml") as f:
@@ -462,19 +466,19 @@ def check_runtime(control_path, model_name):
         years, months, seconds = nml["date_manager_nml"]["restart_period"]
         assert years == 0
         assert months == 0
-        assert seconds == 10800
+        assert seconds == OM2_RUNTIME
     elif model_name == "access-om3":
         runconfig = Runconfig(control_path / "nuopc.runconfig")
         assert runconfig.get("CLOCK_attributes", "restart_option") == "nseconds"
-        assert int(runconfig.get("CLOCK_attributes", "restart_n")) == 10800
+        assert int(runconfig.get("CLOCK_attributes", "restart_n")) == OM3_RUNTIME
         assert runconfig.get("CLOCK_attributes", "stop_option") == "nseconds"
-        assert int(runconfig.get("CLOCK_attributes", "stop_n")) == 10800
+        assert int(runconfig.get("CLOCK_attributes", "stop_n")) == OM3_RUNTIME
 
         wav_in = control_path / "wav_in"
         if wav_in.exists():
             with open(wav_in) as f:
                 nml = f90nml.read(f)
-            assert nml["output_date_nml"]["date"]["restart"]["stride"] == 10800
+            assert nml["output_date_nml"]["date"]["restart"]["stride"] == OM3_RUNTIME
     else:
         raise ValueError(f"Unrecognised model: {model_name}")
 
