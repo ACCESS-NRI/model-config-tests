@@ -24,6 +24,7 @@ from model_config_tests.models.accessesm1p5 import (
 )
 from model_config_tests.models.accessom2 import DEFAULT_RUNTIME_SECONDS as OM2_RUNTIME
 from model_config_tests.models.accessom3 import DEFAULT_RUNTIME_SECONDS as OM3_RUNTIME
+from model_config_tests.util import DAY_IN_SECONDS
 
 
 def exp_test_helper_factory(*args, **kwargs):
@@ -457,8 +458,8 @@ def check_runtime(control_path, model_name):
         assert test_config["calendar"]["runtime"] == {
             "years": 0,
             "months": 0,
-            "days": 0,
-            "seconds": ESM_RUNTIME,
+            "days": ESM_RUNTIME / DAY_IN_SECONDS,
+            "seconds": 0,
         }
     elif model_name == "access-om2":
         with open(control_path / "accessom2.nml") as f:
