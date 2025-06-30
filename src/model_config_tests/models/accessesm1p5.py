@@ -61,12 +61,15 @@ class AccessEsm1p5(Model):
             seconds % DAY_IN_SECONDS == 0
         ), "Only days are supported in payu UM driver"
 
+        # ESM1.5/1.6 requires runtime in years, months, days
+        days = seconds / DAY_IN_SECONDS
+
         # Set runtime in config.yaml
         runtime_config = {
             "years": years,
             "months": months,
-            "days": 0,
-            "seconds": seconds,
+            "days": days,
+            "seconds": 0,
         }
         if "calendar" in doc:
             doc["calendar"]["runtime"] = runtime_config
