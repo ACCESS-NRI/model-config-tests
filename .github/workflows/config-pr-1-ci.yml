@@ -281,6 +281,7 @@ jobs:
     permissions:
       pull-requests: write
     env:
+      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
       COMPARED_TAG: ${{ needs.config.outputs.compared-config-tag }}
       COMPARED_CHECKSUM_STRING: ${{ needs.config.outputs.compared-config-tag != '' && format('The checksums compared against are found here {0}/{1}/tree/{2}/testing/checksum', github.server_url, github.repository, needs.config.outputs.compared-config-tag) || '' }}
     steps:
@@ -310,6 +311,26 @@ jobs:
           comment: |
             :x: The Bitwise Reproducibility check failed ${{ env.COMPARED_TAG != '' && format('when comparing against `{0}`', env.COMPARED_TAG) || 'as there is no earlier checksum to compare against' }} :x:
             You must bump the major version of this configuration - to bump the version, comment `!bump major`or modify the `version` in `metadata.yaml`. The meaning of these version bumps is explained in the README.md, under `Config Tags`.
+
+            <details>
+            <summary> Further information</summary>
+
+            The experiment can be found on Gadi at `${{ needs.repro-ci.outputs.experiment-location }}`, and the test results at ${{ needs.repro-ci.outputs.check-run-url }}.
+
+            The checksums generated in this PR are found in the `testing/checksum` directory of ${{ needs.repro-ci.outputs.artifact-url }}.
+
+            ${{ env.COMPARED_CHECKSUM_STRING }}
+
+            </details>
+
+      - name: Error Repro Comment
+        if: needs.repro-ci.outputs.result == 'error'
+        uses: access-nri/actions/.github/actions/pr-comment@main
+        with:
+          comment: |
+            :warning: The Bitwise Reproducibility Check Had Errors - Check Test Results :warning:
+
+            The workflow run can be found at ${{ env.RUN_URL }}.
 
             <details>
             <summary> Further information</summary>
