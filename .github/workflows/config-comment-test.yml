@@ -232,6 +232,8 @@ jobs:
     steps:
       - name: Comment result
         env:
+          POTENTIAL_ERROR: |-
+            ${{ needs.repro-ci.outputs.result == 'error' && format(':warning: The Bitwise Reproducibility Check Had Errors - Check {0} :warning:', env.RUN_URL) || '' }}
           RESULT: |-
             ${{ needs.repro-ci.outputs.result == 'pass' && ':white_check_mark: The Bitwise Reproducibility Check Succeeded :white_check_mark:' || ':x: The Bitwise Reproducibility Check Failed :x:' }}
           CONFIG_REF_URL: '[${{ needs.prepare-command.outputs.config-short-hash }}](${{ github.server_url}}/${{ github.repository }}/tree/${{ needs.prepare-command.outputs.config-hash }})'
@@ -239,6 +241,7 @@ jobs:
         uses: access-nri/actions/.github/actions/pr-comment@main
         with:
           comment: |
+            ${{ env.POTENTIAL_ERROR }}
             ${{ env.RESULT }}
 
             When comparing:
