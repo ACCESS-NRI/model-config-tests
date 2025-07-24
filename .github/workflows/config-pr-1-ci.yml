@@ -261,6 +261,7 @@ jobs:
         run: |
           if [[ ! -f ./target/metadata.yaml ]]; then
             echo "::notice::There is no metadata.yaml on the target branch, skipping modification check"
+            exit 0
           fi
 
           target=$(yq e '.version' ./target/metadata.yaml)
