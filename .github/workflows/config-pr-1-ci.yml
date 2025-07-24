@@ -257,8 +257,13 @@ jobs:
           path: source
 
       - name: Modification Check
-        # If the PR branch version is different to the target branch (but isn't null or empty) then allow merging
+        # If the PR branch version is different to the target branch (but isn't null, empty or doesn't exist) then allow merging
         run: |
+          if [[ ! -f ./target/metadata.yaml ]]; then
+            echo "::notice::There is no metadata.yaml on the target branch, skipping modification check"
+            exit 0
+          fi
+
           target=$(yq e '.version' ./target/metadata.yaml)
           source=$(yq e '.version' ./source/metadata.yaml)
 
