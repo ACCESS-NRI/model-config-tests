@@ -136,9 +136,30 @@ class ExpTestHelper:
             # Change to experiment directory and run.
             os.chdir(self.control_path)
 
-            print("Running payu setup and payu sweep commands")
-            sp.run(["payu", "setup", "--lab", str(self.lab_path)], check=True)
-            sp.run(["payu", "sweep", "--lab", str(self.lab_path)], check=True)
+            print("Running payu setup")
+            result = sp.run(
+                ["payu", "setup", "--lab", str(self.lab_path)],
+                capture_output=True,
+                text=True,
+            )
+            if result.returncode != 0:
+                # Add additional error messaging for debugging
+                error_msg = (
+                    "Failed to run payu setup:\n"
+                    f"Return code: {result.returncode}\n"
+                    f"--- stdout ---\n{result.stdout}\n"
+                    f"--- stderr ---\n{result.stderr}"
+                )
+                print(error_msg)
+                raise RuntimeError(error_msg)
+
+            print("Running payu sweep")
+            sp.run(
+                ["payu", "sweep", "--lab", str(self.lab_path)],
+                capture_output=True,
+                text=True,
+                check=True,
+            )
 
             run_command = ["payu", "run", "--lab", str(self.lab_path)]
             if n_runs:
@@ -208,7 +229,7 @@ class Experiments:
         self.output_path = output_path
         self.keep_archive = keep_archive
         self.experiments = {}
-        self.successful_experiments = []
+        self.experiment_errors = {}
 
     def setup_and_submit(
         self,
@@ -282,22 +303,29 @@ class Experiments:
             try:
                 exp.wait_for_payu_run()
                 print(f"Experiment {exp_name} completed successfully")
-                self.successful_experiments.append(exp_name)
             except RuntimeError as e:
+                self.experiment_errors[exp_name] = str(e)
                 if catch_errors:
-                    print(f"Error in experiment {exp_name}: {e}")
+                    print(f"Error running experiment {exp_name}: {e}")
                 else:
-                    raise e
+                    raise
 
     def check_experiments(self, exp_names=list[str]) -> None:
         """
         Check whether given experiments names have run successfully
         """
         for exp_name in exp_names:
-            # TODO: Is there other useful information to display here?
-            assert (
-                exp_name in self.successful_experiments
-            ), f"There was an error running experiment: {exp_name}"
+            # Check if the experiment has been successful run
+            if exp_name in self.experiment_errors:
+                raise RuntimeError(
+                    f"There was an error running experiment {exp_name}:"
+                    f" {self.experiment_errors[exp_name]}"
+                )
+
+            # Double check if the required experiment output exists
+            exp = self.experiments.get(exp_name)
+            if not exp.model.output_exists():
+                raise RuntimeError(f"Experiment {exp_name} output file does not exist.")
 
 
 def setup_exp(
@@ -519,13 +547,15 @@ def wait_for_qsub_job(
     # Check whether the run job was successful
     exit_status = parse_exit_status_from_file(stdout)
     if exit_status != 0:
-        print(
+        error_msg = (
+            f"Payu {job_type} job failed with exit status {exit_status}:\n"
             f"Job_ID: {job_id}\n"
             f"Output files: {output_files}\n"
             f"--- stdout ---\n{stdout}\n"
             f"--- stderr ---\n{stderr}\n"
         )
-        raise RuntimeError(f"Payu {job_type} job failed with exit status {exit_status}")
+        print(error_msg)
+        raise RuntimeError(error_msg)
 
     return stdout, stderr, output_files
 
