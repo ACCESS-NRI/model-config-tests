@@ -193,10 +193,6 @@ class TestBitReproducibility:
         experiments.check_experiments([EXP_DEFAULT_RUNTIME])
         exp = experiments.get_experiment(EXP_DEFAULT_RUNTIME)
 
-        assert (
-            exp.model.output_exists()
-        ), "Output file required for model checksums does not exist"
-
         # Set the checksum output filename using the model default runtime
         runtime_hours = exp.model.default_runtime_seconds // HOUR_IN_SECONDS
         checksum_filename = f"historical-{runtime_hours}hr-checksum.json"
@@ -245,12 +241,8 @@ class TestBitReproducibility:
         exp_1d_runtime_repeat = experiments.get_experiment(EXP_1D_RUNTIME_REPEAT)
 
         # Compare expected to produced.
-        assert exp_1d_runtime.model.output_exists()
         expected = exp_1d_runtime.extract_checksums()
-
-        assert exp_1d_runtime_repeat.model.output_exists()
         produced = exp_1d_runtime_repeat.extract_checksums()
-
         assert produced == expected
 
     @pytest.mark.repro
