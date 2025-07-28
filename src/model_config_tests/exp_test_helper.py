@@ -310,22 +310,20 @@ class Experiments:
                 else:
                     raise
 
-    def check_experiments(self, exp_names=list[str]) -> None:
+    def check_experiment(self, exp_name: str) -> None:
         """
-        Check whether given experiments names have run successfully
+        Check whether given experiment name has run successfully
         """
-        for exp_name in exp_names:
-            # Check if the experiment has been successful run
-            if exp_name in self.experiment_errors:
-                raise RuntimeError(
-                    f"There was an error running experiment {exp_name}:"
-                    f" {self.experiment_errors[exp_name]}"
-                )
+        if exp_name in self.experiment_errors:
+            raise RuntimeError(
+                f"There was an error running experiment {exp_name}:"
+                f" {self.experiment_errors[exp_name]}"
+            )
 
-            # Double check if the required experiment output exists
-            exp = self.experiments.get(exp_name)
-            if not exp.model.output_exists():
-                raise RuntimeError(f"Experiment {exp_name} output file does not exist.")
+        # Double check if the required experiment output exists
+        exp = self.experiments.get(exp_name)
+        if not exp.model.output_exists():
+            raise RuntimeError(f"Experiment {exp_name} output file does not exist.")
 
 
 def setup_exp(
@@ -547,15 +545,13 @@ def wait_for_qsub_job(
     # Check whether the run job was successful
     exit_status = parse_exit_status_from_file(stdout)
     if exit_status != 0:
-        error_msg = (
+        raise RuntimeError(
             f"Payu {job_type} job failed with exit status {exit_status}:\n"
             f"Job_ID: {job_id}\n"
             f"Output files: {output_files}\n"
             f"--- stdout ---\n{stdout}\n"
             f"--- stderr ---\n{stderr}\n"
         )
-        print(error_msg)
-        raise RuntimeError(error_msg)
 
     return stdout, stderr, output_files
 

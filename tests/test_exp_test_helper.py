@@ -127,6 +127,7 @@ def test_experiment_setup_for_test_run_remove_postprocessing(exp, tmp_path):
 @patch("subprocess.run")
 def test_experiment_submit_payu_run(mock_run, exp):
     mock_run.return_value.stdout = "1234567.gadi-pbs\nsome other output"
+    mock_run.return_value.returncode = 0
 
     current_working_dir = Path.cwd()
     exp.submit_payu_run()
@@ -150,6 +151,7 @@ def test_experiment_submit_payu_run(mock_run, exp):
 def test_experiment_submit_payu_run_n_runs(mock_run, exp):
     """Test --n-runs is added to the payu run command"""
     mock_run.return_value.stdout = "1234567.gadi-pbs\nsome other output"
+    mock_run.return_value.returncode = 0
 
     exp.submit_payu_run(n_runs=2)
 
