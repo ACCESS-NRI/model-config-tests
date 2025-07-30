@@ -14,6 +14,7 @@ jobs:
       markers: ${{ steps.scheduled-config.outputs.markers }}
       payu-version: ${{ steps.scheduled-config.outputs.payu-version }}
       model-config-tests-version: ${{ steps.scheduled-config.outputs.model-config-tests-version }}
+      config-hash: ${{ steps.config-hash.outputs.config-hash }}
     steps:
       - name: Checkout main
         uses: actions/checkout@v4
@@ -36,6 +37,12 @@ jobs:
           branch-or-tag: ${{ inputs.config-ref }}
           config-filepath: "config/ci.json"
 
+      - name: Set config hash
+        id: config-hash
+        run: |
+          # Find latest commit hash for the given config branch or tag
+          config_hash=$(git rev-parse ${{ inputs.config-ref }})
+
   repro-ci:
     # Run the given config on the deployment Github Environment (`environment-name`) and upload
     # the test results and checksum.
@@ -45,6 +52,7 @@ jobs:
     with:
       # FIXME: Make the environment name an input of some kind - what if we deploy to a different supercomputer?
       environment-name: Gadi
+      config-hash: ${{ needs.config.outputs.config-hash }}
       config-ref: ${{ inputs.config-ref }}
       compared-config-ref: ${{ inputs.config-ref }}
       test-markers: ${{ needs.config.outputs.markers }}
@@ -59,6 +67,7 @@ jobs:
     name: Failed Reproduction Notifier
     needs:
       - repro-ci
+      - config
     if: failure() || needs.repro-ci.outputs.result == 'fail'
     runs-on: ubuntu-latest
     permissions:
@@ -74,7 +83,7 @@ jobs:
           model=${config%-*}
           echo "model=$model" >> $GITHUB_OUTPUT
           echo "model-url=https://github.com/ACCESS-NRI/$model" >> $GITHUB_OUTPUT
-          echo "ref-url=${{ github.server_url }}/${{ github.repository }}/tree/${{ inputs.config-ref }}" >> $GITHUB_OUTPUT
+          echo "ref-url=${{ github.server_url }}/${{ github.repository }}/tree/${{ needs.config.outputs.config-hash }}" >> $GITHUB_OUTPUT
           echo "run-url=${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" >> $GITHUB_OUTPUT
 
           cat $GITHUB_OUTPUT
@@ -92,7 +101,7 @@ jobs:
             Failed Run Log: ${{ steps.variables.outputs.run-url }}
             Experiment Location (Gadi): `${{ needs.repro-ci.outputs.experiment-location }}`
             Checksums created: In the `testing/checksum` directory of ${{ needs.repro-ci.outputs.artifact-url }}
-            Checksums compared against: ${{ format('{0}/{1}/tree/{2}/testing/checksum', github.server_url, github.repository, inputs.config-ref) }}
+            Checksums compared against: ${{ steps.variables.outputs.ref-url }}/testing/checksum
 
             Tagging @ACCESS-NRI/model-release
         run: |
