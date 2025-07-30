@@ -4,7 +4,7 @@ on:
     inputs:
       config-hash:
         type: string
-        required: false
+        required: true
         description: A SHA commit of the associated config branch to use for the reproducibility run
       config-ref:
         type: string
@@ -75,7 +75,7 @@ jobs:
       artifact-url: ${{ steps.upload.outputs.artifact-url }}
       experiment-location: ${{ steps.run.outputs.experiment-location }}
     env:
-      EXPERIMENT_LOCATION: ${{ vars.EXPERIMENTS_LOCATION }}/${{ github.event.repository.name }}/${{ inputs.config-ref }}
+      EXPERIMENT_LOCATION: ${{ vars.EXPERIMENTS_LOCATION }}/${{ github.event.repository.name }}/${{ inputs.config-ref }}/${{ inputs.config-hash }}
     steps:
       - name: Validate ${{ inputs.environment-name }} Variables
         run: |
@@ -108,13 +108,6 @@ jobs:
             ${{ secrets.SSH_HOST_DATA }}
           private-key: ${{ secrets.SSH_KEY }}
 
-      - name: Set experiment location
-        run: |
-          # Check to add commit hash to the experiment location if provided
-          if [[ -n "${{ inputs.config-hash }}" ]]; then
-            echo "EXPERIMENT_LOCATION=${{ env.EXPERIMENT_LOCATION }}/${{ inputs.config-hash }}" >> $GITHUB_ENV
-          fi
-
       - name: Run configuration
         id: run
         env:
@@ -135,11 +128,7 @@ jobs:
 
           # Setup a base experiment
           git clone ${{ github.event.repository.clone_url }} "${{ env.BASE_EXPERIMENT_LOCATION }}"
-          if [ -n "${{ inputs.config-hash }}" ]; then
-            git -C "${{ env.BASE_EXPERIMENT_LOCATION }}" checkout ${{ inputs.config-hash }}
-          else
-            git -C "${{ env.BASE_EXPERIMENT_LOCATION }}" checkout ${{ inputs.config-ref }}
-          fi
+          git -C "${{ env.BASE_EXPERIMENT_LOCATION }}" checkout ${{ inputs.config-hash }}
           cd "${{ env.BASE_EXPERIMENT_LOCATION }}"
 
           # Setup a compared checksum (if it exists)
@@ -225,12 +214,7 @@ jobs:
 
       - name: Generate Test Output Artifact Name
         id: artifact
-        run: |
-          if [ -n "${{ inputs.config-hash }}" ]; then
-            echo "name=${{ github.event.repository.name }}-${{ inputs.config-hash }}" >> $GITHUB_OUTPUT
-          else
-            echo "name=${{ github.event.repository.name }}-${{ inputs.config-ref }}" >> $GITHUB_OUTPUT
-          fi
+        run: echo "name=${{ github.event.repository.name }}-${{ inputs.config-hash }}" >> $GITHUB_OUTPUT
 
       - name: Upload Test Output
         id: upload
