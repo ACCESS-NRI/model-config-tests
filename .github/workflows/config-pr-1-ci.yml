@@ -307,6 +307,9 @@ jobs:
 
             ${{ env.COMPARED_CHECKSUM_STRING }}
 
+            Test summary:
+            ${{ needs.repro-ci.outputs.summary }}
+
             </details>
 
       - name: Failed Repro Comment
@@ -325,6 +328,9 @@ jobs:
             The checksums generated in this PR are found in the `testing/checksum` directory of ${{ needs.repro-ci.outputs.artifact-url }}.
 
             ${{ env.COMPARED_CHECKSUM_STRING }}
+
+            Test summary:
+            ${{ needs.repro-ci.outputs.summary }}
 
             </details>
 
@@ -345,5 +351,8 @@ jobs:
             The checksums generated in this PR are found in the `testing/checksum` directory of ${{ needs.repro-ci.outputs.artifact-url }}.
 
             ${{ env.COMPARED_CHECKSUM_STRING }}
+
+            Test summary:
+            ${{ needs.repro-ci.outputs.summary }}
 
             </details>

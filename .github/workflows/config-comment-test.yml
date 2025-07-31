@@ -260,6 +260,9 @@ jobs:
 
             The checksums compared against are found here ${{ github.server_url }}/${{ github.repository }}/tree/${{ needs.prepare-command.outputs.compared-config-hash }}/testing/checksum
 
+            Test summary:
+            ${{ needs.repro-ci.outputs.summary }}
+
             </details>
 
   commit:

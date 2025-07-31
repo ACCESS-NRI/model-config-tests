@@ -41,6 +41,10 @@ on:
         description: |
           Result of the repro check.
           Output is `pass` if `inputs.config-ref` is bit-reproducible with `inputs.compared-config-ref`, `fail` if not, and `error` otherwise.
+      summary:
+        value: ${{ jobs.check-repro.outputs.summary }}
+        description: |
+          Multiline string listing the names of tests run and their results.
       check-run-url:
         value: ${{ jobs.check-repro.outputs.check-run-url }}
         description: URL to the parsed test results
@@ -231,6 +235,8 @@ jobs:
       check-run-url: ${{ steps.results.outputs.check-url }}
       # Overall result of the checksum repro CI - `pass` (if reproducible), `fail` otherwise
       result: ${{ steps.results.outputs.result }}
+      # Multiline summary of the tests run
+      summary: ${{ steps.parse_test_report.outputs.summary }}
     steps:
       - name: Download Newly Created Checksum
         uses: actions/download-artifact@v4
@@ -262,3 +268,9 @@ jobs:
           else
             echo "result=pass" >> $GITHUB_OUTPUT
           fi
+
+      - name: Generate test summary
+        id: parse_test_report
+        uses: access-nri/model-config-tests/.github/actions/parse-junit-xml@main
+        with:
+          filepath: ${{ env.TESTING_LOCAL_LOCATION }}/checksum/test_report.xml
