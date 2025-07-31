@@ -268,9 +268,9 @@ class TestAccessEsm1p6:
         # Find CICE sub-model control path
         model_name = None
         for sub_model in config["submodels"]:
-            if sub_model["model"] in ("cice","cice5"):
+            if sub_model["model"] in ("cice", "cice5"):
                 model_name = sub_model["name"]
-        if (model_name == None) :
+        if model_name is None:
             raise RuntimeError("cice submodel not found in config")
         cice_control_path = control_path / model_name
 
