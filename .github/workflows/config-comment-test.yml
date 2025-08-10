@@ -216,6 +216,7 @@ jobs:
       payu-version: ${{ needs.ci-config.outputs.payu-version }}
       model-config-tests-version: ${{ needs.ci-config.outputs.model-config-tests-version }}
       test-markers: ${{ needs.ci-config.outputs.markers }}
+      run-context: pr${{ github.event.issue.number }}
     secrets: inherit
     permissions:
       contents: write
