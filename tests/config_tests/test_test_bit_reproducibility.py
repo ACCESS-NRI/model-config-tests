@@ -213,8 +213,8 @@ class CommonTestHelper:
         # Minimal test command
         test_cmd = (
             "model-config-tests -s "
-            # Use -k to select one test
-            f"-k {self.test_name} "
+            # Use -m to specify the test (each repro test has a unique marker)
+            f"-m {self.test_name.removeprefix('test_')} "
             f"--output-path {self.output_path} "
             # Keep archive flag will keep any pre-existing archive for the test
             # and disable the actual 'payu run' steps
@@ -500,3 +500,31 @@ def check_checksum(output_path, checksum_path, model_name, match=True):
         assert test_checksum.read_text() == checksum_path.read_text()
     else:
         assert test_checksum.read_text() != checksum_path.read_text()
+
+
+@pytest.mark.parametrize("fail", [False, True])
+def test_test_repro_determinism(tmp_dir, fail):
+    """Test repro determinism for some example output"""
+    test_name = "test_repro_determinism"
+
+    exp1_name = "exp_1d_runtime"
+    exp2_name = "exp_1d_runtime_repeat"
+
+    # Setup some example files for both experiments
+    exp1_helper = CommonTestHelper(test_name, exp1_name, "access", tmp_dir)
+    exp1_helper.copy_config("release-preindustrial+concentrations")
+    exp1_helper.create_mock_output("output000", modify=False)
+
+    exp2_helper = CommonTestHelper(test_name, exp2_name, "access", tmp_dir)
+    exp2_helper.create_mock_output("output000", modify=fail)
+
+    # Build test command
+    test_cmd = (
+        f"{exp1_helper.base_test_command()} "
+        f"--control-path {exp1_helper.control_path} "
+    )
+
+    # Run test in a subprocess call
+    result = subprocess.run(shlex.split(test_cmd), capture_output=True, text=True)
+    # Check test result
+    assert result.returncode == int(fail)
