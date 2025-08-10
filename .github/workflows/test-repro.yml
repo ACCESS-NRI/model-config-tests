@@ -39,6 +39,10 @@ on:
         description: |
           Newline-separated paths for inclusion in the release artifact.
           Note that all paths given have 'env.EXPERIMENT_LOCATION/' prepended.
+      run_context:
+        type: string
+        required: true
+        description: The name used for parent directory in the test outputs. E.g. pr-No or schedule
     outputs:
       result:
         value: ${{ jobs.check-repro.outputs.result }}
@@ -75,7 +79,7 @@ jobs:
       artifact-url: ${{ steps.upload.outputs.artifact-url }}
       experiment-location: ${{ steps.run.outputs.experiment-location }}
     env:
-      EXPERIMENT_LOCATION: ${{ vars.EXPERIMENTS_LOCATION }}/${{ github.event.repository.name }}/${{ inputs.config-ref }}/${{ inputs.config-hash }}
+      EXPERIMENT_LOCATION: ${{ vars.EXPERIMENTS_LOCATION }}/${{ github.event.repository.name }}/${{ inputs.run_context }}/${{ inputs.config-ref }}/${{ inputs.config-hash }}
     steps:
       - name: Validate ${{ inputs.environment-name }} Variables
         run: |
@@ -214,7 +218,7 @@ jobs:
 
       - name: Generate Test Output Artifact Name
         id: artifact
-        run: echo "name=${{ github.event.repository.name }}-${{ inputs.config-hash }}" >> $GITHUB_OUTPUT
+        run: echo "name=${{ github.event.repository.name }}-${{ inputs.run_context}}-${{ inputs.config-hash }}" >> $GITHUB_OUTPUT
 
       - name: Upload Test Output
         id: upload

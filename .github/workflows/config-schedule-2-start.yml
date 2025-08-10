@@ -58,6 +58,7 @@ jobs:
       test-markers: ${{ needs.config.outputs.markers }}
       model-config-tests-version: ${{ needs.config.outputs.model-config-tests-version }}
       payu-version: ${{ needs.config.outputs.payu-version }}
+      run-context: schedule
     secrets: inherit
     permissions:
       contents: write

@@ -232,6 +232,7 @@ jobs:
       model-config-tests-version: ${{ needs.config.outputs.repro-model-config-tests-version }}
       payu-version: ${{ needs.config.outputs.repro-payu-version }}
       additional-artifact-content-paths: ${{ inputs.additional-artifact-content-paths }}
+      run-context: pr${{ github.event.pull_request.number }}
     secrets: inherit
     permissions:
       contents: write
