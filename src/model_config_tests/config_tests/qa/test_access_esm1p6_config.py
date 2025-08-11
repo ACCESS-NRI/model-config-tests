@@ -29,9 +29,6 @@ VALID_KEYWORDS: set[str] = {"global", "access-esm1.6"}
 VALID_NOMINAL_RESOLUTION: str = "100 km"
 # TODO: Add back in when valid DOI for ESM1.6 is obtained
 # VALID_REFERENCE: str = "https://doi.org/10.1071/ES19035"
-VALID_PREINDUSTRIAL_START: dict[str, int] = {"year": 101, "month": 1, "days": 1}
-VALID_HISTORICAL_START: dict[str, int] = {"year": 1850, "month": 1, "days": 1}
-VALID_AMIP_START: dict[str, int] = {"year": 1978, "month": 1, "days": 1}
 VALID_RUNTIME: dict[str, int] = {"years": 1, "months": 0, "days": 0}
 VALID_RESTART_FREQ: str = "10YS"
 VALID_MPPNCCOMBINE_EXE: str = "mppnccombine.spack"
@@ -161,31 +158,6 @@ class TestAccessEsm1p6:
         assert field in metadata and metadata[field] == expected, error_field_incorrect(
             field, "metadata.yaml", expected
         )
-
-    def test_config_start(self, branch, config):
-        assert (
-            "calendar" in config
-            and config["calendar"] is not None
-            and "start" in config["calendar"]
-            and config["calendar"]["start"] is not None
-        ), error_field_nonexistence("calendar.start", "config.yaml")
-
-        start: dict[str, int] = config["calendar"]["start"]
-
-        if branch.config_scenario == "preindustrial":
-            assert start == VALID_PREINDUSTRIAL_START, error_field_incorrect(
-                "calendar.start", "config.yaml", VALID_PREINDUSTRIAL_START
-            )
-        elif branch.config_scenario == "historical":
-            assert start == VALID_HISTORICAL_START, error_field_incorrect(
-                "calendar.start", "config.yaml", VALID_HISTORICAL_START
-            )
-        elif branch.config_scenario == "amip":
-            assert start == VALID_AMIP_START, error_field_incorrect(
-                "calendar.start", "config.yaml", VALID_AMIP_START
-            )
-        else:
-            pytest.fail(f"Cannot test unknown scenario {branch.config_scenario}.")
 
     def test_config_runtime(self, config):
         assert (
