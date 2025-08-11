@@ -144,7 +144,7 @@ class AccessOm3(Model):
         # any restart tiles
         parent = restart.parent
         tiles = sorted(
-            parent.glob(restart.name +".[0-9][0-9][0-9][0-9]"),
+            parent.glob(restart.name + ".[0-9][0-9][0-9][0-9]"),
             key=lambda x: int(x.suffix[1:]),
         )
         if not tiles:
