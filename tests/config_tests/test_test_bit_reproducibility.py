@@ -22,10 +22,12 @@ from model_config_tests.exp_test_helper import ExpTestHelper
 from model_config_tests.models.accessesm1p5 import (
     DEFAULT_RUNTIME_SECONDS as ESM_RUNTIME,
 )
-from model_config_tests.models.accessom2 import DEFAULT_RUNTIME_SECONDS as OM2_RUNTIME
-from model_config_tests.models.accessom3 import DEFAULT_RUNTIME_SECONDS as OM3_RUNTIME
+from model_config_tests.models.accessom2 import AccessOm2
+from model_config_tests.models.accessom3 import AccessOm3
 from model_config_tests.util import DAY_IN_SECONDS
 
+OM2_RUNTIME = AccessOm2.DEFAULT_RUNTIME_SECONDS
+OM3_RUNTIME = AccessOm3.DEFAULT_RUNTIME_SECONDS
 
 def exp_test_helper_factory(*args, **kwargs):
     """Factory function to create a new mock for each ExpTestHelper"""

@@ -13,8 +13,10 @@ from model_config_tests.models.mom5 import mom5_extract_checksums
 
 
 class AccessOm2(Model):
+    DEFAULT_RUNTIME_SECONDS = 3 * HOUR_IN_SECONDS
     def __init__(self, experiment):
         super().__init__(experiment)
+        self.default_runtime_seconds = self.DEFAULT_RUNTIME_SECONDS
         self.output_filename = "access-om2.out"
         self.output_file = self.output_0 / self.output_filename
 
