@@ -1,12 +1,13 @@
 import shutil
 import subprocess
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import pytest
 import yaml
 
 from model_config_tests.exp_test_helper import (
+    Experiments,
     ExpTestHelper,
     parse_exit_status_from_file,
     parse_gadi_pbs_ids,
@@ -108,6 +109,7 @@ def test_experiment_setup_for_test_run_remove_postprocessing(exp, tmp_path):
 @patch("subprocess.run")
 def test_experiment_submit_payu_run(mock_run, exp):
     mock_run.return_value.stdout = "1234567.gadi-pbs\nsome other output"
+    mock_run.return_value.returncode = 0
 
     current_working_dir = Path.cwd()
     exp.submit_payu_run()
@@ -131,6 +133,7 @@ def test_experiment_submit_payu_run(mock_run, exp):
 def test_experiment_submit_payu_run_n_runs(mock_run, exp):
     """Test --n-runs is added to the payu run command"""
     mock_run.return_value.stdout = "1234567.gadi-pbs\nsome other output"
+    mock_run.return_value.returncode = 0
 
     exp.submit_payu_run(n_runs=2)
 
@@ -154,12 +157,32 @@ def test_experiment_submit_payu_run_disabled(mock_run, exp):
 
 
 @patch("subprocess.run")
+def test_experiment_submit_payu_run_setup_error(mock_run, exp):
+    """Test that an error is raised when payu setup fails"""
+    mock_run.return_value.stdout = "Some output"
+    mock_run.return_value.stderr = "Some error"
+    mock_run.return_value.returncode = 1
+
+    with pytest.raises(RuntimeError, match="Failed to run payu setup*"):
+        exp.submit_payu_run()
+
+    assert exp.run_id is None
+
+
+@patch("subprocess.run")
 def test_experiment_submit_payu_run_error(mock_run, exp):
-    """Test that an error is raised when any payu command fails"""
-    mock_run.side_effect = subprocess.CalledProcessError(
-        returncode=1, cmd="payu setup", output="Some error"
-    )
-    mock_run.return_value.stdout = "Some error"
+    """Test that an RuntimeError is raised with CalledProcessError"""
+    # Mock the first call to payu setup to succeed
+    # and subsequent payu command to fail
+    setup_success = Mock()
+    setup_success.stdout = "Setup successful"
+    setup_success.returncode = 0
+    mock_run.side_effect = [
+        setup_success,
+        subprocess.CalledProcessError(
+            returncode=1, cmd="payu run", output="Some error"
+        ),
+    ]
 
     with pytest.raises(RuntimeError, match="Failed to submit payu run.*"):
         exp.submit_payu_run()
@@ -385,3 +408,46 @@ def test_experiment_wait_for_payu_run_disabled(exp):
         exp.wait_for_payu_run("137776068.gadi-pbs")
 
         assert not mock_wait_for_qsub.called
+
+
+def test_experiments_check_experiment_error(tmp_path):
+    with patch("model_config_tests.exp_test_helper.setup_exp") as mock_setup_exp:
+        # Create an experiment that will error later on
+        mock_error_exp = Mock(autospec=ExpTestHelper)
+        mock_setup_exp.return_value = mock_error_exp
+        mock_error_exp.wait_for_payu_run.side_effect = RuntimeError(
+            "Payu run job failed with exit status 1"
+        )
+
+        exps = Experiments(
+            control_path=tmp_path / "control",
+            output_path=tmp_path / "output",
+            keep_archive=True,
+        )
+        exps.setup_and_submit(exp_name="error_exp")
+        assert exps.experiments["error_exp"] == mock_error_exp
+
+        # Add a second experiment that will succeed
+        mock_success_exp = Mock(autospec=ExpTestHelper)
+        mock_success_exp.wait_for_payu_run.return_value = None
+        mock_setup_exp.return_value = mock_success_exp
+
+        exps.setup_and_submit(exp_name="success_exp")
+        assert exps.experiments["success_exp"] == mock_success_exp
+
+    # Check no errors are raised here
+    exps.wait_for_all_experiments(catch_errors=True)
+    assert exps.experiment_errors == {
+        "error_exp": "Payu run job failed with exit status 1"
+    }
+
+    # Check no errors with successful experiment
+    exps.check_experiment("success_exp")
+
+    # Check error raised for the failed experiment
+    error_msg = (
+        "There was an error running experiment error_exp: "
+        "Payu run job failed with exit status 1"
+    )
+    with pytest.raises(RuntimeError, match=error_msg):
+        exps.check_experiment("error_exp")
