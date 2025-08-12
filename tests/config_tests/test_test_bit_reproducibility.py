@@ -29,6 +29,7 @@ from model_config_tests.util import DAY_IN_SECONDS
 OM2_RUNTIME = AccessOm2.DEFAULT_RUNTIME_SECONDS
 OM3_RUNTIME = AccessOm3.DEFAULT_RUNTIME_SECONDS
 
+
 def exp_test_helper_factory(*args, **kwargs):
     """Factory function to create a new mock for each ExpTestHelper"""
     mock_instance = Mock(autospec=ExpTestHelper)
