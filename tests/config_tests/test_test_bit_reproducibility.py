@@ -19,15 +19,14 @@ from tests.common import RESOURCES_DIR
 warnings.filterwarnings("ignore", category=pytest.PytestUnknownMarkWarning)
 from model_config_tests.config_tests.test_bit_reproducibility import _experiments
 from model_config_tests.exp_test_helper import ExpTestHelper
-from model_config_tests.models.accessesm1p5 import (
-    DEFAULT_RUNTIME_SECONDS as ESM_RUNTIME,
-)
+from model_config_tests.models.accessesm1p5 import AccessEsm1p5
 from model_config_tests.models.accessom2 import AccessOm2
 from model_config_tests.models.accessom3 import AccessOm3
 from model_config_tests.util import DAY_IN_SECONDS, HOUR_IN_SECONDS
 
 OM2_RUNTIME = AccessOm2.DEFAULT_RUNTIME_SECONDS
 OM3_RUNTIME = AccessOm3.DEFAULT_RUNTIME_SECONDS
+ESM_RUNTIME = AccessEsm1p5.DEFAULT_RUNTIME_SECONDS
 
 
 def exp_test_helper_factory(*args, **kwargs):
@@ -489,7 +488,7 @@ def check_runtime(control_path, model_name):
 
 def check_checksum(output_path, checksum_path, model_name, match=True):
     if model_name in ["access", "access-esm1.6"]:
-        hours = 24
+        hours = ESM_RUNTIME // HOUR_IN_SECONDS
     elif model_name == "access-om2":
         hours = OM2_RUNTIME // HOUR_IN_SECONDS
     elif model_name == "access-om3":
