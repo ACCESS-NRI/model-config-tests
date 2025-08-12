@@ -24,7 +24,7 @@ from model_config_tests.models.accessesm1p5 import (
 )
 from model_config_tests.models.accessom2 import AccessOm2
 from model_config_tests.models.accessom3 import AccessOm3
-from model_config_tests.util import DAY_IN_SECONDS
+from model_config_tests.util import DAY_IN_SECONDS, HOUR_IN_SECONDS
 
 OM2_RUNTIME = AccessOm2.DEFAULT_RUNTIME_SECONDS
 OM3_RUNTIME = AccessOm3.DEFAULT_RUNTIME_SECONDS
@@ -489,11 +489,14 @@ def check_runtime(control_path, model_name):
 
 def check_checksum(output_path, checksum_path, model_name, match=True):
     if model_name in ["access", "access-esm1.6"]:
-        test_checksum = output_path / "checksum" / "historical-24hr-checksum.json"
-    elif model_name in ["access-om2", "access-om3"]:
-        test_checksum = output_path / "checksum" / "historical-3hr-checksum.json"
+        hours = 24
+    elif model_name == "access-om2":
+        hours = OM2_RUNTIME // HOUR_IN_SECONDS
+    elif model_name == "access-om3":
+        hours = OM3_RUNTIME // HOUR_IN_SECONDS
     else:
         raise ValueError(f"Unrecognised model: {model_name}")
+    test_checksum = output_path / "checksum" / f"historical-{hours}hr-checksum.json"
     assert test_checksum.exists()
 
     if match:
