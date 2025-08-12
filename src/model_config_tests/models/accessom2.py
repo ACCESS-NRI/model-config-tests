@@ -10,10 +10,13 @@ from model_config_tests.models.model import (
     Model,
 )
 from model_config_tests.models.mom5 import mom5_extract_checksums
+from model_config_tests.util import HOUR_IN_SECONDS
 
 
 class AccessOm2(Model):
+    # Default model runtime (3 hrs)
     DEFAULT_RUNTIME_SECONDS = 3 * HOUR_IN_SECONDS
+
     def __init__(self, experiment):
         super().__init__(experiment)
         self.default_runtime_seconds = self.DEFAULT_RUNTIME_SECONDS
