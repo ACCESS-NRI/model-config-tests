@@ -5,6 +5,7 @@ from unittest.mock import patch
 
 import pytest
 import yaml
+from netCDF4 import Dataset
 
 from model_config_tests.exp_test_helper import (
     ExpTestHelper,
@@ -14,6 +15,7 @@ from model_config_tests.exp_test_helper import (
     parse_run_id,
     wait_for_payu_jobs,
 )
+from model_config_tests.models.accessom3 import AccessOm3
 from tests.common import RESOURCES_DIR
 
 LOG_DIR = RESOURCES_DIR / "experiment-logs"
@@ -34,6 +36,23 @@ def exp(tmp_path):
 
     experiment = ExpTestHelper(control_path=control_path, lab_path=lab_path)
     return experiment
+
+
+@pytest.fixture
+def exp_with_restarts(exp, tmp_path):
+    """
+    Extend the existing `exp` with restart dirs and an rpointer file for AccessOm3.
+    """
+    restart000 = tmp_path / "restart000"
+    restart001 = tmp_path / "restart001"
+    restart000.mkdir(parents=True, exist_ok=True)
+    restart001.mkdir(parents=True, exist_ok=True)
+
+    exp.restart000 = restart000
+    exp.restart001 = restart001
+
+    (restart000 / "rpointer.ocn").write_text("access-om3.mom6.r.1900-01-02-00000.nc\n")
+    return exp
 
 
 def test_experiment_init(exp, tmp_path):
@@ -385,3 +404,78 @@ def test_experiment_wait_for_payu_run_disabled(exp):
         exp.wait_for_payu_run("137776068.gadi-pbs")
 
         assert not mock_wait_for_qsub.called
+
+
+def _test_collect_restart_tiles_unified(exp_with_restarts):
+    exp_accessom3 = AccessOm3(exp_with_restarts)
+    restart = exp_accessom3.output_0 / "access-om3.mom6.r.1900-01-02-00000.nc"
+    restart.write_bytes(b"")
+
+    restart_path = AccessOm3.collect_restart_tiles(restart)
+    assert restart_path == restart
+
+
+def test_collect_restart_tiles_split(exp_with_restarts):
+    exp_accessom3 = AccessOm3(exp_with_restarts)
+    base = exp_accessom3.output_0 / "access-om3.mom6.r.1900-01-02-00000.nc"
+    tile0 = Path(str(base) + ".0000")
+    tile0.write_bytes(b"")
+    tile1 = Path(str(base) + ".0001")
+    tile1.write_bytes(b"")
+
+    first_tile_path = AccessOm3._collect_restart_tiles(base)
+    assert first_tile_path.name.endswith(".0000")
+
+
+def test_collect_restart_tiles_when_0000_missing(exp_with_restarts):
+    """
+    If .nc.0000 is missing, ensure the next available tile is used (eg, .nc.0001)
+    This is because the 0000 tile can be completely masked.
+    """
+    exp_accessom3 = AccessOm3(exp_with_restarts)
+    base = exp_accessom3.output_0 / "access-om3.mom6.r.1900-01-02-00000.nc"
+    tile1 = Path(str(base) + ".0001")
+    tile1.write_bytes(b"")
+
+    first_tile_path = AccessOm3._collect_restart_tiles(base)
+    assert first_tile_path.name.endswith(".0001")
+
+
+def test_collect_restart_tiles_missing(exp_with_restarts):
+    exp_accessom3 = AccessOm3(exp_with_restarts)
+    missing = exp_accessom3.output_0 / "access-om3.mom6.r.1900-01-02-00000.nc"
+
+    with pytest.raises(FileNotFoundError):
+        AccessOm3._collect_restart_tiles(missing)
+
+
+def _create_nc_with_checksum(path, varname="v", checksum="2C6888522FC609AA"):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with Dataset(path, "w") as ds:
+        ds.createDimension("x", 1)
+        v = ds.createVariable(varname, "f4", ("x",))
+        v[:] = 0.0
+        v.setncattr("checksum", checksum)
+
+
+def test_extract_checksums_unified(exp_with_restarts):
+    exp_accessom3 = AccessOm3(exp_with_restarts)
+    nc_path = exp_accessom3.output_0 / "access-om3.mom6.r.1900-01-02-00000.nc"
+    _create_nc_with_checksum(nc_path, varname="u", checksum="FF24B558B5C5561D")
+
+    checksums = exp_accessom3.extract_checksums(output_directory=exp_accessom3.output_0)
+    assert checksums["output"]["u"][0] == "FF24B558B5C5561D"
+
+
+def test_extract_checksums_split_uses_first_tile(exp_with_restarts):
+    exp_accessom3 = AccessOm3(exp_with_restarts)
+    # Ensure rpointer points to the base (no suffix); we already set that in the fixture
+    base = exp_accessom3.output_0 / "access-om3.mom6.r.1900-01-02-00000.nc"
+    tile0 = Path(str(base) + ".0000")
+    tile1 = Path(str(base) + ".0001")
+
+    _create_nc_with_checksum(tile0, varname="DTBT", checksum="AC87F8AC28BD1436")
+    _create_nc_with_checksum(tile1, varname="DTBT", checksum="ignored")
+
+    checksums = exp_accessom3.extract_checksums(output_directory=exp_accessom3.output_0)
+    assert checksums["output"]["DTBT"][0] == "AC87F8AC28BD1436"

@@ -89,19 +89,22 @@ class AccessOm3(Model):
         else:
             mom_restart_pointer = self.mom_restart_pointer
 
-        # MOM6 saves checksums for each variable in its restart files. Extract these
-        # attributes for each restart
+        # MOM6 saves checksums for each variable in its restart files.
+        # In unified (collated) restart files, the checksum is stored once per variable.
+        # In split (per-processor) restarts, the global checksum is duplicated
+        # into every tile file, hence reading one tile (e.g. .0000) is sufficient.
         output_checksums: dict[str, list[any]] = defaultdict(list)
 
         with open(mom_restart_pointer) as f:
             for restart_file in f.readlines():
                 restart = mom_restart_pointer.parent / restart_file.rstrip()
-                rootgrp = Dataset(restart, "r")
-                for variable in sorted(rootgrp.variables):
-                    var = rootgrp[variable]
-                    if "checksum" in var.ncattrs():
-                        output_checksums[variable.strip()].append(var.checksum.strip())
-                rootgrp.close()
+                # collect restart file / the first tile
+                restart_output = self._collect_restart_tiles(restart)
+                with Dataset(restart_output, "r") as rootgrp:
+                    for vname in sorted(rootgrp.variables):
+                        var = rootgrp[vname]
+                        if "checksum" in var.ncattrs():
+                            output_checksums[vname.strip()].append(var.checksum.strip())
 
         if schema_version is None:
             schema_version = self.default_schema_version
@@ -124,3 +127,29 @@ class AccessOm3(Model):
             output_directory=output_directory,
             schema_version=SCHEMA_VERSION_1_0_0,
         )["output"]
+
+    @staticmethod
+    def _collect_restart_tiles(restart: Path) -> list[Path]:
+        """
+        Return the first restart tile:
+        - If a unified (collated) restart file exists, return it.
+        - If split into tiles, return the tile with the lowest numeric suffix.
+          We use the tile with the lowest numeric suffix because tiles that are
+          completely masked are not written.
+
+        MOM6 stores the same global checksum in all tiles, so only the first tile
+        is needed when extracting checksums.
+        """
+        if restart.exists():
+            return restart
+
+        # any restart tiles
+        parent = restart.parent
+        tiles = sorted(
+            parent.glob(restart.name + ".[0-9][0-9][0-9][0-9]"),
+            key=lambda x: int(x.suffix[1:]),
+        )
+        if not tiles:
+            raise FileNotFoundError(f"No restart tiles found for {restart}")
+
+        return tiles[0]
