@@ -133,7 +133,9 @@ class AccessOm3(Model):
         """
         Return the first restart tile:
         - If a unified (collated) restart file exists, return it.
-        - If split into tiles, return the .0000 tile (lowest numeric suffix).
+        - If split into tiles, return the tile with the lowest numeric suffix.
+          We use the tile with the lowest numeric suffix because tiles that are
+          completely masked are not written.
 
         MOM6 stores the same global checksum in all tiles, so only the first tile
         is needed when extracting checksums.
