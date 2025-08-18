@@ -427,6 +427,20 @@ def test_collect_restart_tiles_split(exp_with_restarts):
     assert first_tile_path.name.endswith(".0000")
 
 
+def test_collect_restart_tiles_when_0000_missing(exp_with_restarts):
+    """
+    If .nc.0000 is missing, ensure the next available tile is used (eg, .nc.0001)
+    This is because the 0000 tile can be completely masked.
+    """
+    exp_accessom3 = AccessOm3(exp_with_restarts)
+    base = exp_accessom3.output_0 / "access-om3.mom6.r.1900-01-02-00000.nc"
+    tile1 = Path(str(base) + ".0001")
+    tile1.write_bytes(b"")
+
+    first_tile_path = AccessOm3._collect_restart_tiles(base)
+    assert first_tile_path.name.endswith(".0001")
+
+
 def test_collect_restart_tiles_missing(exp_with_restarts):
     exp_accessom3 = AccessOm3(exp_with_restarts)
     missing = exp_accessom3.output_0 / "access-om3.mom6.r.1900-01-02-00000.nc"
