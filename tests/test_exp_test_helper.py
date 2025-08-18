@@ -461,7 +461,7 @@ def test_extract_checksums_split_uses_first_tile(exp_with_restarts):
     tile1 = Path(str(base) + ".0001")
 
     _create_nc_with_checksum(tile0, varname="DTBT", checksum="AC87F8AC28BD1436")
-    _create_nc_with_checksum(tile1, varname="DTBT", checksum="ingored")
+    _create_nc_with_checksum(tile1, varname="DTBT", checksum="ignored")
 
     checksums = exp_accessom3.extract_checksums(output_directory=exp_accessom3.output_0)
     assert checksums["output"]["DTBT"][0] == "AC87F8AC28BD1436"
