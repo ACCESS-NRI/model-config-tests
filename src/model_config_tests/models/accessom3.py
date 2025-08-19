@@ -19,6 +19,9 @@ class AccessOm3(Model):
     def __init__(self, experiment):
         super().__init__(experiment)
 
+        # Override model default runtime
+        self.default_runtime_seconds = DEFAULT_RUNTIME_SECONDS
+
         # ACCESS-OM3 uses restarts for repro testing
         self.output_0 = self.experiment.restart000
         self.output_1 = self.experiment.restart001
@@ -32,7 +35,7 @@ class AccessOm3(Model):
         self, years: int = 0, months: int = 0, seconds: int = DEFAULT_RUNTIME_SECONDS
     ):
         """Set config files to a short time period for experiment run.
-        Default is 3 hours"""
+        Default is 6 hours"""
         runconfig = Runconfig(self.runconfig)
 
         # Check that ocean model component is MOM since checksums are obtained from
