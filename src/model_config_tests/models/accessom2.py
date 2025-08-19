@@ -6,20 +6,16 @@ from typing import Any
 import f90nml
 
 from model_config_tests.models.model import (
+    DEFAULT_RUNTIME_SECONDS,
     SCHEMA_VERSION_1_0_0,
     Model,
 )
 from model_config_tests.models.mom5 import mom5_extract_checksums
-from model_config_tests.util import HOUR_IN_SECONDS
 
 
 class AccessOm2(Model):
-    # Default model runtime (3 hrs)
-    DEFAULT_RUNTIME_SECONDS = 3 * HOUR_IN_SECONDS
-
     def __init__(self, experiment):
         super().__init__(experiment)
-        self.default_runtime_seconds = self.DEFAULT_RUNTIME_SECONDS
         self.output_filename = "access-om2.out"
         self.output_file = self.output_0 / self.output_filename
 
@@ -27,13 +23,10 @@ class AccessOm2(Model):
         self.ocean_config = experiment.control_path / "ocean" / "input.nml"
 
     def set_model_runtime(
-        self, years: int = 0, months: int = 0, seconds: int | None = None
+        self, years: int = 0, months: int = 0, seconds: int = DEFAULT_RUNTIME_SECONDS
     ):
         """Set config files to a short time period for experiment run.
         Default is 3 hours"""
-        if seconds is None:
-            seconds = self.default_runtime_seconds
-
         with open(self.accessom2_config) as f:
             nml = f90nml.read(f)
 

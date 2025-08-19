@@ -11,15 +11,14 @@ from payu.models.cesm_cmeps import Runconfig
 from model_config_tests.models.model import SCHEMA_VERSION_1_0_0, Model
 from model_config_tests.util import HOUR_IN_SECONDS
 
+# Default model runtime (6 hrs)
+DEFAULT_RUNTIME_SECONDS = 6 * HOUR_IN_SECONDS
+
 
 class AccessOm3(Model):
-    # Default model runtime (6 hrs)
-    DEFAULT_RUNTIME_SECONDS = 6 * HOUR_IN_SECONDS
 
     def __init__(self, experiment):
         super().__init__(experiment)
-
-        self.default_runtime_seconds = self.DEFAULT_RUNTIME_SECONDS
 
         # ACCESS-OM3 uses restarts for repro testing
         self.output_0 = self.experiment.restart000
@@ -31,12 +30,10 @@ class AccessOm3(Model):
         self.wav_in = experiment.control_path / "wav_in"
 
     def set_model_runtime(
-        self, years: int = 0, months: int = 0, seconds: int | None = None
+        self, years: int = 0, months: int = 0, seconds: int = DEFAULT_RUNTIME_SECONDS
     ):
         """Set config files to a short time period for experiment run.
         Default is 6 hours"""
-        if seconds is None:
-            seconds = self.default_runtime_seconds
 
         runconfig = Runconfig(self.runconfig)
 

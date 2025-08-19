@@ -11,17 +11,17 @@ from model_config_tests.models.mom5 import mom5_extract_checksums
 from model_config_tests.models.um7 import um7_extract_norms
 from model_config_tests.util import DAY_IN_SECONDS
 
+# Default model runtime (24 hrs)
+DEFAULT_RUNTIME_SECONDS = DAY_IN_SECONDS
+
 UM_OUTPUT_FILE = "atm.fort6.pe0"
 
 
 class AccessEsm1p5(Model):
-    # Default model runtime (24 hrs)
-    DEFAULT_RUNTIME_SECONDS = DAY_IN_SECONDS
 
     def __init__(self, experiment):
         super().__init__(experiment)
-        # Override model default runtime
-        self.default_runtime_seconds = self.DEFAULT_RUNTIME_SECONDS
+        self.default_runtime_seconds = DEFAULT_RUNTIME_SECONDS
 
         self.submodels = {
             submodel["model"]: submodel["name"]
@@ -50,13 +50,10 @@ class AccessEsm1p5(Model):
         self.output_file = self.output_0 / self.output_filename
 
     def set_model_runtime(
-        self, years: int = 0, months: int = 0, seconds: int | None = None
+        self, years: int = 0, months: int = 0, seconds: int = DEFAULT_RUNTIME_SECONDS
     ):
         """Set config files to a short time period for experiment run.
         Default is 24 hours"""
-        if seconds is None:
-            seconds = self.default_runtime_seconds
-
         with open(self.experiment.config_path) as f:
             doc = yaml.safe_load(f)
 
