@@ -18,9 +18,9 @@ UM_OUTPUT_FILE = "atm.fort6.pe0"
 
 
 class AccessEsm1p5(Model):
-
     def __init__(self, experiment):
         super().__init__(experiment)
+        # Override model default runtime
         self.default_runtime_seconds = DEFAULT_RUNTIME_SECONDS
 
         self.submodels = {
