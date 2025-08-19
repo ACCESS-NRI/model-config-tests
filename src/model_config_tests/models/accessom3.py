@@ -16,11 +16,11 @@ DEFAULT_RUNTIME_SECONDS = 6 * HOUR_IN_SECONDS
 
 
 class AccessOm3(Model):
-    default_runtime_seconds = DEFAULT_RUNTIME_SECONDS
 
     def __init__(self, experiment):
         super().__init__(experiment)
 
+        self.default_runtime_seconds = DEFAULT_RUNTIME_SECONDS
         # ACCESS-OM3 uses restarts for repro testing
         self.output_0 = self.experiment.restart000
         self.output_1 = self.experiment.restart001
