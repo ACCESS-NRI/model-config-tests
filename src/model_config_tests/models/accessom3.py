@@ -19,7 +19,9 @@ class AccessOm3(Model):
     def __init__(self, experiment):
         super().__init__(experiment)
 
+        # Override model default runtime
         self.default_runtime_seconds = DEFAULT_RUNTIME_SECONDS
+
         # ACCESS-OM3 uses restarts for repro testing
         self.output_0 = self.experiment.restart000
         self.output_1 = self.experiment.restart001
