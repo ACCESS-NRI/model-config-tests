@@ -16,7 +16,6 @@ DEFAULT_RUNTIME_SECONDS = 6 * HOUR_IN_SECONDS
 
 
 class AccessOm3(Model):
-
     def __init__(self, experiment):
         super().__init__(experiment)
 
