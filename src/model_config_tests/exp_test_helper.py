@@ -345,10 +345,15 @@ def setup_exp(
 
 
 def parse_run_id(stdout: str) -> str:
-    """Parses the run ID from the subprocess stdout that submits payu run.
-    The run ID is the first line of the stdout."""
-    run_id = stdout.splitlines()[0]
-    return run_id
+    """Parses the Gadi PBS run ID from the subprocess stdout that submits payu
+    run"""
+    ids = parse_gadi_pbs_ids(stdout)
+    if len(ids) != 1:
+        raise RuntimeError(
+            "Expected 1 job ID in payu run submission, "
+            f"but found {len(ids)}. IDs: {ids}"
+        )
+    return ids[0]
 
 
 def parse_gadi_pbs_ids(stdout: str) -> list[str]:
