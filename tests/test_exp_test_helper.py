@@ -186,18 +186,29 @@ def test_experiment_submit_payu_run_error(mock_run, exp):
     assert exp.run_id is None
 
 
-TEST_RUN_STDOUT = """137650670.gadi-pbs
-Loading input manifest: manifests/input.yaml
-Loading restart manifest: manifests/restart.yaml
-Loading exe manifest: manifests/exe.yaml
-payu: Found modules in /opt/Modules/v4.3.0
-qsub -q express -- /path/to/env/bin/python /path/to/env/bin/payu-run
-"""
-
-
-def test_parse_run_id():
-    run_id = parse_run_id(TEST_RUN_STDOUT)
+@pytest.mark.parametrize(
+    "example_stdout",
+    [
+        "137650670.gadi-pbs\ngadi-pbs ID output is first line\n",
+        "gadi-pbs ID\nIs the last line\n137650670.gadi-pbs\n",
+    ],
+)
+def test_parse_run_id(example_stdout):
+    run_id = parse_run_id(example_stdout)
     assert run_id == "137650670.gadi-pbs"
+
+
+@pytest.mark.parametrize(
+    "example_stdout",
+    [
+        "No job ID here\nJust some output\n",
+        "Multiple IDs\n12345.gadi-pbs\n67890.gadi-pbs\n",
+    ],
+)
+def test_parse_run_id_parsing_error(example_stdout):
+    error_msg = "Expected 1 job ID in payu run submission.*"
+    with pytest.raises(RuntimeError, match=error_msg):
+        parse_run_id(example_stdout)
 
 
 @pytest.mark.parametrize(
