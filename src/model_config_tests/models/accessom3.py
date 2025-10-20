@@ -131,6 +131,40 @@ class AccessOm3(Model):
             schema_version=SCHEMA_VERSION_1_0_0,
         )["output"]
 
+    def check_checksums_over_restarts(
+        self, long_run_checksum, short_run_checksum_0, short_run_checksum_1
+    ) -> bool:
+        """Compare a checksums from a long run (e.g. 2 days) against
+        checksums from 2 short runs (e.g. 1 day)"""
+        short_run_checksums = short_run_checksum_0["output"]
+        for field, checksums in short_run_checksum_1["output"].items():
+            if field not in short_run_checksums:
+                short_run_checksums[field] = checksums
+            else:
+                short_run_checksums[field].extend(checksums)
+
+        matching_checksums = True
+        for field, checksums in long_run_checksum["output"].items():
+            for checksum in checksums:
+                if field not in short_run_checksums:
+                    print(
+                        f"Checksum field for {field} found in long run but not in short runs"
+                    )
+                    matching_checksums = False
+                else:
+                    if checksum not in short_run_checksums[field]:
+                        # Allow for checksums to differ by 8 in the first hex digit to allow
+                        # for differences in the sign of zero between restart arrays
+                        # See https://github.com/ACCESS-NRI/access-om3-configs/issues/823
+                        first_digit = int(checksum[0], 16)
+                        pmzeros_digit = (first_digit + 8) % 16
+                        pmzeros_checksum = f"{pmzeros_digit:X}" + checksum[1:]
+                        if pmzeros_checksum not in short_run_checksums[field]:
+                            print(f"Unequal checksum: {field}: {checksum}")
+                            matching_checksums = False
+
+        return matching_checksums
+
     @staticmethod
     def _collect_restart_tiles(restart: Path) -> list[Path]:
         """
