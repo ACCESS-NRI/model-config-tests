@@ -82,6 +82,34 @@ class ExpTestHelper:
         """
         return self.model.output_exists()
 
+    def setup_reproduce(self):
+        """
+        Run payu setup command with --reproduce flag
+        """
+        owd = Path.cwd()
+        # Change to experiment directory and run.
+        os.chdir(self.control_path)
+
+        try:
+            setup_command = [
+                "payu",
+                "setup",
+                "--lab",
+                str(self.lab_path),
+                "--reproduce",
+            ]
+            print(f"Running payu setup command: {setup_command}")
+            result = sp.run(setup_command, capture_output=True, text=True)
+        finally:
+            # Change back to original working directory
+            os.chdir(owd)
+
+        if result.returncode != 0:
+            raise RuntimeError(
+                f"Failed to run payu setup with --reproduce. Error: {result.stderr}\n"
+                f"Full output: {result.stdout}"
+            )
+
     def setup_for_test_run(self):
         """
         Various config.yaml settings need to be modified in order to run in the

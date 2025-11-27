@@ -9,7 +9,7 @@ from typing import Optional
 
 import pytest
 
-from model_config_tests.exp_test_helper import Experiments, ExpTestHelper
+from model_config_tests.exp_test_helper import Experiments, ExpTestHelper, setup_exp
 from model_config_tests.util import DAY_IN_SECONDS, HOUR_IN_SECONDS
 
 # Names of shared experiments
@@ -328,3 +328,15 @@ class TestBitReproducibility:
         )
 
         assert produced == expected
+
+
+@pytest.mark.repro_payu_setup
+def test_repro_payu_setup(control_path, output_path):
+    """
+    Test payu setup with --reproduce which errors if payu manifests full hashes are changed
+    """
+    experiment = setup_exp(control_path, output_path, exp_name="repro_payu_setup")
+    try:
+        experiment.setup_reproduce()
+    except Exception as error:
+        pytest.fail(f"{error}")
