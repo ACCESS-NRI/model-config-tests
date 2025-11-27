@@ -131,6 +131,10 @@ def pytest_configure(config):
         "markers",
         "repro_determinism_restart: mark tests that check determinism restart",
     )
+    config.addinivalue_line(
+        "markers",
+        "repro_payu_setup: mark tests that check payu setup reproducibility",
+    )
     config.addinivalue_line("markers", "slow: mark tests that are slow to run")
     config.addinivalue_line(
         "markers",
