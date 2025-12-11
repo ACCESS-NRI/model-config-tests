@@ -112,6 +112,8 @@ tag_prefix = "v"
 parentdir_prefix = "model_config_tests-"
 
 [tool.coverage.run]
+patch = ["subprocess"]
 omit = [
-    "src/model_config_tests/_version.py"
+    "*/model_config_tests/_version.py",
+    "src/model_config_tests/_version.py",
 ]

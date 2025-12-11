@@ -9,7 +9,7 @@ from typing import Optional
 
 import pytest
 
-from model_config_tests.exp_test_helper import Experiments
+from model_config_tests.exp_test_helper import Experiments, ExpTestHelper
 from model_config_tests.util import DAY_IN_SECONDS, HOUR_IN_SECONDS
 
 # Names of shared experiments
@@ -147,6 +147,20 @@ def experiments(
     return _experiments(experiments_markers, output_path, control_path, keep_archive)
 
 
+@pytest.fixture
+def requested_experiments(request, experiments: Experiments):
+    """Fixture to check that requested experiments have run successfully
+    and return a dictionary of ExpTestHelper instances for each experiment."""
+    exp_marker = request.node.get_closest_marker("experiments").args[0]
+    requested_exps = {}
+    for exp_name in exp_marker:
+        # Check experiment has run successfully - this will raise an
+        # error if there are any non-zero exit codes in the outputs
+        experiments.check_experiment(exp_name)
+        requested_exps[exp_name] = experiments.get_experiment(exp_name)
+    return requested_exps
+
+
 class TestBitReproducibility:
 
     @pytest.mark.repro
@@ -160,7 +174,7 @@ class TestBitReproducibility:
         self,
         output_path: Path,
         control_path: Path,
-        experiments: Experiments,
+        requested_experiments: dict[str, ExpTestHelper],
         checksum_path: Optional[Path],
     ):
         """
@@ -178,9 +192,9 @@ class TestBitReproducibility:
             Path to the model configuration to test. This is copied for
             for control directories in experiments. Default is set in
             conftests.py.
-        experiments: Experiments
-            Class that manages the shared experiments. This is a fixture
-            defined in this file.
+        requested_experiments: dict[str, ExpTestHelper]
+            A dictionary of requested experiments, where the key is the
+            experiment name and the value is an instance of ExpTestHelper.
         checksum_path: Optional[Path]
             Path to checksums to compare model output against. Default is
             set to checksums saved on model configuration. This is a
@@ -190,12 +204,7 @@ class TestBitReproducibility:
         checksum_output_dir = set_checksum_output_dir(output_path=output_path)
 
         # Use default runtime experiment to get the historical checksums
-        experiments.check_experiments([EXP_DEFAULT_RUNTIME])
-        exp = experiments.get_experiment(EXP_DEFAULT_RUNTIME)
-
-        assert (
-            exp.model.output_exists()
-        ), "Output file required for model checksums does not exist"
+        exp = requested_experiments.get(EXP_DEFAULT_RUNTIME)
 
         # Set the checksum output filename using the model default runtime
         runtime_hours = exp.model.default_runtime_seconds // HOUR_IN_SECONDS
@@ -235,20 +244,16 @@ class TestBitReproducibility:
             EXP_1D_RUNTIME_REPEAT: {"n_runs": 1, "model_runtime": DAY_IN_SECONDS},
         }
     )
-    def test_repro_determinism(self, experiments: Experiments):
+    def test_repro_determinism(self, requested_experiments: dict[str, ExpTestHelper]):
         """
         Determinism test that confirms repeated model runs for 1 day
         give the same results
         """
-        experiments.check_experiments([EXP_1D_RUNTIME, EXP_1D_RUNTIME_REPEAT])
-        exp_1d_runtime = experiments.get_experiment(EXP_1D_RUNTIME)
-        exp_1d_runtime_repeat = experiments.get_experiment(EXP_1D_RUNTIME_REPEAT)
+        exp_1d_runtime = requested_experiments.get(EXP_1D_RUNTIME)
+        exp_1d_runtime_repeat = requested_experiments.get(EXP_1D_RUNTIME_REPEAT)
 
         # Compare expected to produced.
-        assert exp_1d_runtime.model.output_exists()
         expected = exp_1d_runtime.extract_checksums()
-
-        assert exp_1d_runtime_repeat.model.output_exists()
         produced = exp_1d_runtime_repeat.extract_checksums()
 
         assert produced == expected
@@ -262,16 +267,17 @@ class TestBitReproducibility:
             EXP_2D_RUNTIME: {"n_runs": 1, "model_runtime": 2 * DAY_IN_SECONDS},
         }
     )
-    def test_repro_restart(self, output_path: Path, experiments: Experiments):
+    def test_repro_restart(
+        self, output_path: Path, requested_experiments: dict[str, ExpTestHelper]
+    ):
         """
         Restart reproducibility test that confirms two short consecutive
         1-day model runs give the same results as a longer single 2-day model
         run.
         """
         # Get experiments with 2x1 day and 2 day runtimes
-        experiments.check_experiments([EXP_1D_RUNTIME, EXP_2D_RUNTIME])
-        exp_1d_runtime = experiments.get_experiment(EXP_1D_RUNTIME)
-        exp_2d_runtime = experiments.get_experiment(EXP_2D_RUNTIME)
+        exp_1d_runtime = requested_experiments.get(EXP_1D_RUNTIME)
+        exp_2d_runtime = requested_experiments.get(EXP_2D_RUNTIME)
 
         # Now compare the output between our two short and one long run.
         checksums_1d_0 = exp_1d_runtime.extract_checksums()
@@ -305,14 +311,15 @@ class TestBitReproducibility:
             EXP_1D_RUNTIME_REPEAT: {"n_runs": 2, "model_runtime": DAY_IN_SECONDS},
         }
     )
-    def test_repro_determinism_restart(self, experiments: Experiments):
+    def test_repro_determinism_restart(
+        self, requested_experiments: dict[str, ExpTestHelper]
+    ):
         """
         Determinism test that confirms repeated experiments with two
         consecutive 1-day model runs give the same results
         """
-        experiments.check_experiments([EXP_1D_RUNTIME, EXP_1D_RUNTIME_REPEAT])
-        exp_1d_runtime = experiments.get_experiment(EXP_1D_RUNTIME)
-        exp_1d_runtime_repeat = experiments.get_experiment(EXP_1D_RUNTIME_REPEAT)
+        exp_1d_runtime = requested_experiments.get(EXP_1D_RUNTIME)
+        exp_1d_runtime_repeat = requested_experiments.get(EXP_1D_RUNTIME_REPEAT)
 
         # Extract checksums, using the output from the second model run
         expected = exp_1d_runtime.extract_checksums(exp_1d_runtime.model.output_1)
