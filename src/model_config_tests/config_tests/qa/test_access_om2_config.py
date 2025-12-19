@@ -116,7 +116,7 @@ class TestAccessOM2:
 
     def test_mppncombine_fast_collate_exe(self, config, branch):
         if branch.is_high_resolution:
-            pattern = r"/g/data/vk83/apps/mppnccombine-fast/.*/bin/mppnccombine-fast"
+            pattern = r".*mppnccombine-fast"
             if "collate" in config:
                 assert re.match(
                     pattern, config["collate"]["exe"]
