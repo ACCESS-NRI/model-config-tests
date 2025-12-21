@@ -49,6 +49,7 @@ jobs:
       payu-version: ${{ steps.repro-config.outputs.payu-version }}
       model-config-tests-version: ${{ steps.repro-config.outputs.model-config-tests-version }}
       checksum-tag: ${{ steps.checksum-tag.outputs.checksum-tag }}
+      config-hash: ${{ steps.config-hash.outputs.config-hash }}
     steps:
       - name: Checkout main
         uses: actions/checkout@v4
@@ -70,6 +71,12 @@ jobs:
           check: reproducibility
           branch-or-tag: ${{ inputs.config-branch-name }}
           config-filepath: "config/ci.json"
+
+      - name: Set config hash
+        id: config-hash
+        run: |
+          # Find latest commit hash for the given config branch or tag
+          config_hash=$(git rev-parse ${{ inputs.config-branch-name }})
 
       - name: Set committed checksum tag
         if: inputs.commit-checksums
@@ -93,11 +100,13 @@ jobs:
       - log-inputs
     uses: access-nri/model-config-tests/.github/workflows/test-repro.yml@main
     with:
+      config-hash: ${{ needs.config.outputs.config-hash }}
       config-ref: ${{ inputs.config-branch-name }}
       environment-name: ${{ inputs.environment-name }}
       test-markers: ${{ inputs.test-markers }}
       model-config-tests-version: ${{ needs.config.outputs.model-config-tests-version }}
       payu-version: ${{ needs.config.outputs.payu-version }}
+      run-context: generate-checksums
     secrets: inherit
     permissions:
       contents: write
