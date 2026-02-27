@@ -2,10 +2,14 @@ name: Repro Checks
 on:
   workflow_call:
     inputs:
+      config-hash:
+        type: string
+        required: true
+        description: A SHA commit of the associated config branch to use for the reproducibility run
       config-ref:
         type: string
         required: true
-        description: A commit or tag on an associated config branch to use for the reproducibility run
+        description: A branch or tag on an associated config branch to use for the reproducibility run
       compared-config-ref:
         type: string
         required: false
@@ -35,6 +39,10 @@ on:
         description: |
           Newline-separated paths for inclusion in the release artifact.
           Note that all paths given have 'env.EXPERIMENT_LOCATION/' prepended.
+      run_context:
+        type: string
+        required: true
+        description: The name used for parent directory in the test outputs. E.g. pr-No or schedule
     outputs:
       result:
         value: ${{ jobs.check-repro.outputs.result }}
@@ -71,7 +79,7 @@ jobs:
       artifact-url: ${{ steps.upload.outputs.artifact-url }}
       experiment-location: ${{ steps.run.outputs.experiment-location }}
     env:
-      EXPERIMENT_LOCATION: ${{ vars.EXPERIMENTS_LOCATION }}/${{ github.event.repository.name }}/${{ inputs.config-ref }}
+      EXPERIMENT_LOCATION: ${{ vars.EXPERIMENTS_LOCATION }}/${{ github.event.repository.name }}/${{ inputs.run_context }}/${{ inputs.config-ref }}/${{ inputs.config-hash }}
     steps:
       - name: Validate ${{ inputs.environment-name }} Variables
         run: |
@@ -124,7 +132,7 @@ jobs:
 
           # Setup a base experiment
           git clone ${{ github.event.repository.clone_url }} "${{ env.BASE_EXPERIMENT_LOCATION }}"
-          git -C "${{ env.BASE_EXPERIMENT_LOCATION }}" checkout ${{ inputs.config-ref }}
+          git -C "${{ env.BASE_EXPERIMENT_LOCATION }}" checkout ${{ inputs.config-hash }}
           cd "${{ env.BASE_EXPERIMENT_LOCATION }}"
 
           # Setup a compared checksum (if it exists)
@@ -210,7 +218,7 @@ jobs:
 
       - name: Generate Test Output Artifact Name
         id: artifact
-        run: echo "name=${{ github.event.repository.name }}-${{ inputs.config-ref }}" >> $GITHUB_OUTPUT
+        run: echo "name=${{ github.event.repository.name }}-${{ inputs.run_context}}-${{ inputs.config-hash }}" >> $GITHUB_OUTPUT
 
       - name: Upload Test Output
         id: upload
@@ -274,3 +282,30 @@ jobs:
         uses: access-nri/model-config-tests/.github/actions/parse-junit-xml@main
         with:
           filepath: ${{ env.TESTING_LOCAL_LOCATION }}/checksum/test_report.xml
+
+  clean-up:
+    name: Clean up test outputs
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment-name }}
+    if: needs.check-repro.outputs.result != 'error'
+    needs:
+      - repro
+      - check-repro
+    steps:
+      - name: Setup SSH
+        id: ssh
+        uses: access-nri/actions/.github/actions/setup-ssh@main
+        with:
+          hosts: |
+            ${{ secrets.SSH_HOST }}
+          private-key: ${{ secrets.SSH_KEY }}
+
+      - name: Remove all test output except checksum
+        run: |
+          ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} -i ${{ steps.ssh.outputs.private-key-path }} /bin/bash<<'EOT'
+          # Remove all test output directories except checksum
+          rm -rf "${{ needs.repro.outputs.experiment-location }}/base-experiment"
+          rm -rf "${{ needs.repro.outputs.experiment-location }}/compared"
+          rm -rf "${{ needs.repro.outputs.experiment-location }}/control"
+          rm -rf "${{ needs.repro.outputs.experiment-location }}/lab"
+          EOT
