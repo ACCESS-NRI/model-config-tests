@@ -110,11 +110,16 @@ jobs:
           BASE_EXPERIMENT_LOCATION: ${{ env.EXPERIMENT_LOCATION }}/base-experiment
           COMPARED_CHECKSUM_LOCATION: ${{ env.EXPERIMENT_LOCATION }}/compared
           TEST_VENV_LOCATION: ${{ env.EXPERIMENT_LOCATION }}/test-venv
+          # Using vars.Experiment_location here to share pbsnodes.json among all repro CI tests
+          PAYU_PBSNODES_CACHE: ${{ vars.EXPERIMENT_LOCATION }}/.cache/pbs/pbsnodes.json
         run: |
           ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} -i ${{ steps.ssh.outputs.private-key-path }} /bin/bash<<'EOT'
 
           # Immediately exit if any test setup fails
           set -e
+
+          # Set PAYU_PBSNODES_CACHE to avoid using user's home directory
+          export PAYU_PBSNODES_CACHE="${{ env.PAYU_PBSNODES_CACHE }}"
 
           # Remove base experiment (and everything else) if it exists
           if [ -d "${{ env.EXPERIMENT_LOCATION }}" ]; then
