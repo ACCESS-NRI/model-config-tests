@@ -5,11 +5,11 @@ on:
       config-hash:
         type: string
         required: true
-        description: A SHA commit of the associated config branch to use for the reproducibility run
+        description: A SHA commit of the config branch to use for the reproducibility run
       config-ref:
         type: string
         required: true
-        description: A branch or tag on an associated config branch to use for the reproducibility run
+        description: A branch or tag of the config branch for directory and reference naming
       compared-config-ref:
         type: string
         required: false
@@ -39,7 +39,7 @@ on:
         description: |
           Newline-separated paths for inclusion in the release artifact.
           Note that all paths given have 'env.EXPERIMENT_LOCATION/' prepended.
-      run_context:
+      run-context:
         type: string
         required: true
         description: The name used for parent directory in the test outputs. E.g. pr-No or schedule
@@ -79,7 +79,7 @@ jobs:
       artifact-url: ${{ steps.upload.outputs.artifact-url }}
       experiment-location: ${{ steps.run.outputs.experiment-location }}
     env:
-      EXPERIMENT_LOCATION: ${{ vars.EXPERIMENTS_LOCATION }}/${{ github.event.repository.name }}/${{ inputs.run_context }}/${{ inputs.config-ref }}/${{ inputs.config-hash }}
+      EXPERIMENT_LOCATION: ${{ vars.EXPERIMENTS_LOCATION }}/${{ github.event.repository.name }}/${{ inputs.run-context }}/${{ inputs.config-ref }}/${{ inputs.config-hash }}
     steps:
       - name: Validate ${{ inputs.environment-name }} Variables
         run: |
@@ -223,7 +223,7 @@ jobs:
 
       - name: Generate Test Output Artifact Name
         id: artifact
-        run: echo "name=${{ github.event.repository.name }}-${{ inputs.run_context}}-${{ inputs.config-hash }}" >> $GITHUB_OUTPUT
+        run: echo "name=${{ github.event.repository.name }}-${{ inputs.run-context }}-${{ inputs.config-ref }}-${{ inputs.config-hash }}" >> $GITHUB_OUTPUT
 
       - name: Upload Test Output
         id: upload
@@ -308,9 +308,13 @@ jobs:
       - name: Remove all test output except checksum
         run: |
           ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} -i ${{ steps.ssh.outputs.private-key-path }} /bin/bash<<'EOT'
-          # Remove all test output directories except checksum
-          rm -rf "${{ needs.repro.outputs.experiment-location }}/base-experiment"
-          rm -rf "${{ needs.repro.outputs.experiment-location }}/compared"
-          rm -rf "${{ needs.repro.outputs.experiment-location }}/control"
-          rm -rf "${{ needs.repro.outputs.experiment-location }}/lab"
+          EXPERIMENT_LOCATION="${{ needs.repro.outputs.experiment-location }}"
+          if [ ! -d "$EXPERIMENT_LOCATION" ]; then
+            echo "::warning::Experiment location $EXPERIMENT_LOCATION does not exist, skipping cleanup"
+            exit 0
+          fi
+          rm -rf "$EXPERIMENT_LOCATION/base-experiment"
+          rm -rf "$EXPERIMENT_LOCATION/compared"
+          rm -rf "$EXPERIMENT_LOCATION/control"
+          rm -rf "$EXPERIMENT_LOCATION/lab"
           EOT
