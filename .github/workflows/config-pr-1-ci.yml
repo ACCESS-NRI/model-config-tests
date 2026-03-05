@@ -225,12 +225,14 @@ jobs:
     with:
       # FIXME: Make the environment name an input of some kind - what if we deploy to a different supercomputer?
       environment-name: Gadi
+      config-hash: ${{ github.sha }}
       config-ref: ${{ github.head_ref }}
       compared-config-ref: ${{ needs.config.outputs.compared-config-tag }}
       test-markers: ${{ needs.config.outputs.repro-markers }}
       model-config-tests-version: ${{ needs.config.outputs.repro-model-config-tests-version }}
       payu-version: ${{ needs.config.outputs.repro-payu-version }}
       additional-artifact-content-paths: ${{ inputs.additional-artifact-content-paths }}
+      run-context: pr${{ github.event.pull_request.number }}
     secrets: inherit
     permissions:
       contents: write
