@@ -76,7 +76,9 @@ jobs:
         id: config-hash
         run: |
           # Find latest commit hash for the given config branch or tag
-          config_hash=$(git rev-parse ${{ inputs.config-branch-name }})
+          git fetch origin ${{ inputs.config-branch-name }}
+          config_hash=$(git rev-parse FETCH_HEAD)
+          echo "config-hash=$config_hash" >> $GITHUB_OUTPUT
 
       - name: Set committed checksum tag
         if: inputs.commit-checksums
