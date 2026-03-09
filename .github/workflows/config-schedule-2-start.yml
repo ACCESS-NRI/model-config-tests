@@ -41,7 +41,9 @@ jobs:
         id: config-hash
         run: |
           # Find latest commit hash for the given config branch or tag
-          config_hash=$(git rev-parse ${{ inputs.config-ref }})
+          git fetch origin ${{ inputs.config-ref }}
+          config_hash=$(git rev-parse FETCH_HEAD)
+          echo "config-hash=$config_hash" >> $GITHUB_OUTPUT
 
   repro-ci:
     # Run the given config on the deployment Github Environment (`environment-name`) and upload
