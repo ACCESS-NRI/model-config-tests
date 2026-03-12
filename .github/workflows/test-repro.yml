@@ -223,7 +223,11 @@ jobs:
 
       - name: Generate Test Output Artifact Name
         id: artifact
-        run: echo "name=${{ github.event.repository.name }}-${{ inputs.run-context }}-${{ inputs.config-ref }}-${{ inputs.config-hash }}" >> $GITHUB_OUTPUT
+        # Sanitize the artifact name to remove the '/' in config-ref for automated auto/*/* configs PRs.
+        run: |
+          artifact_name="${{ github.event.repository.name }}-${{ inputs.run-context }}-${{ inputs.config-ref }}-${{ inputs.config-hash }}"
+          artifact_name_sanitized=$(tr '/' '-' <<< "${artifact_name}")
+          echo "name=${artifact_name_sanitized}" >> $GITHUB_OUTPUT
 
       - name: Upload Test Output
         id: upload
