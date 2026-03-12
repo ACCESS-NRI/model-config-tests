@@ -66,7 +66,7 @@ class AccessOM2Branch:
         self.set_resolution()
 
         self.is_high_resolution = self.resolution in ["025deg", "01deg"]
-        self.is_bgc = "bgc" in branch_name
+        self.is_bgc = any(m in branch_name for m in ["bgc", "wombat"])
 
         # Set expected module and model repository names
         if self.is_bgc:
