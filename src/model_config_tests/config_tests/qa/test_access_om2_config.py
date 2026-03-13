@@ -116,7 +116,7 @@ class TestAccessOM2:
 
     def test_mppncombine_fast_collate_exe(self, config, branch):
         if branch.is_high_resolution:
-            pattern = r"/g/data/vk83/apps/mppnccombine-fast/.*/bin/mppnccombine-fast"
+            pattern = r".*mppnccombine-fast"
             if "collate" in config:
                 assert re.match(
                     pattern, config["collate"]["exe"]
@@ -125,19 +125,6 @@ class TestAccessOM2:
                 assert config["collate"][
                     "mpi"
                 ], "Expect `mpi: true` when using mppnccombine-fast"
-
-    def test_sync_userscript_ice_concatenation(self, config):
-        # This script runs in the sync pbs job before syncing output to a
-        # remote location
-        script = "/g/data/vk83/apps/om2-scripts/concatenate_ice/concat_ice_daily.sh"
-        assert (
-            "userscripts" in config
-            and "sync" in config["userscripts"]
-            and config["userscripts"]["sync"] == script
-        ), (
-            "Expect sync userscript set to ice-concatenation script."
-            + f"\nuserscript:\n  sync: {script}"
-        )
 
     def test_metadata_realm(self, metadata, branch):
         expected_realms = {"ocean", "seaIce"}

@@ -209,12 +209,14 @@ jobs:
     if: needs.prepare-command.outputs.test-type == 'repro'
     uses: access-nri/model-config-tests/.github/workflows/test-repro.yml@main
     with:
-      config-ref: ${{ needs.prepare-command.outputs.config-hash }}
+      config-hash: ${{ needs.prepare-command.outputs.config-hash }}
+      config-ref: ${{ needs.prepare-command.outputs.config-ref }}
       compared-config-ref: ${{ needs.prepare-command.outputs.compared-config-hash }}
       environment-name: ${{ needs.prepare-command.outputs.environment-name }}
       payu-version: ${{ needs.ci-config.outputs.payu-version }}
       model-config-tests-version: ${{ needs.ci-config.outputs.model-config-tests-version }}
       test-markers: ${{ needs.ci-config.outputs.markers }}
+      run-context: pr${{ github.event.issue.number }}
     secrets: inherit
     permissions:
       contents: write
