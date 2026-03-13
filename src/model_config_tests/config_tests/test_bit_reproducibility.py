@@ -9,7 +9,7 @@ from typing import Optional
 
 import pytest
 
-from model_config_tests.exp_test_helper import Experiments, setup_exp, ExpTestHelper
+from model_config_tests.exp_test_helper import Experiments, ExpTestHelper, setup_exp
 from model_config_tests.util import DAY_IN_SECONDS, HOUR_IN_SECONDS
 
 # Names of shared experiments

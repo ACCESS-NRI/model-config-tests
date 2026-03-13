@@ -91,12 +91,7 @@ class ExpTestHelper:
         os.chdir(self.control_path)
 
         try:
-            setup_command = [
-                "payu",
-                "setup",
-                "--lab",
-                str(self.lab_path)
-            ]
+            setup_command = ["payu", "setup", "--lab", str(self.lab_path)]
             print(f"Running payu setup command: {setup_command}")
             setup_result = sp.run(setup_command, capture_output=True, text=True)
             if setup_result.returncode != 0 or "error" in setup_result.stderr.lower():
@@ -105,7 +100,11 @@ class ExpTestHelper:
                     f"{'='*10}STDOUT{'='*10}\n {setup_result.stdout}\n"
                     f"{'='*10}STDERR{'='*10}\n {setup_result.stderr}\n"
                 )
-            result = sp.run(['git', 'diff', '--name-only', 'manifests/'], capture_output=True, text=True)
+            result = sp.run(
+                ["git", "diff", "--name-only", "manifests/"],
+                capture_output=True,
+                text=True,
+            )
         finally:
             # Change back to original working directory
             os.chdir(owd)
