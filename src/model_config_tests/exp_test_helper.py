@@ -84,7 +84,7 @@ class ExpTestHelper:
 
     def setup_reproduce(self):
         """
-        Run payu setup command with --reproduce flag
+        Run payu setup command and check if manifests files have been changed with `git diff`.
         """
         owd = Path.cwd()
         # Change to experiment directory and run.
@@ -95,19 +95,24 @@ class ExpTestHelper:
                 "payu",
                 "setup",
                 "--lab",
-                str(self.lab_path),
-                "--reproduce",
+                str(self.lab_path)
             ]
             print(f"Running payu setup command: {setup_command}")
-            result = sp.run(setup_command, capture_output=True, text=True)
+            setup_result = sp.run(setup_command, capture_output=True, text=True)
+            if setup_result.returncode != 0 or "error" in setup_result.stderr.lower():
+                raise RuntimeError(
+                    f"Error during payu setup. \n"
+                    f"{'='*10}STDOUT{'='*10}\n {setup_result.stdout}\n"
+                    f"{'='*10}STDERR{'='*10}\n {setup_result.stderr}\n"
+                )
+            result = sp.run(['git', 'diff', '--name-only', 'manifests/'], capture_output=True, text=True)
         finally:
             # Change back to original working directory
             os.chdir(owd)
 
-        if result.returncode != 0:
+        if result.stdout != "":
             raise RuntimeError(
-                f"Failed to run payu setup with --reproduce. Error: {result.stderr}\n"
-                f"Full output: {result.stdout}"
+                f"Manifests have been modified. The modified files include: {result.stdout}.\n"
             )
 
     def setup_for_test_run(self):
