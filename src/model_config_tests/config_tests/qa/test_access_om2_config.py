@@ -66,10 +66,13 @@ class AccessOM2Branch:
         self.set_resolution()
 
         self.is_high_resolution = self.resolution in ["025deg", "01deg"]
-        self.is_bgc = any(m in branch_name for m in ["bgc", "wombat"])
+        is_bgc_old = "bgc" in branch_name
+        is_bgc_new = "wombat" in branch_name
+        self.is_bgc = is_bgc_old or is_bgc_new
 
         # Set expected module and model repository names
-        if self.is_bgc:
+        if is_bgc_old:
+            # Pre-generic-tracers BGC uses a separate exe
             self.module_name = ACCESS_OM2_BGC_MODULE_NAME
             self.model_repository_name = ACCESS_OM2_BGC_REPOSITORY_NAME
         else:
