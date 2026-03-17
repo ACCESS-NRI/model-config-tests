@@ -110,9 +110,22 @@ class ExpTestHelper:
             os.chdir(owd)
 
         if result.stdout != "":
-            raise RuntimeError(
-                f"Manifests have been modified. The modified files include: {result.stdout}.\n"
-            )
+            # Collect and display the top 10 lines of the diff for each modified file
+            files = result.stdout.strip().split("\n")
+            error_message = ""
+            for file in files:
+                error_message += f"Modifications are detected in {file}:\n"
+                diff_details = sp.run(
+                    ["git", "diff", f"{file}"],
+                    capture_output=True,
+                    text=True,
+                )
+                diff_lines = diff_details.stdout.splitlines()
+                top_lines = "\n".join(diff_lines[2:12])
+                if len(diff_lines) > 12:
+                    top_lines += "\n... (truncated)"
+                error_message += f"Changes are: \n {top_lines}\n"
+            raise RuntimeError(f"{error_message}")
 
     def setup_for_test_run(self):
         """
