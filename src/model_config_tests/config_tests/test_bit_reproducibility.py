@@ -333,7 +333,7 @@ class TestBitReproducibility:
 @pytest.mark.repro_payu_setup
 def test_repro_payu_setup(control_path, output_path):
     """
-    Test payu setup with --reproduce which errors if payu manifests full hashes are changed
+    Test payu setup with `git diff` which errors if any files in payu manifests are changed.
     """
     experiment = setup_exp(control_path, output_path, exp_name="repro_payu_setup")
     try:

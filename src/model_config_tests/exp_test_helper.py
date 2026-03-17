@@ -94,11 +94,15 @@ class ExpTestHelper:
             setup_command = ["payu", "setup", "--lab", str(self.lab_path)]
             print(f"Running payu setup command: {setup_command}")
             setup_result = sp.run(setup_command, capture_output=True, text=True)
-            if setup_result.returncode != 0 or "error" in setup_result.stderr.lower():
+            if setup_result.returncode != 0:
                 raise RuntimeError(
                     f"Error during payu setup. \n"
                     f"{'='*10}STDOUT{'='*10}\n {setup_result.stdout}\n"
                     f"{'='*10}STDERR{'='*10}\n {setup_result.stderr}\n"
+                )
+            elif "error" in setup_result.stderr.lower():
+                warnings.warn(
+                    f"Payu setup existed safely with errors in stderr:\n{setup_result.stderr}. Proceeding to modification check."
                 )
             result = sp.run(
                 ["git", "diff", "--name-only", "manifests/"],
@@ -110,9 +114,28 @@ class ExpTestHelper:
             os.chdir(owd)
 
         if result.stdout != "":
-            raise RuntimeError(
-                f"Manifests have been modified. The modified files include: {result.stdout}.\n"
-            )
+            # Collect and display the top 10 lines of the diff for each modified file
+            files = result.stdout.strip().split("\n")
+            error_message = "Modifications are detected in file:\n"
+            error_message += "\n".join(" - " + file for file in files) + "\n"
+            error_message += "\nIf md5 hashes have changed, this indicates file contents being different."
+            error_message += """
+If binhashes/paths have changed but md5's are the same,
+this will mean the configuration can reproduce the manifests
+but `payu setup` will take longer to run as it needs to re-calculate all the md5 hashes.
+            """
+            for file in files:
+                diff_details = sp.run(
+                    ["git", "-C", str(self.control_path), "diff", f"{file}"],
+                    capture_output=True,
+                    text=True,
+                )
+                diff_lines = diff_details.stdout.splitlines()
+                top_lines = "\n".join(diff_lines[2:12])
+                if len(diff_lines) > 12:
+                    top_lines += "\n... (truncated)"
+                error_message += f"\n{'='*10} Diff for {file} {'='*10}\n{top_lines}\n"
+            raise RuntimeError(f"{error_message}")
 
     def setup_for_test_run(self):
         """
