@@ -188,6 +188,7 @@ jobs:
           # Run model-config-tests pytests - this also generates checksums files.
           # If there is a checksum to compare against, add --checksum-path arg.
           model-config-tests -s -m "${{ inputs.test-markers }}" \
+            --target-branch "${{ inputs.compared-config-ref }}" \
             --output-path "${{ env.EXPERIMENT_LOCATION }}" \
             ${{ inputs.compared-config-ref != '' && '--checksum-path $COMPARED_CHECKSUM_FILE \' || '\' }}
             --junitxml="${{ env.EXPERIMENT_LOCATION }}/checksum/test_report.xml"
