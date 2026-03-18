@@ -67,11 +67,11 @@ jobs:
       checks: write
 
   failed-repro:
-    name: Failed Reproduction Notifier
+    name: Failed Or Error Reproduction Notifier
     needs:
       - repro-ci
       - config
-    if: failure() || needs.repro-ci.outputs.result == 'fail'
+    if: failure() || needs.repro-ci.outputs.result == 'fail' || needs.repro-ci.outputs.result == 'error'
     runs-on: ubuntu-latest
     permissions:
       issues: write
@@ -79,6 +79,21 @@ jobs:
       - name: Setup Issue Variables
         id: variables
         run: |
+          if [[ "${{ needs.repro-ci.outputs.result }}" == "error" ]]; then
+            echo "status_msg=an error" >> $GITHUB_OUTPUT
+            echo "log_label=Error Run Log" >> $GITHUB_OUTPUT
+            echo "icon=:warning:" >> $GITHUB_OUTPUT
+            echo "title_word=Errored" >> $GITHUB_OUTPUT
+            echo "gh_label=type:repro-error" >> $GITHUB_OUTPUT
+            echo "gh_label_desc=Repro check error" >> $GITHUB_OUTPUT
+          else
+            echo "status_msg=a failure" >> $GITHUB_OUTPUT
+            echo "log_label=Failed Run Log" >> $GITHUB_OUTPUT
+            echo "icon=:x:" >> $GITHUB_OUTPUT
+            echo "title_word=Failed" >> $GITHUB_OUTPUT
+            echo "gh_label=type:repro-fail" >> $GITHUB_OUTPUT
+            echo "gh_label_desc=Repro check failure" >> $GITHUB_OUTPUT
+          fi
           config=${{ github.event.repository.name }}
           echo "config=$config" >> $GITHUB_OUTPUT
           echo "config-url=https://github.com/ACCESS-NRI/$config" >> $GITHUB_OUTPUT
@@ -96,12 +111,15 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
           BODY: |
-            There was a failure of the scheduled reproducibility check on `${{ github.repository }}`.
+            Test summary:
+              ${{ steps.variables.outputs.icon }} ${{ needs.repro-ci.outputs.summary}}
 
+            <summary> Further information</summary>
+            There was ${{ steps.variables.outputs.status_msg }} of the scheduled reproducibility check on \`${{ github.repository }}\`.
             Model: `${{ steps.variables.outputs.model }}`, found here: ${{ steps.variables.outputs.model-url }}
             Config Repo: `${{ steps.variables.outputs.config }}`, found here: ${{ steps.variables.outputs.config-url }}
             Config Ref Tested for Reproducibility: `${{ inputs.config-ref }}`, found here: ${{ steps.variables.outputs.ref-url }}
-            Failed Run Log: ${{ steps.variables.outputs.run-url }}
+            ${{ steps.variables.outputs.log_label }}: ${{ steps.variables.outputs.run-url }}
             Experiment Location (Gadi): `${{ needs.repro-ci.outputs.experiment-location }}`
             Checksums created: In the `testing/checksum` directory of ${{ needs.repro-ci.outputs.artifact-url }}
             Checksums compared against: ${{ steps.variables.outputs.ref-url }}/testing/checksum
@@ -109,10 +127,10 @@ jobs:
             Tagging @ACCESS-NRI/model-release
         run: |
           # Create tags for the issue if they don't already exist
-          gh label create 'type:repro-fail' --description 'Repro check failure' --color 000000 || true
+          gh label create '${{ steps.variables.outputs.gh_label }}' --description '${{ steps.variables.outputs.gh_label_desc }}' --color 000000 || true
           gh label create 'priority:blocker' --color B60205 || true
 
           gh issue create \
-            --title 'Scheduled Repro Check Failed for Config `${{ inputs.config-ref }}`' \
-            --label "type:repro-fail,priority:blocker" \
+            --title 'Scheduled Repro Check ${{ steps.variables.outputs.title_word }} for Config `${{ inputs.config-ref }}`' \
+            --label "${{ steps.variables.outputs.gh_label }},priority:blocker" \
             --body '${{ env.BODY }}'
