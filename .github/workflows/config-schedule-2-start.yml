@@ -79,20 +79,19 @@ jobs:
       - name: Setup Issue Variables
         id: variables
         run: |
-          if [[ "${{ needs.repro-ci.outputs.result }}" == "error" ]]; then
-            echo "status_msg=an error" >> $GITHUB_OUTPUT
-            echo "log_label=Error Run Log" >> $GITHUB_OUTPUT
-            echo "icon=:warning:" >> $GITHUB_OUTPUT
-            echo "title_word=Errored" >> $GITHUB_OUTPUT
-            echo "gh_label=type:repro-error" >> $GITHUB_OUTPUT
-            echo "gh_label_desc=Repro check error" >> $GITHUB_OUTPUT
-          else
+          if [[ "${{ needs.repro-ci.outputs.result }}" == "fail" ]]; then
             echo "status_msg=a failure" >> $GITHUB_OUTPUT
-            echo "log_label=Failed Run Log" >> $GITHUB_OUTPUT
             echo "icon=:x:" >> $GITHUB_OUTPUT
             echo "title_word=Failed" >> $GITHUB_OUTPUT
             echo "gh_label=type:repro-fail" >> $GITHUB_OUTPUT
             echo "gh_label_desc=Repro check failure" >> $GITHUB_OUTPUT
+          else
+            echo "status_msg=an error" >> $GITHUB_OUTPUT
+            echo "icon=:warning:" >> $GITHUB_OUTPUT
+            echo "title_word=Errored" >> $GITHUB_OUTPUT
+            echo "gh_label=type:repro-error" >> $GITHUB_OUTPUT
+            echo "gh_label_desc=Repro check error" >> $GITHUB_OUTPUT
+            
           fi
           config=${{ github.event.repository.name }}
           echo "config=$config" >> $GITHUB_OUTPUT
@@ -111,15 +110,17 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
           BODY: |
-            Test summary:
-              ${{ steps.variables.outputs.icon }} ${{ needs.repro-ci.outputs.summary}}
+            <details>
+            <summary> Test summary </summary>
+              ${{ needs.repro-ci.outputs.summary}}
+            </details>
 
             <summary> Further information</summary>
-            There was ${{ steps.variables.outputs.status_msg }} of the scheduled reproducibility check on \`${{ github.repository }}\`.
+            There was ${{ steps.variables.outputs.status_msg }} of the scheduled check on \`${{ github.repository }}\`.
             Model: `${{ steps.variables.outputs.model }}`, found here: ${{ steps.variables.outputs.model-url }}
             Config Repo: `${{ steps.variables.outputs.config }}`, found here: ${{ steps.variables.outputs.config-url }}
-            Config Ref Tested for Reproducibility: `${{ inputs.config-ref }}`, found here: ${{ steps.variables.outputs.ref-url }}
-            ${{ steps.variables.outputs.log_label }}: ${{ steps.variables.outputs.run-url }}
+            Config Ref Tested: `${{ inputs.config-ref }}`, found here: ${{ steps.variables.outputs.ref-url }}
+            Github Run Log: ${{ steps.variables.outputs.run-url }}
             Experiment Location (Gadi): `${{ needs.repro-ci.outputs.experiment-location }}`
             Checksums created: In the `testing/checksum` directory of ${{ needs.repro-ci.outputs.artifact-url }}
             Checksums compared against: ${{ steps.variables.outputs.ref-url }}/testing/checksum
@@ -131,6 +132,6 @@ jobs:
           gh label create 'priority:blocker' --color B60205 || true
 
           gh issue create \
-            --title 'Scheduled Repro Check ${{ steps.variables.outputs.title_word }} for Config `${{ inputs.config-ref }}`' \
+            --title 'Scheduled Check ${{ steps.variables.outputs.title_word }} for Config `${{ inputs.config-ref }}`' \
             --label "${{ steps.variables.outputs.gh_label }},priority:blocker" \
             --body '${{ env.BODY }}'
