@@ -110,13 +110,8 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
           BODY: |
-            <details>
-            <summary> Test summary </summary>
-              ${{ needs.repro-ci.outputs.summary}}
-            </details>
-
-            <summary> Further information</summary>
-            There was ${{ steps.variables.outputs.status_msg }} of the scheduled check on \`${{ github.repository }}\`.
+            Further information:
+            There was ${{ steps.variables.outputs.status_msg }} of the scheduled check on `${{ github.repository }}`.
             Model: `${{ steps.variables.outputs.model }}`, found here: ${{ steps.variables.outputs.model-url }}
             Config Repo: `${{ steps.variables.outputs.config }}`, found here: ${{ steps.variables.outputs.config-url }}
             Config Ref Tested: `${{ inputs.config-ref }}`, found here: ${{ steps.variables.outputs.ref-url }}
@@ -126,6 +121,12 @@ jobs:
             Checksums compared against: ${{ steps.variables.outputs.ref-url }}/testing/checksum
 
             Tagging @ACCESS-NRI/model-release
+
+            <details>
+            <summary> Test summary </summary>
+              ${{ needs.repro-ci.outputs.summary}}
+            </details>
+
         run: |
           # Create tags for the issue if they don't already exist
           gh label create '${{ steps.variables.outputs.gh_label }}' --description '${{ steps.variables.outputs.gh_label_desc }}' --color 000000 || true
