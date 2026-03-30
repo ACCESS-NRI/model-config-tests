@@ -84,6 +84,34 @@ class ExpTestHelper:
 
     def setup_reproduce(self):
         """
+        Run payu setup with `--repro` flag to check if md5 hashes have changed in the manifests.
+        """
+        owd = Path.cwd()
+        # Change to experiment directory and run.
+        os.chdir(self.control_path)
+
+        try:
+            setup_command = [
+                "payu",
+                "setup",
+                "--lab",
+                str(self.lab_path),
+                "--reproduce",
+            ]
+            print(f"Running payu setup command: {setup_command}")
+            result = sp.run(setup_command, capture_output=True, text=True)
+        finally:
+            # Change back to original working directory
+            os.chdir(owd)
+
+        if result.returncode != 0:
+            raise RuntimeError(
+                f"Failed to run payu setup with --reproduce. Error: {result.stderr}\n"
+                f"Full output: {result.stdout}"
+            )
+
+    def setup_manifests_unchanged(self):
+        """
         Run payu setup command and check if manifests files have been changed with `git diff`.
         """
         owd = Path.cwd()
