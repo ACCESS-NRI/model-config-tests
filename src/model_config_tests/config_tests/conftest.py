@@ -135,6 +135,14 @@ def pytest_configure(config):
         "markers",
         "repro_payu_setup: mark tests that check payu setup reproducibility",
     )
+    config.addinivalue_line(
+        "markers",
+        "manifests: mark tests that check payu setup does not change manifests files or md5",
+    )
+    config.addinivalue_line(
+        "markers",
+        "manifests_unchanged: mark tests that check payu setup does not change manifests files",
+    )
     config.addinivalue_line("markers", "slow: mark tests that are slow to run")
     config.addinivalue_line(
         "markers",
