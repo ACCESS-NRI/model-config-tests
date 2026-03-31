@@ -128,10 +128,7 @@ class ExpTestHelper:
                     f"{'='*10}STDOUT{'='*10}\n {setup_result.stdout}\n"
                     f"{'='*10}STDERR{'='*10}\n {setup_result.stderr}\n"
                 )
-            elif "error" in setup_result.stderr.lower():
-                warnings.warn(
-                    f"Payu setup existed safely with errors in stderr:\n{setup_result.stderr}. Proceeding to modification check."
-                )
+
             result = sp.run(
                 ["git", "diff", "--name-only", "manifests/"],
                 capture_output=True,
