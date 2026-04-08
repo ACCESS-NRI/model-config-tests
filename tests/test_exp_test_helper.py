@@ -591,14 +591,17 @@ def test_setup_manifests_unchanged_fail_setup(mock_run, exp):
     mock_result.stdout = "Payu setup output"
     mock_run.return_value = mock_result
 
+    # Store original current working directory
+    owd = Path.cwd()
+
     with pytest.raises(RuntimeError) as excinfo:
         exp.setup_manifests_unchanged()
 
-        assert "Error during payu setup." in str(excinfo.value)
-        assert f"{'='*10}STDOUT{'='*10}\n {mock_result.stdout}\n" in str(excinfo.value)
+    assert "Failed to run payu setup" in str(excinfo.value)
+    assert f"{'='*10}STDOUT{'='*10}\n {mock_result.stdout}\n" in str(excinfo.value)
 
-        # assert returning to the original work directory
-        assert Path.cwd() == exp.control_path
+    # assert returning to the original work directory
+    assert Path.cwd() == owd
 
 
 @patch("subprocess.run")
@@ -607,23 +610,29 @@ def test_setup_manifests_unchanged_show_changes(mock_run, exp):
     # Mock the `payu setup` succeed first
     setup_success = MagicMock(returncode=0, stdout="Payu setup succeeded")
 
+    top_lines = "+new line\n-old line"
+    diff_file = "manifests/input.yaml"
     # Then mock the `git diff --name-only` to show which files are changed
-    git_diff_name_only = MagicMock(returncode=1, stdout="manifests/input.yaml")
+    git_diff_name_only = MagicMock(returncode=0, stdout=diff_file)
 
     # Mock the `git diff` to show the detailed changes in the file
-    git_diff_output = (
-        "--- a/manifests/input.yaml\n+++ b/manifests/input.yaml\n+new line\n-old line"
+    git_diff_run = MagicMock(
+        returncode=0, stdout=(f"--- a/{diff_file}\n+++ b/{diff_file}\n" + top_lines)
     )
-    git_diff_run = MagicMock(returncode=0, stdout=git_diff_output)
 
     # Run these mocks in sequence
     mock_run.side_effect = [setup_success, git_diff_name_only, git_diff_run]
 
+    # Store original current working directory
+    owd = Path.cwd()
+
     with pytest.raises(RuntimeError) as excinfo:
         exp.setup_manifests_unchanged()
 
-        assert "Modifications are detected in file:\n" in str(excinfo.value)
-        assert git_diff_output in str(excinfo.value)
+    assert "Modifications are detected in file:\n" in str(excinfo.value)
+    assert f"\n{'='*10} Diff for {diff_file} {'='*10}\n{top_lines}\n" in str(
+        excinfo.value
+    )
 
-        # assert returning to the original work directory
-        assert Path.cwd() == exp.control_path
+    # assert returning to the original work directory
+    assert Path.cwd() == owd

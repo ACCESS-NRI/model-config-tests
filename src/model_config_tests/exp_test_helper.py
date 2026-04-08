@@ -82,9 +82,10 @@ class ExpTestHelper:
         """
         return self.model.output_exists()
 
-    def setup_reproduce(self):
+    def setup(self, reproduce=False):
         """
-        Run payu setup with `--repro` flag to check if md5 hashes have changed in the manifests.
+        Run payu setup command. If reproduce is True, run with --reproduce flag
+        to check if md5 hashes have changed in the manifests.
         """
         owd = Path.cwd()
         # Change to experiment directory and run.
@@ -96,49 +97,49 @@ class ExpTestHelper:
                 "setup",
                 "--lab",
                 str(self.lab_path),
-                "--reproduce",
             ]
+            if reproduce:
+                setup_command.append("--reproduce")
             print(f"Running payu setup command: {setup_command}")
             result = sp.run(setup_command, capture_output=True, text=True)
+
         finally:
             # Change back to original working directory
             os.chdir(owd)
 
         if result.returncode != 0:
             raise RuntimeError(
-                f"Failed to run payu setup with --reproduce. Error: {result.stderr}\n"
-                f"Full output: {result.stdout}"
+                "Failed to run payu setup"
+                + (" with --reproduce" if reproduce else "")
+                + f"{'='*10}STDOUT{'='*10}\n {result.stdout}\n"
+                f"{'='*10}STDERR{'='*10}\n {result.stderr}\n"
             )
+
+    def setup_reproduce(self):
+        """
+        Run payu setup with `--repro` flag to check if md5 hashes have changed in the manifests.
+        """
+        self.setup(reproduce=True)
 
     def setup_manifests_unchanged(self):
         """
         Run payu setup command and check if manifests files have been changed with `git diff`.
         """
-        owd = Path.cwd()
-        # Change to experiment directory and run.
-        os.chdir(self.control_path)
+        self.setup(reproduce=False)
 
-        try:
-            setup_command = ["payu", "setup", "--lab", str(self.lab_path)]
-            print(f"Running payu setup command: {setup_command}")
-            setup_result = sp.run(setup_command, capture_output=True, text=True)
-            if setup_result.returncode != 0:
-                raise RuntimeError(
-                    f"Error during payu setup. \n"
-                    f"{'='*10}STDOUT{'='*10}\n {setup_result.stdout}\n"
-                    f"{'='*10}STDERR{'='*10}\n {setup_result.stderr}\n"
-                )
+        result = sp.run(
+            ["git", "diff", "--name-only", str(self.control_path / "manifests/")],
+            capture_output=True,
+            text=True,
+        )
 
-            result = sp.run(
-                ["git", "diff", "--name-only", "manifests/"],
-                capture_output=True,
-                text=True,
+        if result.returncode != 0:
+            raise RuntimeError(
+                f"Git command failed with exit code {result.returncode}.\n"
+                f"{'='*10}STDOUT{'='*10}\n {result.stdout}\n"
+                f"{'='*10}STDERR{'='*10}\n {result.stderr}\n"
             )
-        finally:
-            # Change back to original working directory
-            os.chdir(owd)
-
-        if result.stdout != "":
+        elif result.stdout != "":
             # Collect and display the top 10 lines of the diff for each modified file
             files = result.stdout.strip().split("\n")
             error_message = "Modifications are detected in file:\n"
