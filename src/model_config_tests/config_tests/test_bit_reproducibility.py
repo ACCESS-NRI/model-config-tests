@@ -333,7 +333,7 @@ class TestBitReproducibility:
 @pytest.mark.repro
 @pytest.mark.manifests
 @pytest.mark.repro_payu_setup
-def test_payu_setup_repro_flag(control_path, output_path):
+def test_repro_payu_setup(control_path, output_path):
     """
     Test payu setup with `--repro` flag which errors if md5 of any files in payu manifests are changed.
     """

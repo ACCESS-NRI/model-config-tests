@@ -568,17 +568,17 @@ def test_setup_reproduce_error(mock_run, exp):
     mock_result.stdout = "Check manifest"
     mock_run.return_value = mock_result
 
+    # Store original current working directory
+    owd = Path.cwd()
+
     with pytest.raises(RuntimeError) as excinfo:
         exp.setup_reproduce()
 
-        assert (
-            f"Failed to run payu setup with --reproduce. Error: {mock_result.stderr}"
-            in str(excinfo.value)
-        )
-        assert f"Full output: {mock_result.stdout}" in str(excinfo.value)
+    assert "Failed to run payu setup with --reproduce.\n" in str(excinfo.value)
+    assert f"{'='*10}STDOUT{'='*10}\n {mock_result.stdout}\n" in str(excinfo.value)
 
-        # assert returning to the original work directory
-        assert Path.cwd() == exp.control_path
+    # assert returning to the original work directory
+    assert Path.cwd() == owd
 
 
 @patch("subprocess.run")
@@ -610,14 +610,24 @@ def test_setup_manifests_unchanged_show_changes(mock_run, exp):
     # Mock the `payu setup` succeed first
     setup_success = MagicMock(returncode=0, stdout="Payu setup succeeded")
 
-    top_lines = "+new line\n-old line"
+    top_lines = """--- a/{diff_file}
++++ b/{diff_file}
++new line
+-old line
+    """
     diff_file = "manifests/input.yaml"
     # Then mock the `git diff --name-only` to show which files are changed
     git_diff_name_only = MagicMock(returncode=0, stdout=diff_file)
 
     # Mock the `git diff` to show the detailed changes in the file
     git_diff_run = MagicMock(
-        returncode=0, stdout=(f"--- a/{diff_file}\n+++ b/{diff_file}\n" + top_lines)
+        returncode=0,
+        stdout=(
+            f"""diff --git a/{diff_file} b/{diff_file}
+index abc123...zyx789 100111
+"""
+        )
+        + top_lines,
     )
 
     # Run these mocks in sequence
