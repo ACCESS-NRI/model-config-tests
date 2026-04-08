@@ -90,9 +90,14 @@ Running all tests in the pytest suite on a configuration will likely fail as the
 - `repro_determinism`: Determinism test that confirms repeated model runs give the same result.
 - `repro_determinism_restart`: Determinism test that confirms repeated experiments with two consecutive runs give the same result.
 - `repro_restart`: Restart reproducibility test that confirms two short consecutive model runs give the same result as a longer single model run.
+- `repro_payu_setup`: Test payu setup reproducibility; fail if MD5 of any file in manifest is changed.
+- `manifests_unchanged`: Uses `git diff` to check for any unauthorized changes in manifest.
+- `manifests`: A shortcut to run both `manifests_unchanged` and `repro_payu_setup`.
 - `slow`: Tests that are slow to run
 - `dev_config`: General configuration QA tests.
 - `config`: Configuration QA tests for released branches. This includes the `dev_config` tests.
+
+
 
 There are also model-specific markers for configuration QA tests, e.g., `access_om2`, `access_esm1p5`, `access_om3` and `access_esm1p6`. For a list of all available markers,
 run:
