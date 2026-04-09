@@ -110,10 +110,27 @@ class ExpTestHelper:
         if result.returncode != 0:
             raise RuntimeError(
                 "Failed to run payu setup"
-                + (" with --reproduce" if reproduce else "")
+                + (" with --reproduce.\n" if reproduce else ".\n")
                 + f"{'='*10}STDOUT{'='*10}\n {result.stdout}\n"
                 f"{'='*10}STDERR{'='*10}\n {result.stderr}\n"
             )
+
+    def run_git_diff(self, path, extra_args=None):
+        """
+        Run git diff command on the given path and return the output.
+        """
+        command = ["git", "-C", str(path), "diff"] + extra_args if extra_args else []
+
+        result = sp.run(command, capture_output=True, text=True)
+
+        if result.returncode != 0:
+            raise RuntimeError(
+                f"Git command failed with exit code {result.returncode}.\n"
+                f"{'='*10}STDOUT{'='*10}\n {result.stdout}\n"
+                f"{'='*10}STDERR{'='*10}\n {result.stderr}\n"
+            )
+
+        return result.stdout
 
     def setup_reproduce(self):
         """
@@ -127,21 +144,12 @@ class ExpTestHelper:
         """
         self.setup(reproduce=False)
 
-        result = sp.run(
-            ["git", "diff", "--name-only", str(self.control_path / "manifests/")],
-            capture_output=True,
-            text=True,
+        result = self.run_git_diff(
+            self.control_path, extra_args=["--name-only", "manifests/"]
         )
-
-        if result.returncode != 0:
-            raise RuntimeError(
-                f"Git command failed with exit code {result.returncode}.\n"
-                f"{'='*10}STDOUT{'='*10}\n {result.stdout}\n"
-                f"{'='*10}STDERR{'='*10}\n {result.stderr}\n"
-            )
-        elif result.stdout != "":
+        if result != "":
             # Collect and display the top 10 lines of the diff for each modified file
-            files = result.stdout.strip().split("\n")
+            files = result.strip().split("\n")
             error_message = "Modifications are detected in file:\n"
             error_message += "\n".join(" - " + file for file in files) + "\n"
             error_message += "\nIf md5 hashes have changed, this indicates file contents being different."
@@ -151,12 +159,10 @@ this will mean the configuration can reproduce the manifests
 but `payu setup` will take longer to run as it needs to re-calculate all the md5 hashes.
             """
             for file in files:
-                diff_details = sp.run(
-                    ["git", "-C", str(self.control_path), "diff", f"{file}"],
-                    capture_output=True,
-                    text=True,
+                diff_details = self.run_git_diff(
+                    self.control_path, extra_args=[f"{file}"]
                 )
-                diff_lines = diff_details.stdout.splitlines()
+                diff_lines = diff_details.splitlines()
                 top_lines = "\n".join(diff_lines[2:12])
                 if len(diff_lines) > 12:
                     top_lines += "\n... (truncated)"

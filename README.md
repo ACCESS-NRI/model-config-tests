@@ -91,7 +91,7 @@ Running all tests in the pytest suite on a configuration will likely fail as the
 - `repro_determinism_restart`: Determinism test that confirms repeated experiments with two consecutive runs give the same result.
 - `repro_restart`: Restart reproducibility test that confirms two short consecutive model runs give the same result as a longer single model run.
 - `repro_payu_setup`: Test payu setup reproducibility; fail if MD5 of any file in manifest is changed.
-- `manifests_unchanged`: Uses `git diff` to check for any unauthorized changes in manifest.
+- `manifests_unchanged`: Uses `git diff` to check manifests are up-to-date. If only fast hashes (e.g. `binhash`) are different, the manifests are reproducible, but `payu setup` may take longer to run as `md5` hashes need to be recalculated.  This test is not intended for tagged configurations.
 - `manifests`: A shortcut to run both `manifests_unchanged` and `repro_payu_setup`.
 - `slow`: Tests that are slow to run
 - `dev_config`: General configuration QA tests.
