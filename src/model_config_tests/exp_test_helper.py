@@ -82,6 +82,93 @@ class ExpTestHelper:
         """
         return self.model.output_exists()
 
+    def setup(self, reproduce=False):
+        """
+        Run payu setup command. If reproduce is True, run with --reproduce flag
+        to check if md5 hashes have changed in the manifests.
+        """
+        owd = Path.cwd()
+        # Change to experiment directory and run.
+        os.chdir(self.control_path)
+
+        try:
+            setup_command = [
+                "payu",
+                "setup",
+                "--lab",
+                str(self.lab_path),
+            ]
+            if reproduce:
+                setup_command.append("--reproduce")
+            print(f"Running payu setup command: {setup_command}")
+            result = sp.run(setup_command, capture_output=True, text=True)
+
+        finally:
+            # Change back to original working directory
+            os.chdir(owd)
+
+        if result.returncode != 0:
+            raise RuntimeError(
+                "Failed to run payu setup"
+                + (" with --reproduce.\n" if reproduce else ".\n")
+                + f"{'='*10}STDOUT{'='*10}\n {result.stdout}\n"
+                f"{'='*10}STDERR{'='*10}\n {result.stderr}\n"
+            )
+
+    def run_git_diff(self, path, extra_args=None):
+        """
+        Run git diff command on the given path and return the output.
+        """
+        command = ["git", "-C", str(path), "diff"] + extra_args if extra_args else []
+
+        result = sp.run(command, capture_output=True, text=True)
+
+        if result.returncode != 0:
+            raise RuntimeError(
+                f"Git command failed with exit code {result.returncode}.\n"
+                f"{'='*10}STDOUT{'='*10}\n {result.stdout}\n"
+                f"{'='*10}STDERR{'='*10}\n {result.stderr}\n"
+            )
+
+        return result.stdout
+
+    def setup_reproduce(self):
+        """
+        Run payu setup with `--repro` flag to check if md5 hashes have changed in the manifests.
+        """
+        self.setup(reproduce=True)
+
+    def setup_manifests_unchanged(self):
+        """
+        Run payu setup command and check if manifests files have been changed with `git diff`.
+        """
+        self.setup(reproduce=False)
+
+        result = self.run_git_diff(
+            self.control_path, extra_args=["--name-only", "manifests/"]
+        )
+        if result != "":
+            # Collect and display the top 10 lines of the diff for each modified file
+            files = result.strip().split("\n")
+            error_message = "Modifications are detected in file:\n"
+            error_message += "\n".join(" - " + file for file in files) + "\n"
+            error_message += "\nIf md5 hashes have changed, this indicates file contents being different."
+            error_message += """
+If binhashes/paths have changed but md5's are the same,
+this will mean the configuration can reproduce the manifests
+but `payu setup` will take longer to run as it needs to re-calculate all the md5 hashes.
+            """
+            for file in files:
+                diff_details = self.run_git_diff(
+                    self.control_path, extra_args=[f"{file}"]
+                )
+                diff_lines = diff_details.splitlines()
+                top_lines = "\n".join(diff_lines[2:12])
+                if len(diff_lines) > 12:
+                    top_lines += "\n... (truncated)"
+                error_message += f"\n{'='*10} Diff for {file} {'='*10}\n{top_lines}\n"
+            raise RuntimeError(f"{error_message}")
+
     def setup_for_test_run(self):
         """
         Various config.yaml settings need to be modified in order to run in the

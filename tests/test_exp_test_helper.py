@@ -1,7 +1,7 @@
 import shutil
 import subprocess
 from pathlib import Path
-from unittest.mock import Mock, patch
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 import yaml
@@ -556,3 +556,93 @@ def test_experiments_check_experiment_error(tmp_path):
     )
     with pytest.raises(RuntimeError, match=error_msg):
         exps.check_experiment("error_exp")
+
+
+@patch("subprocess.run")
+def test_setup_reproduce_error(mock_run, exp):
+    """Test that payu setup --repro fails raises an error and return to original work directory"""
+    # Mock the payu setup --repro to fail
+    mock_result = MagicMock()
+    mock_result.returncode = 1
+    mock_result.stderr = "MD5 mismatch"
+    mock_result.stdout = "Check manifest"
+    mock_run.return_value = mock_result
+
+    # Store original current working directory
+    owd = Path.cwd()
+
+    with pytest.raises(RuntimeError) as excinfo:
+        exp.setup_reproduce()
+
+    assert "Failed to run payu setup with --reproduce.\n" in str(excinfo.value)
+    assert f"{'='*10}STDOUT{'='*10}\n {mock_result.stdout}\n" in str(excinfo.value)
+
+    # assert returning to the original work directory
+    assert Path.cwd() == owd
+
+
+@patch("subprocess.run")
+def test_setup_manifests_unchanged_fail_setup(mock_run, exp):
+    """Test that an error is raised when payu setup fails in setup_manifests_unchanged()"""
+    # Mock the payu setup --repro to fail with unchanged manifests
+    mock_result = MagicMock()
+    mock_result.returncode = 1
+    mock_result.stderr = "Setup failed"
+    mock_result.stdout = "Payu setup output"
+    mock_run.return_value = mock_result
+
+    # Store original current working directory
+    owd = Path.cwd()
+
+    with pytest.raises(RuntimeError) as excinfo:
+        exp.setup_manifests_unchanged()
+
+    assert "Failed to run payu setup" in str(excinfo.value)
+    assert f"{'='*10}STDOUT{'='*10}\n {mock_result.stdout}\n" in str(excinfo.value)
+
+    # assert returning to the original work directory
+    assert Path.cwd() == owd
+
+
+@patch("subprocess.run")
+def test_setup_manifests_unchanged_show_changes(mock_run, exp):
+    """Test that when manifests are changed, the `git diff` results are printed to stdout"""
+    # Mock the `payu setup` succeed first
+    setup_success = MagicMock(returncode=0, stdout="Payu setup succeeded")
+
+    top_lines = """--- a/{diff_file}
++++ b/{diff_file}
++new line
+-old line
+    """
+    diff_file = "manifests/input.yaml"
+    # Then mock the `git diff --name-only` to show which files are changed
+    git_diff_name_only = MagicMock(returncode=0, stdout=diff_file)
+
+    # Mock the `git diff` to show the detailed changes in the file
+    git_diff_run = MagicMock(
+        returncode=0,
+        stdout=(
+            f"""diff --git a/{diff_file} b/{diff_file}
+index abc123...zyx789 100111
+"""
+        )
+        + top_lines,
+    )
+
+    # Run these mocks in sequence
+    mock_run.side_effect = [setup_success, git_diff_name_only, git_diff_run]
+
+    # Store original current working directory
+    owd = Path.cwd()
+
+    with pytest.raises(RuntimeError) as excinfo:
+        exp.setup_manifests_unchanged()
+
+    assert "Modifications are detected in file:\n" in str(excinfo.value)
+    assert f"\n{'='*10} Diff for {diff_file} {'='*10}\n{top_lines}\n" in str(
+        excinfo.value
+    )
+
+    # assert returning to the original work directory
+    assert Path.cwd() == owd
