@@ -101,7 +101,7 @@ jobs:
           echo "model=$model" >> $GITHUB_OUTPUT
           echo "model-url=https://github.com/ACCESS-NRI/$model" >> $GITHUB_OUTPUT
           echo "ref-url=${{ github.server_url }}/${{ github.repository }}/tree/${{ needs.config.outputs.config-hash }}" >> $GITHUB_OUTPUT
-          echo "run-url=${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" >> $GITHUB_OUTPUT
+          echo "run-url=${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}/attempts/${{ github.run_attempt }}" >> $GITHUB_OUTPUT
 
           cat $GITHUB_OUTPUT
 
