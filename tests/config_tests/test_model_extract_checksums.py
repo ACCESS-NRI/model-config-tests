@@ -8,7 +8,7 @@ import requests
 import yaml
 
 from model_config_tests.models import index as model_index
-from tests.common import RESOURCES_DIR
+from tests.common import RESOURCES_DIR, clone_config_repo
 
 MODEL_NAMES = model_index.keys()
 
@@ -16,16 +16,18 @@ MODEL_NAMES = model_index.keys()
 # TODO: Update with release esm1.6 configurations when available
 # TODO: Is there a way to test checksum extraction for amip configurations?
 @pytest.mark.parametrize(
-    "model_name, configuration, output, expected_checksum",
+    "model_name, config_name, output, expected_checksum",
     [
-        ("access", "release-preindustrial+concentrations", "output000", "checksums"),
-        ("access-esm1.6", "dev-amip", "amip-output000", "amip-checksums"),
-        ("access-esm1.6", "dev-preindustrial+concentrations", "output000", "checksums"),
+        ("access", "esm1p5-prein", "output000", "checksums"),
+        ("access-esm1.6", "esm1p6-amip", "amip-output000", "amip-checksums"),
+        ("access-esm1.6", "esm1p6-prein", "output000", "checksums"),
         ("access-om2", None, "output000", "checksums"),
         ("access-om3", None, "output000", "checksums"),
     ],
 )
-def test_extract_checksums(model_name, configuration, output, expected_checksum):
+def test_extract_checksums(
+    model_name, config_name, output, expected_checksum, tmp_path
+):
     resources_dir = RESOURCES_DIR / model_name
 
     # Mock ExpTestHelper
@@ -33,8 +35,9 @@ def test_extract_checksums(model_name, configuration, output, expected_checksum)
     mock_experiment.output000 = resources_dir / output
     mock_experiment.restart000 = resources_dir / "restart000"
     mock_experiment.control_path = Path("test/tmp")
-    if configuration:
-        config_path = resources_dir / "configurations" / configuration / "config.yaml"
+    if config_name:
+        clone_config_repo(config_name, tmp_path)
+        config_path = tmp_path / "config.yaml"
         with open(config_path) as f:
             mock_experiment.config = yaml.safe_load(f)
 
@@ -65,14 +68,14 @@ def test_extract_checksums(model_name, configuration, output, expected_checksum)
 
 # TODO: Update with release esm1.6 configurations when available
 @pytest.mark.parametrize(
-    "model_name, configuration",
+    "model_name, config_name",
     [
-        ("access", "release-preindustrial+concentrations"),
+        ("access", "esm1p5-prein"),
         ("access-om2", None),
         ("access-om3", None),
     ],
 )
-def test_extract_checksums_unsupported_version(model_name, configuration):
+def test_extract_checksums_unsupported_version(model_name, config_name, tmp_path):
     resources_dir = RESOURCES_DIR / model_name
 
     # Mock ExpTestHelper
@@ -80,8 +83,10 @@ def test_extract_checksums_unsupported_version(model_name, configuration):
     mock_experiment.output000 = resources_dir / "output000"
     mock_experiment.restart000 = resources_dir / "restart000"
     mock_experiment.control_path = Path("test/tmp")
-    if configuration:
-        config_path = resources_dir / "configurations" / configuration / "config.yaml"
+    if config_name:
+        clone_config_repo(config_name, tmp_path)
+        config_path = tmp_path / "config.yaml"
+        # config_path = resources_dir / "configurations" / config_name / "config.yaml"
         with open(config_path) as f:
             mock_experiment.config = yaml.safe_load(f)
 
