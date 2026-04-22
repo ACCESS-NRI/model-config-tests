@@ -13,7 +13,7 @@ import yaml
 from netCDF4 import Dataset
 from payu.models.cesm_cmeps import Runconfig
 
-from tests.common import RESOURCES_DIR
+from tests.common import RESOURCES_DIR, clone_config_repo
 
 # Disable unknown marker warnings when importing _experiments
 warnings.filterwarnings("ignore", category=pytest.PytestUnknownMarkWarning)
@@ -203,10 +203,9 @@ class CommonTestHelper:
         # TODO: Could create use a test config.yaml file for each model
         # in test resources? This could be used to test "config" tests too?
 
-    def copy_config(self, configuration):
+    def copy_config(self, config_name):
         """Copy a minimal control directory from RESOURCES_DIR"""
-        mock_config = self.resources_path / "configurations" / configuration
-        shutil.copytree(mock_config, self.control_path)
+        clone_config_repo(config_name, self.control_path)
 
     def base_test_command(self):
         """Create a minimal test command"""
@@ -263,7 +262,7 @@ def test_test_repro_historical_access_checksums_saved_on_config(tmp_dir):
 
     # Setup test Helper
     helper = CommonTestHelper(test_name, exp_name, model_name, tmp_dir)
-    helper.copy_config("release-preindustrial+concentrations")
+    helper.copy_config("esm1p5-prein")
 
     # Copy checksums from resources to model configuration
     checksum_path = helper.resources_path / "checksums" / "1-0-0.json"
@@ -304,7 +303,7 @@ def test_test_repro_historical_access_no_reference_checksums(tmp_dir):
 
     # Setup test Helper
     helper = CommonTestHelper(test_name, exp_name, model_name, tmp_dir)
-    helper.copy_config("release-preindustrial+concentrations")
+    helper.copy_config("esm1p5-prein")
 
     # Put some expected output in the archive directory (as we are skipping
     # the actual payu run step)
@@ -357,10 +356,10 @@ def test_test_repro_historical_access_no_model_output(tmp_dir):
 @pytest.mark.parametrize(
     "model_name, output_0, configuration",
     [
-        ("access", "output000", "release-preindustrial+concentrations"),
-        ("access-om2", "output000", "release-1deg_jra55_ryf"),
-        ("access-om3", "restart000", "om3-dev-1deg_jra55do_ryf"),
-        ("access-om3", "restart000", "om3-wav-dev-1deg_jra55do_ryf"),
+        ("access", "output000", "esm1p5-prein"),
+        ("access-om2", "output000", "om2-1deg"),
+        ("access-om3", "restart000", "om3-100km"),
+        ("access-om3", "restart000", "om3-100km-wav"),
     ],
 )
 @pytest.mark.parametrize("fail", [False, True])
@@ -426,7 +425,7 @@ def test_test_access_om3_ocean_model(tmp_dir):
     # Setup test Helper
     helper = CommonTestHelper(test_name, exp_name, "access-om3", tmp_dir)
 
-    helper.copy_config("om3-dev-1deg_jra55do_ryf")
+    helper.copy_config("om3-100km")
 
     # Set ocean model in nuopc.runconfig to something other than mom
     mock_runconfig = Runconfig(helper.control_path / "nuopc.runconfig")
@@ -512,7 +511,7 @@ def test_test_repro_determinism(tmp_dir, fail):
 
     # Setup some example files for both experiments
     exp1_helper = CommonTestHelper(test_name, exp1_name, "access", tmp_dir)
-    exp1_helper.copy_config("release-preindustrial+concentrations")
+    exp1_helper.copy_config("esm1p5-prein")
     exp1_helper.create_mock_output("output000", modify=False)
 
     exp2_helper = CommonTestHelper(test_name, exp2_name, "access", tmp_dir)
