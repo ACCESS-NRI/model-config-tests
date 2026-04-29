@@ -1,26 +1,28 @@
 # import shlex
+# import shutil
 # import subprocess
-
-# from tests.common import RESOURCES_DIR
 
 
 # TODO: Add back when we have a sufficient test config released
-def test_test_access_esm1p6_config_release_release_preindustrial():
+def test_test_access_esm1p6_config_release_release_preindustrial(
+    tmp_path, isolated_config
+):
     """Test ACCESS-ESM1.6 specific config tests"""
     pass
-    # access_esm1p6_configs = RESOURCES_DIR / "access" / "configurations"
-    # test_config = access_esm1p6_configs / "release-preindustrial+concentrations"
+    # branch_name, config_dir = isolated_config("esm1p6-amip")
+    # # access_esm1p6_configs = RESOURCES_DIR / "access" / "configurations"
+    # # test_config = access_esm1p6_configs / "release-preindustrial+concentrations"
 
-    # if not test_config.exists():
-    #     raise FileNotFoundError(f"The test configuration {test_config} does not exist.")
+    # if not config_dir.exists():
+    #     raise FileNotFoundError(f"The test configuration {config_dir} does not exist.")
 
     # test_cmd = (
     #     "model-config-tests -s "
     #     # Run all access_esm1p6 specific tests
     #     "-m access_esm1p6 "
-    #     f"--control-path {test_config} "
+    #     f"--control-path {config_dir} "
     #     # Use target branch as can't mock get_git_branch function in utils
-    #     f"--target-branch release-preindustrial+concentrations"
+    #     f"--target-branch {branch_name}"
     # )
 
     # result = subprocess.run(shlex.split(test_cmd), capture_output=True, text=True)
@@ -31,3 +33,4 @@ def test_test_access_esm1p6_config_release_release_preindustrial():
     #     print(f"Test stdout: {result.stdout}\nTest stderr: {result.stderr}")
 
     # assert result.returncode == 0
+    # shutil.rmtree(tmp_path)
