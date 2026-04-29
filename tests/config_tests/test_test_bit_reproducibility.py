@@ -13,7 +13,7 @@ import yaml
 from netCDF4 import Dataset
 from payu.models.cesm_cmeps import Runconfig
 
-from tests.common import RESOURCES_DIR, clone_config_repo
+from tests.common import RESOURCES_DIR
 
 # Disable unknown marker warnings when importing _experiments
 warnings.filterwarnings("ignore", category=pytest.PytestUnknownMarkWarning)
@@ -170,7 +170,7 @@ def tmp_dir():
 class CommonTestHelper:
     """Helper function to store all paths for a test run"""
 
-    def __init__(self, test_name, exp_name, model_name, tmp_dir):
+    def __init__(self, test_name, exp_name, model_name, tmp_dir, get_isolated_config):
         self.test_name = test_name
         self.exp_name = exp_name
         self.model_name = model_name
@@ -192,6 +192,9 @@ class CommonTestHelper:
         # Pre-generated model test resources
         self.resources_path = RESOURCES_DIR / model_name
 
+        # Use isolated_config fixture to copy the cached config
+        self.get_isolated_config = get_isolated_config
+
     def write_config(self):
         """Create a minimal control directory"""
         self.control_path.mkdir()
@@ -205,7 +208,8 @@ class CommonTestHelper:
 
     def copy_config(self, config_name):
         """Copy a minimal control directory from RESOURCES_DIR"""
-        clone_config_repo(config_name, self.control_path)
+        _, config_dir = self.get_isolated_config(config_name)
+        shutil.move(config_dir, self.control_path)
 
     def base_test_command(self):
         """Create a minimal test command"""
@@ -252,7 +256,9 @@ class CommonTestHelper:
                 raise ValueError(f"Unrecognised model: {self.model_name}")
 
 
-def test_test_repro_historical_access_checksums_saved_on_config(tmp_dir):
+def test_test_repro_historical_access_checksums_saved_on_config(
+    tmp_dir, isolated_config
+):
     """Check the default settings for checksum path (saved on the
     configuration under testing/checksum), and the default for control
     directory fixture (use current working directory of subprocess call)"""
@@ -261,13 +267,12 @@ def test_test_repro_historical_access_checksums_saved_on_config(tmp_dir):
     model_name = "access"
 
     # Setup test Helper
-    helper = CommonTestHelper(test_name, exp_name, model_name, tmp_dir)
+    helper = CommonTestHelper(test_name, exp_name, model_name, tmp_dir, isolated_config)
     helper.copy_config("esm1p5-prein")
 
     # Copy checksums from resources to model configuration
     checksum_path = helper.resources_path / "checksums" / "1-0-0.json"
     config_checksum_path = helper.control_path / "testing" / "checksum"
-    config_checksum_path.mkdir(parents=True)
     config_checksums = config_checksum_path / "historical-24hr-checksum.json"
     shutil.copy(checksum_path, config_checksums)
 
@@ -294,7 +299,7 @@ def test_test_repro_historical_access_checksums_saved_on_config(tmp_dir):
     assert result.returncode == 0
 
 
-def test_test_repro_historical_access_no_reference_checksums(tmp_dir):
+def test_test_repro_historical_access_no_reference_checksums(tmp_dir, isolated_config):
     """Check when a reference file for checksums does not exist, that
     checksums from the output are written out"""
     test_name = "test_repro_historical"
@@ -302,8 +307,9 @@ def test_test_repro_historical_access_no_reference_checksums(tmp_dir):
     model_name = "access"
 
     # Setup test Helper
-    helper = CommonTestHelper(test_name, exp_name, model_name, tmp_dir)
+    helper = CommonTestHelper(test_name, exp_name, model_name, tmp_dir, isolated_config)
     helper.copy_config("esm1p5-prein")
+    shutil.rmtree(helper.control_path / "testing" / "checksum")
 
     # Put some expected output in the archive directory (as we are skipping
     # the actual payu run step)
@@ -323,7 +329,7 @@ def test_test_repro_historical_access_no_reference_checksums(tmp_dir):
     check_checksum(helper.output_path, checksum_path, helper.model_name)
 
 
-def test_test_repro_historical_access_no_model_output(tmp_dir):
+def test_test_repro_historical_access_no_model_output(tmp_dir, isolated_config):
     """Check when a test exits, that there are no checksums in the output
     directory- similar to when payu run exits with an error"""
     test_name = "test_repro_historical"
@@ -331,7 +337,7 @@ def test_test_repro_historical_access_no_model_output(tmp_dir):
     model_name = "access"
 
     # Setup test Helper
-    helper = CommonTestHelper(test_name, exp_name, model_name, tmp_dir)
+    helper = CommonTestHelper(test_name, exp_name, model_name, tmp_dir, isolated_config)
     helper.write_config()
 
     # Test any pre-existing test output checksums are removed in test call
@@ -363,7 +369,9 @@ def test_test_repro_historical_access_no_model_output(tmp_dir):
     ],
 )
 @pytest.mark.parametrize("fail", [False, True])
-def test_test_repro_historical(tmp_dir, model_name, output_0, configuration, fail):
+def test_test_repro_historical(
+    tmp_dir, model_name, output_0, configuration, fail, isolated_config
+):
     """Test ACCESS-OM classes with historical repro test with some mock
     output and configuration directory, optionally checking that things
     fail when the outputs are modified to give different checksums"""
@@ -371,7 +379,7 @@ def test_test_repro_historical(tmp_dir, model_name, output_0, configuration, fai
     exp_name = "exp_default_runtime"
 
     # Setup test Helper
-    helper = CommonTestHelper(test_name, exp_name, model_name, tmp_dir)
+    helper = CommonTestHelper(test_name, exp_name, model_name, tmp_dir, isolated_config)
 
     # Use config in resources dir if provided
     if configuration:
@@ -415,7 +423,7 @@ def test_test_repro_historical(tmp_dir, model_name, output_0, configuration, fai
     )
 
 
-def test_test_access_om3_ocean_model(tmp_dir):
+def test_test_access_om3_ocean_model(tmp_dir, isolated_config):
     """Test that an error is thrown when the ocean model is not MOM. This should be moved into
     dedicated tests for experiment setup when they exist. See
     https://github.com/ACCESS-NRI/model-config-tests/issues/115"""
@@ -423,7 +431,9 @@ def test_test_access_om3_ocean_model(tmp_dir):
     exp_name = "exp_default_runtime"
 
     # Setup test Helper
-    helper = CommonTestHelper(test_name, exp_name, "access-om3", tmp_dir)
+    helper = CommonTestHelper(
+        test_name, exp_name, "access-om3", tmp_dir, isolated_config
+    )
 
     helper.copy_config("om3-100km")
 
@@ -502,7 +512,7 @@ def check_checksum(output_path, checksum_path, model_name, match=True):
 
 
 @pytest.mark.parametrize("fail", [False, True])
-def test_test_repro_determinism(tmp_dir, fail):
+def test_test_repro_determinism(tmp_dir, fail, isolated_config):
     """Test repro determinism for some example output"""
     test_name = "test_repro_determinism"
 
@@ -510,11 +520,15 @@ def test_test_repro_determinism(tmp_dir, fail):
     exp2_name = "exp_1d_runtime_repeat"
 
     # Setup some example files for both experiments
-    exp1_helper = CommonTestHelper(test_name, exp1_name, "access", tmp_dir)
+    exp1_helper = CommonTestHelper(
+        test_name, exp1_name, "access", tmp_dir, isolated_config
+    )
     exp1_helper.copy_config("esm1p5-prein")
     exp1_helper.create_mock_output("output000", modify=False)
 
-    exp2_helper = CommonTestHelper(test_name, exp2_name, "access", tmp_dir)
+    exp2_helper = CommonTestHelper(
+        test_name, exp2_name, "access", tmp_dir, isolated_config
+    )
     exp2_helper.create_mock_output("output000", modify=fail)
 
     # Build test command

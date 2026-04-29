@@ -2,15 +2,14 @@
 # import shutil
 # import subprocess
 
-# from tests.common import clone_config_repo
-
 
 # TODO: Add back when we have a sufficient test config released
-def test_test_access_esm1p6_config_release_release_preindustrial(tmp_path):
+def test_test_access_esm1p6_config_release_release_preindustrial(
+    tmp_path, isolated_config
+):
     """Test ACCESS-ESM1.6 specific config tests"""
     pass
-    # config_dir = tmp_path / "access-esm1p6-configs"
-    # branch_name = clone_config_repo("esm1p6-amip", config_dir)
+    # branch_name, config_dir = isolated_config("esm1p6-amip")
     # # access_esm1p6_configs = RESOURCES_DIR / "access" / "configurations"
     # # test_config = access_esm1p6_configs / "release-preindustrial+concentrations"
 

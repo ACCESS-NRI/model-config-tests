@@ -4,13 +4,10 @@ import subprocess
 
 import yaml
 
-from tests.common import clone_config_repo
 
-
-def test_test_access_om2_config_release_1deg_jra55_ryf(tmp_path):
+def test_test_access_om2_config_release_1deg_jra55_ryf(tmp_path, isolated_config):
     """Test ACCESS-OM2 specific config tests"""
-    config_dir = tmp_path / "access-om2-configs"
-    branch_name = clone_config_repo("om2-1deg", config_dir)
+    branch_name, config_dir = isolated_config("om2-1deg")
 
     if not config_dir.exists():
         raise FileNotFoundError(f"The test configuration {config_dir} does not exist.")
@@ -35,12 +32,11 @@ def test_test_access_om2_config_release_1deg_jra55_ryf(tmp_path):
     shutil.rmtree(tmp_path)
 
 
-def test_test_access_om2_config_modified_module_version(tmp_path):
+def test_test_access_om2_config_modified_module_version(tmp_path, isolated_config):
     """Test changing model module version in config.yaml,
     will cause tests to fail if paths in exe manifests don't
     match released spack.location file"""
-    config_dir = tmp_path / "access-om2-configs"
-    branch_name = clone_config_repo("om2-1deg", config_dir)
+    branch_name, config_dir = isolated_config("om2-1deg")
 
     mock_config = config_dir / "config.yaml"
 
@@ -72,11 +68,10 @@ def test_test_access_om2_config_modified_module_version(tmp_path):
     shutil.rmtree(tmp_path)
 
 
-def test_test_access_om2_config_dev_025deg_jra55_iaf_bgc(tmp_path):
+def test_test_access_om2_config_dev_025deg_jra55_iaf_bgc(tmp_path, isolated_config):
     """Test ACCESS-OM2 specific config tests for
     high-degree (025deg) and BGC configurations"""
-    config_dir = tmp_path / "access-om2-configs"
-    branch_name = clone_config_repo("om2-025deg", config_dir)
+    branch_name, config_dir = isolated_config("om2-025deg")
 
     assert config_dir.exists()
 
