@@ -4,13 +4,10 @@ import subprocess
 
 import yaml
 
-from tests.common import clone_config_repo
 
-
-def test_test_access_om3_config_release_1deg_jra55_ryf(tmp_path):
+def test_test_access_om3_config_release_1deg_jra55_ryf(tmp_path, isolated_config):
     """Test ACCESS-OM3 specific config tests"""
-    config_dir = tmp_path / "access-om3-configs"
-    branch_name = clone_config_repo("om3-100km", config_dir)
+    branch_name, config_dir = isolated_config("om3-100km")
 
     if not config_dir.exists():
         raise FileNotFoundError(f"The test configuration {config_dir} does not exist.")
@@ -27,21 +24,19 @@ def test_test_access_om3_config_release_1deg_jra55_ryf(tmp_path):
     result = subprocess.run(shlex.split(test_cmd), capture_output=True, text=True)
 
     # Expect the tests to have passed
-    if result.returncode:
+    if result.returncode != 0:
         # Print out test logs if there are errors
         print(f"Test stdout: {result.stdout}\nTest stderr: {result.stderr}")
 
     assert result.returncode == 0
-    shutil.rmtree(tmp_path)
 
 
-def test_test_access_om3_config_modified_module_version(tmp_path):
+def test_test_access_om3_config_modified_module_version(tmp_path, isolated_config):
     """Test changing model module version in config.yaml,
     will cause tests to fail if paths in exe manifests don't
     match released spack.location file"""
     # Copy test configuration
-    config_dir = tmp_path / "access-om3-configs"
-    branch_name = clone_config_repo("om3-100km", config_dir)
+    branch_name, config_dir = isolated_config("om3-100km")
 
     mock_config = config_dir / "config.yaml"
 

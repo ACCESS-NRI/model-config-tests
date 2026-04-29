@@ -8,7 +8,7 @@ import requests
 import yaml
 
 from model_config_tests.models import index as model_index
-from tests.common import RESOURCES_DIR, clone_config_repo
+from tests.common import RESOURCES_DIR
 
 MODEL_NAMES = model_index.keys()
 
@@ -26,7 +26,7 @@ MODEL_NAMES = model_index.keys()
     ],
 )
 def test_extract_checksums(
-    model_name, config_name, output, expected_checksum, tmp_path
+    model_name, config_name, output, expected_checksum, tmp_path, isolated_config
 ):
     resources_dir = RESOURCES_DIR / model_name
 
@@ -36,8 +36,8 @@ def test_extract_checksums(
     mock_experiment.restart000 = resources_dir / "restart000"
     mock_experiment.control_path = Path("test/tmp")
     if config_name:
-        clone_config_repo(config_name, tmp_path)
-        config_path = tmp_path / "config.yaml"
+        isolated_config(config_name)
+        config_path = tmp_path / config_name / "config.yaml"
         with open(config_path) as f:
             mock_experiment.config = yaml.safe_load(f)
 
@@ -75,7 +75,9 @@ def test_extract_checksums(
         ("access-om3", None),
     ],
 )
-def test_extract_checksums_unsupported_version(model_name, config_name, tmp_path):
+def test_extract_checksums_unsupported_version(
+    model_name, config_name, tmp_path, isolated_config
+):
     resources_dir = RESOURCES_DIR / model_name
 
     # Mock ExpTestHelper
@@ -84,8 +86,8 @@ def test_extract_checksums_unsupported_version(model_name, config_name, tmp_path
     mock_experiment.restart000 = resources_dir / "restart000"
     mock_experiment.control_path = Path("test/tmp")
     if config_name:
-        clone_config_repo(config_name, tmp_path)
-        config_path = tmp_path / "config.yaml"
+        isolated_config(config_name)
+        config_path = tmp_path / config_name / "config.yaml"
         # config_path = resources_dir / "configurations" / config_name / "config.yaml"
         with open(config_path) as f:
             mock_experiment.config = yaml.safe_load(f)

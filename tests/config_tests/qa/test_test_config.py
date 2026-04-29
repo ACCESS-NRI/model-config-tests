@@ -5,17 +5,14 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from tests.common import clone_config_repo
-
 # Disable specific warnings from test_config tests
 warnings.filterwarnings("ignore", category=pytest.PytestUnknownMarkWarning)
 from model_config_tests.config_tests.qa.test_config import get_spack_location_file
 
 
-def test_test_config_access_om2(tmp_path):
+def test_test_config_access_om2(tmp_path, isolated_config):
     """Test general config tests using a skeleton ACCESS-OM2 configuration"""
-    config_dir = tmp_path / "access-om2-configs"
-    branch_name = clone_config_repo("om2-1deg", config_dir)
+    branch_name, config_dir = isolated_config("om2-1deg")
 
     if not config_dir.exists():
         raise FileNotFoundError(f"The test configuration {config_dir} does not exist.")
