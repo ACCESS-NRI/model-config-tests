@@ -1,24 +1,21 @@
 import shlex
 import subprocess
 
-from tests.common import RESOURCES_DIR
 
-
-def test_test_access_esm1p5_config_release_release_preindustrial():
+def test_test_access_esm1p5_config_release_release_preindustrial(isolated_config):
     """Test ACCESS-ESM1.5 specific config tests"""
-    access_esm1p5_configs = RESOURCES_DIR / "access" / "configurations"
-    test_config = access_esm1p5_configs / "release-preindustrial+concentrations"
+    branch_name, config_dir = isolated_config("esm1p5-prein")
 
-    if not test_config.exists():
-        raise FileNotFoundError(f"The test configuration {test_config} does not exist.")
+    if not config_dir.exists():
+        raise FileNotFoundError(f"The test configuration {config_dir} does not exist.")
 
     test_cmd = (
         "model-config-tests -s "
         # Run all access_esm1p5 specific tests
         "-m access_esm1p5 "
-        f"--control-path {test_config} "
+        f"--control-path {config_dir} "
         # Use target branch as can't mock get_git_branch function in utils
-        f"--target-branch release-preindustrial+concentrations"
+        f"--target-branch {branch_name}"
     )
 
     result = subprocess.run(shlex.split(test_cmd), capture_output=True, text=True)

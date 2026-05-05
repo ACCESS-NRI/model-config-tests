@@ -1,27 +1,23 @@
 import shlex
-import shutil
 import subprocess
 
 import yaml
 
-from tests.common import RESOURCES_DIR
 
-
-def test_test_access_om2_config_release_1deg_jra55_ryf():
+def test_test_access_om2_config_release_1deg_jra55_ryf(isolated_config):
     """Test ACCESS-OM2 specific config tests"""
-    access_om2_configs = RESOURCES_DIR / "access-om2" / "configurations"
-    test_config = access_om2_configs / "release-1deg_jra55_ryf"
+    branch_name, config_dir = isolated_config("om2-1deg")
 
-    if not test_config.exists():
-        raise FileNotFoundError(f"The test configuration {test_config} does not exist.")
+    if not config_dir.exists():
+        raise FileNotFoundError(f"The test configuration {config_dir} does not exist.")
 
     test_cmd = (
         "model-config-tests -s "
         # Run all access_om2 specific tests
         "-m access_om2 "
-        f"--control-path {test_config} "
+        f"--control-path {config_dir} "
         # Use target branch as can't mock get_git_branch function in utils
-        f"--target-branch release-1deg_jra55_ryf"
+        f"--target-branch {branch_name}"
     )
 
     result = subprocess.run(shlex.split(test_cmd), capture_output=True, text=True)
@@ -34,18 +30,13 @@ def test_test_access_om2_config_release_1deg_jra55_ryf():
     assert result.returncode == 0
 
 
-def test_test_access_om2_config_modified_module_version(tmp_path):
+def test_test_access_om2_config_modified_module_version(isolated_config):
     """Test changing model module version in config.yaml,
     will cause tests to fail if paths in exe manifests don't
     match released spack.location file"""
-    access_om2_configs = RESOURCES_DIR / "access-om2" / "configurations"
+    branch_name, config_dir = isolated_config("om2-1deg")
 
-    # Copy test configuration
-    test_config = access_om2_configs / "release-1deg_jra55_ryf"
-    mock_control_path = tmp_path / "mock_control_path"
-    shutil.copytree(test_config, mock_control_path)
-
-    mock_config = mock_control_path / "config.yaml"
+    mock_config = config_dir / "config.yaml"
 
     with open(mock_config) as f:
         config = yaml.safe_load(f)
@@ -60,9 +51,9 @@ def test_test_access_om2_config_modified_module_version(tmp_path):
         "model-config-tests -s "
         # Only test the manifest exe in release spack location test
         "-k test_access_om2_manifest_exe_in_release_spack_location "
-        f"--control-path {mock_control_path} "
+        f"--control-path {config_dir} "
         # Use target branch as can't mock get_git_branch function in utils
-        f"--target-branch release-1deg_jra55_ryf"
+        f"--target-branch {branch_name}"
     )
 
     result = subprocess.run(shlex.split(test_cmd), capture_output=True, text=True)
@@ -73,21 +64,20 @@ def test_test_access_om2_config_modified_module_version(tmp_path):
     assert error_msg in result.stdout
 
 
-def test_test_access_om2_config_dev_025deg_jra55_iaf_bgc():
+def test_test_access_om2_config_dev_025deg_jra55_iaf_bgc(isolated_config):
     """Test ACCESS-OM2 specific config tests for
     high-degree (025deg) and BGC configurations"""
-    access_om2_configs = RESOURCES_DIR / "access-om2" / "configurations"
-    test_config = access_om2_configs / "dev-025deg_jra55_iaf_bgc"
+    branch_name, config_dir = isolated_config("om2-025deg")
 
-    assert test_config.exists()
+    assert config_dir.exists()
 
     test_cmd = (
         "model-config-tests -s "
         # Run all access_om2 specific tests
         "-m access_om2 "
-        f"--control-path {test_config} "
+        f"--control-path {config_dir} "
         # Use target branch as can't mock get_git_branch function in utils
-        f"--target-branch release-025deg_jra55_iaf_bgc"
+        f"--target-branch {branch_name}"
     )
 
     result = subprocess.run(shlex.split(test_cmd), capture_output=True, text=True)
