@@ -1,11 +1,8 @@
 import shlex
-import shutil
 import subprocess
 
 
-def test_test_access_esm1p5_config_release_release_preindustrial(
-    tmp_path, isolated_config
-):
+def test_test_access_esm1p5_config_release_release_preindustrial(isolated_config):
     """Test ACCESS-ESM1.5 specific config tests"""
     branch_name, config_dir = isolated_config("esm1p5-prein")
 
@@ -29,4 +26,3 @@ def test_test_access_esm1p5_config_release_release_preindustrial(
         print(f"Test stdout: {result.stdout}\nTest stderr: {result.stderr}")
 
     assert result.returncode == 0
-    shutil.rmtree(tmp_path)

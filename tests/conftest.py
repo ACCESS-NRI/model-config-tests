@@ -21,7 +21,9 @@ def config_cache(tmp_path_factory):
             cache[config_name] = dest
         return CLONE_CONFIGS[config_name]["branch"], cache[config_name]
 
-    return _get_config_cache
+    yield _get_config_cache
+
+    shutil.rmtree(cache_root)
 
 
 @pytest.fixture
@@ -38,4 +40,6 @@ def isolated_config(config_cache, tmp_path):
 
         return branch_name, dest
 
-    return _prepare_isolated_config
+    yield _prepare_isolated_config
+
+    shutil.rmtree(tmp_path)

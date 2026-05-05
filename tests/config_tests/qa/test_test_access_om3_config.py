@@ -1,11 +1,10 @@
 import shlex
-import shutil
 import subprocess
 
 import yaml
 
 
-def test_test_access_om3_config_release_1deg_jra55_ryf(tmp_path, isolated_config):
+def test_test_access_om3_config_release_1deg_jra55_ryf(isolated_config):
     """Test ACCESS-OM3 specific config tests"""
     branch_name, config_dir = isolated_config("om3-100km")
 
@@ -31,7 +30,7 @@ def test_test_access_om3_config_release_1deg_jra55_ryf(tmp_path, isolated_config
     assert result.returncode == 0
 
 
-def test_test_access_om3_config_modified_module_version(tmp_path, isolated_config):
+def test_test_access_om3_config_modified_module_version(isolated_config):
     """Test changing model module version in config.yaml,
     will cause tests to fail if paths in exe manifests don't
     match released spack.location file"""
@@ -64,5 +63,3 @@ def test_test_access_om3_config_modified_module_version(tmp_path, isolated_confi
     assert result.returncode == 1
     error_msg = "Expected exe path in exe manifest to match an install path in released spack.location"
     assert error_msg in result.stdout
-
-    shutil.rmtree(tmp_path)

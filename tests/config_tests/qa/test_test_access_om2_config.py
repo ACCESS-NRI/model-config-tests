@@ -1,11 +1,10 @@
 import shlex
-import shutil
 import subprocess
 
 import yaml
 
 
-def test_test_access_om2_config_release_1deg_jra55_ryf(tmp_path, isolated_config):
+def test_test_access_om2_config_release_1deg_jra55_ryf(isolated_config):
     """Test ACCESS-OM2 specific config tests"""
     branch_name, config_dir = isolated_config("om2-1deg")
 
@@ -29,10 +28,9 @@ def test_test_access_om2_config_release_1deg_jra55_ryf(tmp_path, isolated_config
         print(f"Test stdout: {result.stdout}\nTest stderr: {result.stderr}")
 
     assert result.returncode == 0
-    shutil.rmtree(tmp_path)
 
 
-def test_test_access_om2_config_modified_module_version(tmp_path, isolated_config):
+def test_test_access_om2_config_modified_module_version(isolated_config):
     """Test changing model module version in config.yaml,
     will cause tests to fail if paths in exe manifests don't
     match released spack.location file"""
@@ -65,10 +63,8 @@ def test_test_access_om2_config_modified_module_version(tmp_path, isolated_confi
     error_msg = "Expected exe path in exe manifest to match an install path in released spack.location"
     assert error_msg in result.stdout
 
-    shutil.rmtree(tmp_path)
 
-
-def test_test_access_om2_config_dev_025deg_jra55_iaf_bgc(tmp_path, isolated_config):
+def test_test_access_om2_config_dev_025deg_jra55_iaf_bgc(isolated_config):
     """Test ACCESS-OM2 specific config tests for
     high-degree (025deg) and BGC configurations"""
     branch_name, config_dir = isolated_config("om2-025deg")
@@ -92,4 +88,3 @@ def test_test_access_om2_config_dev_025deg_jra55_iaf_bgc(tmp_path, isolated_conf
         print(f"Test stdout: {result.stdout}\nTest stderr: {result.stderr}")
 
     assert result.returncode == 0
-    shutil.rmtree(tmp_path)
