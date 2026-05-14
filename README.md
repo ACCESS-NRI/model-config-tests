@@ -14,7 +14,7 @@ Code from these pytests is adapted from COSIMAS's ACCESS-OM2's [bit reproducibil
 
     ```sh
     module use /g/data/vk83/modules
-    module load payu/1.1.6
+    module load payu/1.3.0
     ```
 
 2. Create and activate a python virtual environment for installing and running tests
@@ -27,7 +27,7 @@ Code from these pytests is adapted from COSIMAS's ACCESS-OM2's [bit reproducibil
 3. Either pip install a released version of `model-config-tests`,
 
     ```sh
-    pip install model-config-tests==0.1.1
+    pip install model-config-tests==0.2.3
     ```
 
     Or to install `model-config-tests` in "editable" mode, first clone the repository, and then run pip install from the repository. This means any changes to the code are reflected in the installed package.
