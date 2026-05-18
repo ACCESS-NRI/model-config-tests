@@ -230,13 +230,13 @@ class TestConfig:
             assert not (
                 "base_path" in config["sync"]
                 and config["sync"]["base_path"] is not None
-            ), "Sync path to remote archive should not be set"
+            ), "Sync base path to remote archive should not be configured"
 
-    def test_sync_path_is_none(self, config):
-        if "sync" in config and "path" in config["sync"]:
+    def test_sync_path_not_exists(self, config):
+        if "sync" in config:
             assert (
-                config["sync"]["path"] is None
-            ), "Sync paths should be None if it is set"
+                "path" not in config["sync"]
+            ), "Sync path should not exist since base_path is preferred"
 
     def test_experiment_name_is_not_defined(self, config):
         assert "experiment" not in config, (

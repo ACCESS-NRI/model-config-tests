@@ -7,6 +7,7 @@ import pytest
 
 # Disable specific warnings from test_config tests
 warnings.filterwarnings("ignore", category=pytest.PytestUnknownMarkWarning)
+from model_config_tests.config_tests.qa.test_config import TestConfig as ConfigValidator
 from model_config_tests.config_tests.qa.test_config import get_spack_location_file
 
 
@@ -83,3 +84,62 @@ def test_get_spack_location_file_no_spack_location():
         error_msg = r"Failed to download a spack\.location .*"
         with pytest.raises(AssertionError, match=error_msg):
             get_spack_location_file("fake-repo", "fake-version")
+
+
+@pytest.fixture
+def checker():
+    return ConfigValidator()
+
+
+def test_test_sync_and_base_path(checker):
+    """Test that the test checks sync and base_path configurations."""
+    config_pass = {
+        "sync": {
+            "enable": False,
+            "base_path": None,
+        }
+    }
+    checker.test_sync_is_not_enabled(config_pass)
+    checker.test_sync_base_path_is_not_set(config_pass)
+
+    config_fail = {
+        "sync": {
+            "enable": True,
+            "base_path": "/base_path/to/sync",
+        }
+    }
+    with pytest.raises(
+        AssertionError, match="Sync to remote archive should not be enabled"
+    ):
+        checker.test_sync_is_not_enabled(config_fail)
+
+    with pytest.raises(
+        AssertionError,
+        match="Sync base path to remote archive should not be configured",
+    ):
+        checker.test_sync_base_path_is_not_set(config_fail)
+
+
+def test_test_sync_path_not_exists(checker):
+    """Test that the test properly checks sync path is not set."""
+    config_fail = {
+        "sync": {
+            "enable": False,
+            "path": "/path/to/sync",
+        }
+    }
+    with pytest.raises(
+        AssertionError, match="Sync path should not exist since base_path is preferred"
+    ):
+        checker.test_sync_path_not_exists(config_fail)
+
+    config_fail2 = {
+        "sync": {
+            "enable": False,
+            "path": None,
+        }
+    }
+    with pytest.raises(
+        AssertionError, match="Sync path should not exist since base_path is preferred"
+    ):
+        checker.test_sync_path_not_exists(config_fail2)

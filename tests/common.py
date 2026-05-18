@@ -6,11 +6,11 @@ HERE = os.path.dirname(__file__)
 RESOURCES_DIR = Path(f"{HERE}/resources")
 
 CLONE_CONFIGS = {
-    # ACCESS-OM2, branch: release-1deg_jra55_ryf
+    # ACCESS-OM2, branch: dev-1deg_jra55_ryf
     "om2-1deg": {
         "repo_url": "https://github.com/ACCESS-NRI/access-om2-configs.git",
-        "branch": "release-1deg_jra55_ryf",
-        "commit": "3537bca",
+        "branch": "dev-1deg_jra55_ryf",
+        "commit": "261f3ea",
     },
     # ACCESS-OM2, branch: dev-025deg_jra55_iaf_bgc
     "om2-025deg": {
@@ -45,7 +45,7 @@ CLONE_CONFIGS = {
     # ACCESS-ESM1.6, branch: dev-preindustrial+concentrations
     "esm1p6-prein": {
         "repo_url": "https://github.com/ACCESS-NRI/access-esm1.6-configs.git",
-        "branch": "dev-preindustrial+concentrations",
+        "branch": "dev-piControl",
         "commit": "946134f",
     },
 }
