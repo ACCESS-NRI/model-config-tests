@@ -264,7 +264,7 @@ jobs:
 
       - name: Parse Test Report
         id: tests
-        uses: EnricoMi/publish-unit-test-result-action/composite@82082dac68ad6a19d980f8ce817e108b9f496c2a  #v2.17.1
+        uses: EnricoMi/publish-unit-test-result-action/linux@c950f6fb443cb5af20a377fd0dfaa78838901040  #v2.23.0
         with:
           files: ${{ env.TESTING_LOCAL_LOCATION }}/checksum/test_report.xml
           comment_mode: off

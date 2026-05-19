@@ -203,7 +203,7 @@ jobs:
 
       - name: Parse Test Report
         id: tests
-        uses: EnricoMi/publish-unit-test-result-action/composite@e780361cd1fc1b1a170624547b3ffda64787d365  #v2.12.0
+        uses: EnricoMi/publish-unit-test-result-action/linux@c950f6fb443cb5af20a377fd0dfaa78838901040  #v2.23.0
         with:
           files: ./test_report.xml
           comment_mode: off
