@@ -172,7 +172,7 @@ jobs:
           sparse-checkout-cone-mode: false
 
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: ${{ needs.config.outputs.qa-python-version }}
           # We can use cache:pip to cache model-config-tests despite the actual

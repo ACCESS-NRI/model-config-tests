@@ -13,7 +13,7 @@ runs:
   steps:
     - name: Set up Python
       id: cp311
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v6
       with:
         python-version: 3.11
         update-environment: false
@@ -27,7 +27,7 @@ runs:
           --filepath ${{ inputs.filepath }} \
           --output-filepath tmp-result.txt
 
-        # Save multiline file output to a summary 
+        # Save multiline file output to a summary
         echo 'summary<<EOF' >> $GITHUB_OUTPUT
         cat tmp-result.txt >> $GITHUB_OUTPUT
         echo 'EOF' >> $GITHUB_OUTPUT
