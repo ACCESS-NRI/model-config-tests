@@ -232,7 +232,7 @@ jobs:
 
       - name: Upload Test Output
         id: upload
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ steps.artifact.outputs.name }}
           if-no-files-found: error
@@ -257,7 +257,7 @@ jobs:
       summary: ${{ steps.parse_test_report.outputs.summary }}
     steps:
       - name: Download Newly Created Checksum
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: ${{ needs.repro.outputs.artifact-name }}
           path: ${{ env.TESTING_LOCAL_LOCATION }}
