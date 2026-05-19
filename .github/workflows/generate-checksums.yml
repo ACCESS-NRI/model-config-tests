@@ -132,7 +132,7 @@ jobs:
           token: ${{ secrets.GH_FORCE_PUSH_TOKEN }}
 
       - name: Download Checksums
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: ${{ needs.repro-ci.outputs.artifact-name }}
           path: ${{ env.ARTIFACT_LOCAL_LOCATION }}
