@@ -44,7 +44,7 @@ jobs:
     outputs:
       authorship: ${{ steps.head-commit.outputs.authorship }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: ${{ github.head_ref }}
 
@@ -67,7 +67,7 @@ jobs:
     permissions:
       pull-requests: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: ${{ github.head_ref }}
 
@@ -107,7 +107,7 @@ jobs:
       - name: Checkout main
         # We fetch the repository history because in `steps.compared` we
         # attempt to get the last config tag.
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: main
           fetch-depth: 0
@@ -159,12 +159,12 @@ jobs:
       checks: write
     steps:
       - name: Checkout PR ${{ github.event.pull_request.number }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Checkout model-config-tests requirements
         # This step checks out model-config-tests/pyproject.toml because it is
         # used as a cache key for model-config-tests in the next step
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: access-nri/model-config-tests
           path: model-config-tests
@@ -172,7 +172,7 @@ jobs:
           sparse-checkout-cone-mode: false
 
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: ${{ needs.config.outputs.qa-python-version }}
           # We can use cache:pip to cache model-config-tests despite the actual
@@ -203,7 +203,7 @@ jobs:
 
       - name: Parse Test Report
         id: tests
-        uses: EnricoMi/publish-unit-test-result-action/composite@e780361cd1fc1b1a170624547b3ffda64787d365  #v2.12.0
+        uses: EnricoMi/publish-unit-test-result-action/linux@c950f6fb443cb5af20a377fd0dfaa78838901040  #v2.23.0
         with:
           files: ./test_report.xml
           comment_mode: off
@@ -247,13 +247,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout PR Target
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ github.base_ref }}
           path: target
 
       - name: Checkout PR Source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ github.head_ref }}
           path: source

@@ -34,7 +34,7 @@ jobs:
           reaction: rocket
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
           token: ${{ secrets.GH_COMMIT_CHECK_TOKEN }}
@@ -106,7 +106,7 @@ jobs:
       ARTIFACT_LOCAL_LOCATION: /opt/artifact
       GH_TOKEN: ${{ github.token }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
           token: ${{ secrets.GH_COMMIT_CHECK_TOKEN }}
