@@ -17,7 +17,7 @@ jobs:
       config-hash: ${{ steps.config-hash.outputs.config-hash }}
     steps:
       - name: Checkout main
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: main
 
@@ -91,7 +91,7 @@ jobs:
             echo "title_word=Errored" >> $GITHUB_OUTPUT
             echo "gh_label=type:repro-error" >> $GITHUB_OUTPUT
             echo "gh_label_desc=Repro check error" >> $GITHUB_OUTPUT
-            
+
           fi
           config=${{ github.event.repository.name }}
           echo "config=$config" >> $GITHUB_OUTPUT

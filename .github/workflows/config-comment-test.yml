@@ -47,7 +47,7 @@ jobs:
       model-config-tests-version: ${{ steps.repro-config.outputs.model-config-tests-version }}
     steps:
       - name: Checkout main
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: main
 
@@ -103,7 +103,7 @@ jobs:
     permissions:
       pull-requests: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
           fetch-tags: true
@@ -281,7 +281,7 @@ jobs:
       ARTIFACT_LOCAL_LOCATION: /opt/artifact
       GH_TOKEN: ${{ github.token }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
           token: ${{ secrets.GH_COMMIT_CHECK_TOKEN }}

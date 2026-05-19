@@ -12,7 +12,7 @@ jobs:
     outputs:
       refs: ${{ steps.get-scheduled-tests.outputs.refs }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: main
 

@@ -44,7 +44,7 @@ jobs:
     outputs:
       authorship: ${{ steps.head-commit.outputs.authorship }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: ${{ github.head_ref }}
 
@@ -67,7 +67,7 @@ jobs:
     permissions:
       pull-requests: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: ${{ github.head_ref }}
 
@@ -107,7 +107,7 @@ jobs:
       - name: Checkout main
         # We fetch the repository history because in `steps.compared` we
         # attempt to get the last config tag.
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: main
           fetch-depth: 0
@@ -159,12 +159,12 @@ jobs:
       checks: write
     steps:
       - name: Checkout PR ${{ github.event.pull_request.number }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Checkout model-config-tests requirements
         # This step checks out model-config-tests/pyproject.toml because it is
         # used as a cache key for model-config-tests in the next step
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: access-nri/model-config-tests
           path: model-config-tests
@@ -247,13 +247,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout PR Target
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ github.base_ref }}
           path: target
 
       - name: Checkout PR Source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ github.head_ref }}
           path: source

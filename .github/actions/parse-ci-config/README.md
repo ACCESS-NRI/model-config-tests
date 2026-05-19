@@ -25,10 +25,10 @@ This action parses the CI testing configuration file. The caller of the action n
 # ---------
     steps:
       - name: Checkout main
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: main
-      
+
       - name: Read scheduled test config
         id: scheduled-config
         uses: access-nri/model-config-tests/.github/actions/parse-ci-config@main

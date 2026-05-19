@@ -52,7 +52,7 @@ jobs:
       config-hash: ${{ steps.config-hash.outputs.config-hash }}
     steps:
       - name: Checkout main
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: main
 
@@ -125,7 +125,7 @@ jobs:
       ARTIFACT_LOCAL_LOCATION: /opt/artifact
       RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: ${{ inputs.config-branch-name }}
           fetch-depth: 0
