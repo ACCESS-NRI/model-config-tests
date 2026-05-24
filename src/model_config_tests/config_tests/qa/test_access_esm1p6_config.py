@@ -27,8 +27,8 @@ ACCESS_ESM1P6_REPOSITORY_NAME = "ACCESS-ESM1.6"
 VALID_REALMS: set[str] = {"atmos", "land", "ocean", "ocnBgchem", "seaIce"}
 VALID_KEYWORDS: set[str] = {"global", "access-esm1.6"}
 VALID_NOMINAL_RESOLUTION: str = "100 km"
-# TODO: Reference is pointing to ESM1.5 paper for now, update when ESM1.6 paper is ready
-VALID_REFERENCE_1p5: str = "https://doi.org/10.1071/ES19035"
+# TODO: Update this reference when ESM1.6 paper is ready
+VALID_REFERENCE_1p6: str = "https://doi.org/10.5281/zenodo.17490072"
 VALID_URL: str = "https://github.com/ACCESS-NRI/access-esm1.6-configs.git"
 VALID_RUNTIME: dict[str, int] = {"years": 1, "months": 0, "days": 0}
 VALID_RESTART_FREQ: str = "10YS"
@@ -153,7 +153,7 @@ class TestAccessEsm1p6:
             ("nominal_resolution", VALID_NOMINAL_RESOLUTION),
             ("model", ACCESS_ESM1P6_REPOSITORY_NAME),
             ("url", VALID_URL),
-            ("reference", VALID_REFERENCE_1p5),
+            ("reference", VALID_REFERENCE_1p6),
         ],
     )
     def test_metadata_field_equal_expected_value(self, field, expected, metadata):

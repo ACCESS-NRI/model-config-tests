@@ -40,13 +40,13 @@ CLONE_CONFIGS = {
     "esm1p6-amip": {
         "repo_url": "https://github.com/ACCESS-NRI/access-esm1.6-configs.git",
         "branch": "dev-amip",
-        "commit": "a875585",
+        "commit": "61bfbed",
     },
     # ACCESS-ESM1.6, branch: dev-preindustrial+concentrations
-    "esm1p6-prein": {
+    "esm1p6-piCtrl": {
         "repo_url": "https://github.com/ACCESS-NRI/access-esm1.6-configs.git",
         "branch": "dev-piControl",
-        "commit": "946134f",
+        "commit": "747d848",
     },
 }
 
