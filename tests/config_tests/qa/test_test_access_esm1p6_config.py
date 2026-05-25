@@ -4,7 +4,7 @@ import subprocess
 
 def test_test_access_esm1p6_config_release_release_preindustrial(isolated_config):
     """Test ACCESS-ESM1.6 specific config tests"""
-    branch_name, config_dir = isolated_config("esm1p6-amip")
+    branch_name, config_dir = isolated_config("esm1p6-piCtrl")
 
     if not config_dir.exists():
         raise FileNotFoundError(f"The test configuration {config_dir} does not exist.")

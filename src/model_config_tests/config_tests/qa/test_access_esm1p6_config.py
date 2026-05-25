@@ -27,8 +27,9 @@ ACCESS_ESM1P6_REPOSITORY_NAME = "ACCESS-ESM1.6"
 VALID_REALMS: set[str] = {"atmos", "land", "ocean", "ocnBgchem", "seaIce"}
 VALID_KEYWORDS: set[str] = {"global", "access-esm1.6"}
 VALID_NOMINAL_RESOLUTION: str = "100 km"
-# TODO: Add back in when valid DOI for ESM1.6 is obtained
-# VALID_REFERENCE: str = "https://doi.org/10.1071/ES19035"
+# TODO: Update this reference when ESM1.6 paper is ready
+VALID_REFERENCE_1p6: str = "https://doi.org/10.5281/zenodo.17490072"
+VALID_URL: str = "https://github.com/ACCESS-NRI/access-esm1.6-configs.git"
 VALID_RUNTIME: dict[str, int] = {"years": 1, "months": 0, "days": 0}
 VALID_RESTART_FREQ: str = "10YS"
 VALID_MPPNCCOMBINE_EXE: str = "mppnccombine.spack"
@@ -150,14 +151,28 @@ class TestAccessEsm1p6:
         "field,expected",
         [
             ("nominal_resolution", VALID_NOMINAL_RESOLUTION),
-            # TODO: Add back in when valid DOI for ESM1.6 is obtained (see commented constant above)
-            # ("reference", VALID_REFERENCE),
+            ("model", ACCESS_ESM1P6_REPOSITORY_NAME),
+            ("url", VALID_URL),
+            ("reference", VALID_REFERENCE_1p6),
         ],
     )
     def test_metadata_field_equal_expected_value(self, field, expected, metadata):
         assert field in metadata and metadata[field] == expected, error_field_incorrect(
             field, "metadata.yaml", expected
         )
+
+    @pytest.mark.parametrize(
+        "field",
+        [
+            ("description"),
+            ("notes"),
+        ],
+    )
+    def test_metadata_not_contain_esm1p5(self, field, metadata):
+        """Check that some fields in metadata do not contain 'ESM1.5', e.g., notes and description."""
+        assert (
+            field in metadata and "ESM1.5" not in metadata[field]
+        ), f"Field '{field}' in metadata.yaml should not contain 'ESM1.5'. "
 
     def test_config_runtime(self, config):
         assert (

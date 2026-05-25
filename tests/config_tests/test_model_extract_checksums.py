@@ -20,7 +20,7 @@ MODEL_NAMES = model_index.keys()
     [
         ("access", "esm1p5-prein", "output000", "checksums"),
         ("access-esm1.6", "esm1p6-amip", "amip-output000", "amip-checksums"),
-        ("access-esm1.6", "esm1p6-prein", "output000", "checksums"),
+        ("access-esm1.6", "esm1p6-piCtrl", "output000", "checksums"),
         ("access-om2", None, "output000", "checksums"),
         ("access-om3", None, "output000", "checksums"),
     ],
