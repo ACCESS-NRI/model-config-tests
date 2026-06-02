@@ -10,11 +10,19 @@ Code from these pytests is adapted from COSIMAS's ACCESS-OM2's [bit reproducibil
 
 ### How to run pytests manually on NCI
 
-1. Load payu module - this provides the dependencies needed to run the model
+1. Load payu module - this provides the dependencies needed to run the model.
 
     ```sh
     module use /g/data/vk83/modules
     module load payu
+    ```
+
+    Some model configurations may require a minimum payu version, specified in `config.yaml` as `payu_minimum_version`. Please ensure that your loaded payu module meets the requirement. 
+    If you need to run the model with a development version of payu, please use `payu/dev` instead:
+
+    ```sh
+    module use /g/data/vk83/modules
+    module load payu/dev
     ```
 
 2. Create and activate a python virtual environment for installing and running tests
