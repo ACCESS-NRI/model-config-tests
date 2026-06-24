@@ -21,7 +21,7 @@ Code from these pytests is adapted from COSIMAS's ACCESS-OM2's [bit reproducibil
     If you need to run the model with a development version of payu, please use `payu/dev` instead:
 
     ```sh
-    module use /g/data/vk83/modules
+    module use /g/data/vk83/prerelease/modules/
     module load payu/dev
     ```
 
@@ -330,3 +330,8 @@ If a PR was being merged into a `release-1deg_jra55do_ryf` branch, the QA tests 
 
 If a PR was being merged into a `dev-example-branch`, the QA tests that run automatically would use the `dev_config` tests and if repro tests were triggered manually, then it would use the `repro and (not slow)` tests.
 For both test types, it would use the latest changes in the `model-config-tests` repository. For repro tests, it would use the `payu/dev` module on NCI for running the model.
+
+### Release A New Version
+
+The model-config-tests repository is actively maintained.
+A new release should be published at least every three months to ensure that updates are available to model configurations.
