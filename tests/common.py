@@ -15,8 +15,8 @@ CLONE_CONFIGS = {
     # ACCESS-OM2, branch: dev-025deg_jra55_iaf_bgc
     "om2-025deg": {
         "repo_url": "https://github.com/ACCESS-NRI/access-om2-configs.git",
-        "branch": "dev-025deg_jra55_iaf_bgc",
-        "commit": "bf3f0e2",
+        "branch": "release-025deg_jra55_iaf",
+        "commit": "28acc02",
     },
     # ACCESS-OM3, branch: dev-MC_100km_jra_ryf
     "om3-100km": {
@@ -27,8 +27,8 @@ CLONE_CONFIGS = {
     # ACCESS-OM3, branch: dev-MCW_100km_jra_ryf
     "om3-100km-wav": {
         "repo_url": "https://github.com/ACCESS-NRI/access-om3-configs.git",
-        "branch": "dev-MCW_100km_jra_ryf",
-        "commit": "d7a19b4",
+        "branch": "dev-MCW_100km_jra_iaf",
+        "commit": "f65fd4a",
     },
     # ACCESS-ESM1.5, branch: release-preindustrial+concentrations
     "esm1p5-prein": {
