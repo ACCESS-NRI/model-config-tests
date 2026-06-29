@@ -196,17 +196,27 @@ def test_experiment_submit_payu_run_error(mock_run, exp):
     setup_success = Mock()
     setup_success.stdout = "Setup successful"
     setup_success.returncode = 0
+
+    run_return_code = 1
+    run_error_stdout = "Example stdout"
+    run_error_stderr = "Example stderr"
     mock_run.side_effect = [
         setup_success,
         subprocess.CalledProcessError(
-            returncode=1, cmd="payu run", output="Some error"
+            returncode=run_return_code,
+            cmd="payu run",
+            output=run_error_stdout,
+            stderr=run_error_stderr,
         ),
     ]
 
-    with pytest.raises(RuntimeError, match="Failed to submit payu run.*"):
+    with pytest.raises(RuntimeError, match="Failed to submit payu run.*") as exec_info:
         exp.submit_payu_run()
 
     assert exp.run_id is None
+    assert f"--- stdout ---\n{run_error_stdout}" in str(exec_info.value)
+    assert f"--- stderr ---\n{run_error_stderr}" in str(exec_info.value)
+    assert f"Return code: {run_return_code}" in str(exec_info.value)
 
 
 @pytest.mark.parametrize(

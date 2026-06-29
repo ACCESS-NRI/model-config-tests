@@ -223,6 +223,7 @@ but `payu setup` will take longer to run as it needs to re-calculate all the md5
             # Change to experiment directory and run.
             os.chdir(self.control_path)
 
+            # Run payu setup command
             print("Running payu setup")
             result = sp.run(
                 ["payu", "setup", "--lab", str(self.lab_path)],
@@ -240,6 +241,7 @@ but `payu setup` will take longer to run as it needs to re-calculate all the md5
                 print(error_msg)
                 raise RuntimeError(error_msg)
 
+            # Run payu sweep command
             print("Running payu sweep")
             sp.run(
                 ["payu", "sweep", "--lab", str(self.lab_path)],
@@ -248,6 +250,7 @@ but `payu setup` will take longer to run as it needs to re-calculate all the md5
                 check=True,
             )
 
+            # Run payu run command
             run_command = ["payu", "run", "--lab", str(self.lab_path)]
             if n_runs:
                 run_command.extend(["--nruns", str(n_runs)])
@@ -255,8 +258,14 @@ but `payu setup` will take longer to run as it needs to re-calculate all the md5
             result = sp.run(run_command, capture_output=True, text=True, check=True)
             self.run_id = parse_run_id(result.stdout)
             print(f"Run Job ID: {self.run_id}")
+
         except sp.CalledProcessError as e:
-            raise RuntimeError(f"Failed to submit payu run. Error: {e}")
+            raise RuntimeError(
+                f"Failed to submit payu run:\n"
+                f"Return code: {e.returncode}\n"
+                f"--- stdout ---\n{e.stdout}\n"
+                f"--- stderr ---\n{e.stderr}"
+            )
         finally:
             # Change back to original working directory
             os.chdir(owd)
