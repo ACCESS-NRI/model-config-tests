@@ -14,6 +14,7 @@ from model_config_tests.exp_test_helper import (
     parse_gadi_pbs_ids,
     parse_pbs_submitted_jobs,
     parse_run_id,
+    setup_exp,
     wait_for_payu_jobs,
 )
 from model_config_tests.models.accessom3 import AccessOm3
@@ -656,3 +657,44 @@ index abc123...zyx789 100111
 
     # assert returning to the original work directory
     assert Path.cwd() == owd
+
+
+@pytest.mark.parametrize(
+    "model_name, config_name, control_name, expected_exp_name",
+    [
+        # ACCESS-ESM1.5 models
+        ("access", "esm1p5-prein", "control", "control-test_exp"),
+        ("access", "esm1p5-prein", "base-experiment", "test_exp"),
+        # ACCESS-OM2 models
+        ("access-om2", "om2-1deg", "control", "control-test_exp"),
+        ("access-om2", "om2-1deg", "base-experiment", "test_exp"),
+        # ACCESS-OM3 models
+        ("access-om3", "om3-100km", "control", "control-test_exp"),
+        ("access-om3", "om3-100km", "base-experiment", "test_exp"),
+    ],
+)
+def test_setup_exp_correct_config(
+    tmp_path, isolated_config, model_name, config_name, control_name, expected_exp_name
+):
+    """Test that setup_exp writes correct information into the config file"""
+    # Set up control and output directories
+    control_path = tmp_path / control_name
+    control_path.mkdir()
+    output_path = tmp_path / "output"
+    output_path.mkdir()
+
+    # Copy the config.yaml from the isolated config directory to the control path
+    _, config_dir = isolated_config(config_name)
+    shutil.move(str(config_dir / "config.yaml"), control_path / "config.yaml")
+
+    # Run the setup_exp function
+    exp = setup_exp(
+        control_path=control_path, output_path=output_path, exp_name="test_exp"
+    )
+
+    # Check that the config file has the expected values
+    config = yaml.safe_load(exp.config_path.open())
+    assert config["experiment"] == expected_exp_name
+    assert not config["runlog"]
+    assert not config["metadata"]["enable"]
+    assert config["laboratory"] == str(exp.lab_path)
