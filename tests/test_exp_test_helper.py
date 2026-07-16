@@ -660,21 +660,15 @@ index abc123...zyx789 100111
 
 
 @pytest.mark.parametrize(
-    "model_name, config_name, control_name, expected_exp_name",
+    "config_name, control_name, expected_exp_name",
     [
-        # ACCESS-ESM1.5 models
-        ("access", "esm1p5-prein", "control", "control-test_exp"),
-        ("access", "esm1p5-prein", "base-experiment", "test_exp"),
-        # ACCESS-OM2 models
-        ("access-om2", "om2-1deg", "control", "control-test_exp"),
-        ("access-om2", "om2-1deg", "base-experiment", "test_exp"),
-        # ACCESS-OM3 models
-        ("access-om3", "om3-100km", "control", "control-test_exp"),
-        ("access-om3", "om3-100km", "base-experiment", "test_exp"),
+        # Use ACCESS-ESM1.5 models. Since there is no model-specifi logic, only pick one model to test
+        ("esm1p5-prein", "control", "control-test_exp"),
+        ("esm1p5-prein", "base-experiment", "test_exp"),
     ],
 )
 def test_setup_exp_correct_config(
-    tmp_path, isolated_config, model_name, config_name, control_name, expected_exp_name
+    tmp_path, isolated_config, config_name, control_name, expected_exp_name
 ):
     """Test that setup_exp writes correct information into the config file"""
     # Set up control and output directories
