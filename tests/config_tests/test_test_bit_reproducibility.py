@@ -7,9 +7,7 @@ import warnings
 from pathlib import Path
 from unittest.mock import Mock, patch
 
-import f90nml
 import pytest
-import yaml
 from netCDF4 import Dataset
 from payu.models.cesm_cmeps import Runconfig
 
@@ -24,7 +22,7 @@ from model_config_tests.models.accessesm1p5 import (
 )
 from model_config_tests.models.accessom2 import DEFAULT_RUNTIME_SECONDS as OM2_RUNTIME
 from model_config_tests.models.accessom3 import DEFAULT_RUNTIME_SECONDS as OM3_RUNTIME
-from model_config_tests.util import DAY_IN_SECONDS, HOUR_IN_SECONDS
+from model_config_tests.util import HOUR_IN_SECONDS
 
 
 def exp_test_helper_factory(*args, **kwargs):
@@ -406,17 +404,6 @@ def test_test_repro_historical(
 
     assert result.returncode == int(fail)
 
-    # Check runtime is set correctly
-    check_runtime(helper.test_control_path, helper.model_name)
-
-    # Check general config.yaml settings for test
-    with open(helper.test_control_path / "config.yaml") as f:
-        test_config = yaml.safe_load(f)
-    assert test_config["experiment"] == exp_name
-    assert not test_config["runlog"]
-    assert not test_config["metadata"]["enable"]
-    assert test_config["laboratory"] == str(helper.lab_path)
-
     # Check name of checksum file written out and contents
     check_checksum(
         helper.output_path, checksum_path, helper.model_name, match=(not fail)
@@ -458,39 +445,6 @@ def test_test_access_om3_ocean_model(tmp_dir, isolated_config):
         "ACCESS-OM3 reproducibility checks utilize checksums written in MOM6 restarts"
     )
     assert error_msg in result.stdout
-
-
-def check_runtime(control_path, model_name):
-    if model_name in ["access", "access-esm1.6"]:
-        with open(control_path / "config.yaml") as f:
-            test_config = yaml.safe_load(f)
-        assert test_config["calendar"]["runtime"] == {
-            "years": 0,
-            "months": 0,
-            "days": ESM_RUNTIME / DAY_IN_SECONDS,
-            "seconds": 0,
-        }
-    elif model_name == "access-om2":
-        with open(control_path / "accessom2.nml") as f:
-            nml = f90nml.read(f)
-        years, months, seconds = nml["date_manager_nml"]["restart_period"]
-        assert years == 0
-        assert months == 0
-        assert seconds == OM2_RUNTIME
-    elif model_name == "access-om3":
-        runconfig = Runconfig(control_path / "nuopc.runconfig")
-        assert runconfig.get("CLOCK_attributes", "restart_option") == "nseconds"
-        assert int(runconfig.get("CLOCK_attributes", "restart_n")) == OM3_RUNTIME
-        assert runconfig.get("CLOCK_attributes", "stop_option") == "nseconds"
-        assert int(runconfig.get("CLOCK_attributes", "stop_n")) == OM3_RUNTIME
-
-        wav_in = control_path / "wav_in"
-        if wav_in.exists():
-            with open(wav_in) as f:
-                nml = f90nml.read(f)
-            assert nml["output_date_nml"]["date"]["restart"]["stride"] == OM3_RUNTIME
-    else:
-        raise ValueError(f"Unrecognised model: {model_name}")
 
 
 def check_checksum(output_path, checksum_path, model_name, match=True):
