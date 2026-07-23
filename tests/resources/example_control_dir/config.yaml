@@ -1,0 +1,58 @@
+# Example payu configuration for ACCESS-OM2
+# This is a minimal example demonstrating the typical structure of a config.yaml file
+
+# PBS job submission settings
+queue: normal
+ncpus: 240
+jobfs: 10GB
+mem: 960GB
+
+walltime: 02:00:00
+jobname: example_1deg_jra55do_ryf
+
+# Model configuration
+name: common
+model: access-om2
+input:
+    - /g/data/vk83/experiments/inputs/access-om2/remapping_weights/JRA55/global.1deg/2020.05.30/JRA55_MOM1_conserve2nd.nc
+  
+submodels:
+  - name: atmosphere
+    model: yatm
+    exe: yatm.exe
+    input: 
+      - /g/data/vk83/experiments/inputs/access-om2/remapping_weights/JRA55/global.1deg/2020.05.30/rmp_jrar_to_cict_CONSERV.nc
+      - /g/data/vk83/experiments/inputs/JRA-55/RYF/v1-4/data
+    ncpus: 1
+
+  - name: ocean
+    model: mom
+    exe: mom5_access_om
+    input:
+      - /g/data/vk83/experiments/inputs/access-om2/ocean/grids/vertical/global.1deg/2020.10.22/ocean_vgrid.nc
+      - /g/data/vk83/experiments/inputs/access-om2/ocean/processor_masks/global.1deg/216.16x15/2020.05.30/ocean_mask_table
+    ncpus: 216
+
+  - name: ice
+    model: cice5
+    exe: cice_auscom_360x300_15x300.exe
+    input:
+      - /g/data/vk83/experiments/inputs/access-om2/ice/grids/global.1deg/2024.04.17/grid.nc
+      - /g/data/vk83/experiments/inputs/access-om2/ice/grids/global.1deg/2024.04.17/kmt.nc
+    ncpus: 24
+
+# Misc
+runlog: true
+stacksize: unlimited
+restart_freq: 5YS
+
+# Modules for loading model executables
+modules:
+  use:
+      - /g/data/vk83/modules
+  load:
+      - access-om2/2026.05.000
+      - model-tools/fre-nctools/2024.05-1
+
+# Minimum payu version requirement
+payu_minimum_version: 1.1.6

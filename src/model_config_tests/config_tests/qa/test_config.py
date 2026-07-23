@@ -28,6 +28,10 @@ LICENSE_URL = "https://creativecommons.org/licenses/by/4.0/legalcode.txt"
 # Release modules location on NCI
 RELEASE_MODULE_LOCATION = "/g/data/vk83/modules"
 
+# Model config inputs repository for input file MD5 verification
+MODEL_CONFIG_INPUTS_REPO = "https://github.com/ACCESS-NRI/model-config-inputs"
+MODEL_CONFIG_INPUTS_RAW_URL = "https://raw.githubusercontent.com/ACCESS-NRI/model-config-inputs/main"
+
 
 def insist_array(str_or_array):
     if isinstance(str_or_array, str):
@@ -92,6 +96,11 @@ class TestRelConfig:
             "Executable reproducibility should be enforced, e.g set:\n"
             + "manifest:\n    reproduce:\n        exe: True"
         )
+
+    def test_manifest_input_match_repo(self, control_path, config):
+        """Check that input file MD5 hashes in manifests/input.yaml match 
+        those from model-config-inputs repository"""
+        compare_input_md5_hashes(control_path, config)
 
     def test_metadata_is_enabled(self, config):
         if "metadata" in config and "enable" in config["metadata"]:
@@ -363,4 +372,188 @@ def check_manifest_exes_in_spack_location(
             f"Expected 'exe: {exe_name}' for model/submodel in config.yaml. "
             "Only the name of the executable is needed, as the full path is "
             f"determined by payu (which searches PATHs added by {model_module_name} module)"
+        )
+
+
+def read_input_fullpaths_from_config(config: dict[str, Any]) -> list[str]:
+    """Extract all input file fullpaths from config.yaml.
+
+    Parameters
+    ----------
+    config : Dict[str, Any]
+        The contents of the config.yaml file
+
+    Returns
+    -------
+    list[str]
+        List of fullpaths to input files
+    """
+    fullpaths = []
+
+    # Get top-level input paths
+    if "input" in config:
+        input_paths = insist_array(config["input"])
+        input_paths = [p.replace("/g/data/vk83/experiments", "/g/data/vk83/configurations") for p in input_paths]
+        fullpaths.extend(input_paths)
+
+    # Get submodel input paths
+    for submodel in config.get("submodels", []):
+        if "input" in submodel:
+            submodel_input_paths = insist_array(submodel["input"])
+            submodel_input_paths = [p.replace("/g/data/vk83/experiments", "/g/data/vk83/configurations") for p in submodel_input_paths]
+            fullpaths.extend(submodel_input_paths)
+
+    return fullpaths
+
+
+def read_manifest_input_hashes(control_path: Path) -> dict[str, str]:
+    """Read MD5 hashes from manifests/input.yaml.
+
+    Parameters
+    ----------
+    control_path : Path
+        Path to the local control directory containing the manifest file
+
+    Returns
+    -------
+    dict[str, str]
+        Dictionary mapping fullpath to MD5 hash
+    """
+
+    # This YAML manifest files have headers and data, separated by `---`
+    # The actual data is after the --- separator
+    manifest_path = control_path / "manifests" / "input.yaml"
+    with open(manifest_path) as f:
+        docs = list(yaml.safe_load_all(f))
+    data = docs[-1] if docs else {}
+
+    local_input = {}
+    for _, file_info in data.items():
+        fullpath = file_info.get("fullpath")
+        fullpath = fullpath.replace("/g/data/vk83/experiments", "/g/data/vk83/configurations")
+        md5hash = file_info.get("hashes", {}).get("md5", None)
+        local_input[fullpath] = md5hash
+
+    return local_input
+
+
+def cache_manifest_from_input_repo(manifest_url, manifest_cache):
+    """Fetch and cache the manifest file from model-config-inputs repository."""
+    # Only fetch the manifest file if it is not already cached
+    if manifest_url not in manifest_cache:
+        response = requests.get(manifest_url)
+        assert response.status_code == 200, (
+                f"Failed to fetch manifest file from {manifest_url}: "
+                f"HTTP {response.status_code}"
+            )
+        # YAML manifest files have headers and data, separated by `---`
+        # The actual data is after the --- separator
+        docs = list(yaml.safe_load_all(response.text))
+        manifest_cache[manifest_url] = docs[-1] if docs else {}
+
+    return manifest_cache
+
+
+def _extract_md5_from_repo_response(fullpath, file_info, manifest_url):
+    """Extract the md5 hash for a given fullpath from the manifest file fetched from the model-config-inputs repository."""
+    # Check if the fullpath in the input repo matches the fullpath from config.yaml
+    if fullpath == file_info.get("fullpath"):
+        return file_info.get("hashes", {}).get("md5", None)
+
+    else:
+        # If fullpath not matching, raise an error
+        raise RuntimeError(
+            f"Fullpath in config.yaml \"{fullpath}\" does not match the one \"{file_info.get('fullpath')}\" in model-config-inputs repo {manifest_url}."
+        )
+
+def fetch_input_md5_hashes_from_repo(fullpaths: list[str]) -> dict[str, str]:
+    """Fetch MD5 hashes for input files from model-config-inputs repository.
+    
+    The repo contains .manifest.yaml files that store MD5 hashes for input files.
+    Path mapping: /g/data/vk83/configurations/inputs/access-om2/subdir/file.nc
+    maps to: access-om2/subdir/.manifest.yaml
+
+    Parameters
+    ----------
+    fullpaths : list[str]
+        List of fullpaths to input files
+
+    Returns
+    -------
+    dict[str, str]
+        Dictionary mapping fullpath to MD5 hash from repo
+    """
+    model_config_input = {}
+    manifest_cache = {}  # {manifest_url1: manifest_data1, manifest_url2: manifest_data2, ...}, cached from input repo
+
+    for fullpath in fullpaths:
+        # Check if fullpath is a file
+        if Path(fullpath).is_file():
+            # Build the manifest file url on the model-config-inputs repo
+            path = fullpath.split("/inputs/")[-1]
+            manifest_url = f"{MODEL_CONFIG_INPUTS_RAW_URL}/{Path(path).parent}/.manifest.yaml"
+        
+            # Cache the manifest file from model-config-inputs repo
+            manifest_cache = cache_manifest_from_input_repo(manifest_url, manifest_cache)
+
+            # Extract the input information for the current fullpath
+            file_name = Path(fullpath).name
+            file_info = manifest_cache[manifest_url].get(file_name, {})
+
+            # Extract the md5 hash for the current fullpath file
+            md5hash = _extract_md5_from_repo_response(fullpath, file_info, manifest_url)
+            model_config_input[fullpath] = md5hash
+
+        # If full path is a directory
+        elif Path(fullpath).is_dir():
+            # Build the manifest file url on the model-config-inputs repo
+            path = fullpath.split("/inputs/")[-1]
+            manifest_url = f"{MODEL_CONFIG_INPUTS_RAW_URL}/{path}/.manifest.yaml"
+
+            # Cache the manifest file from model-config-inputs repo
+            manifest_cache = cache_manifest_from_input_repo(manifest_url, manifest_cache)
+
+            # Extract all fullpath and md5 hashes in this manifest file
+            for file_name, file_info in manifest_cache[manifest_url].items():
+                # Build the complete fullpath for each file in the directory
+                complete_fullpath = f"{fullpath}/{file_name}"
+
+                # Extract the md5 hash for each file in the directory
+                md5hash = _extract_md5_from_repo_response(complete_fullpath, file_info, manifest_url)
+                model_config_input[complete_fullpath] = md5hash
+
+    return model_config_input
+
+
+def compare_input_md5_hashes(control_path: Path, config: dict[str, Any]):
+    """Check that input file MD5 hashes match those in manifests/input.yaml
+    and from model-config-inputs repository.
+
+    Parameters
+    ----------
+    control_path : Path
+        Path to the model configuration directory
+    config : Dict[str, Any]
+        The contents of the config.yaml file
+
+    Raises
+    ------
+    AssertionError
+        If MD5 hashes do not match or files are not found
+    """
+    # Get input fullpaths from config.yaml
+    fullpaths = read_input_fullpaths_from_config(config)
+
+    # Read local MD5 hashes from manifests/input.yaml
+    local_input = read_manifest_input_hashes(control_path)
+
+    # Fetch MD5 hashes from model-config-inputs repo
+    repo_hashes = fetch_input_md5_hashes_from_repo(fullpaths)
+
+    # Compare hashes for each input file
+    for fullpath, repo_hash in repo_hashes.items():
+        local_hash = local_input.get(fullpath)
+        assert repo_hash == local_hash, (
+            f"MD5 hash mismatch for {fullpath}: "
+            f"repo hash: {repo_hash}, local manifest hash: {local_hash}"
         )
