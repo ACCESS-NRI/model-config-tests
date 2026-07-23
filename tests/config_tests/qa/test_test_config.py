@@ -181,18 +181,36 @@ def test_fetch_input_md5_hashes_from_repo():
     """Test that the fetch_input_md5_hashes_from_repo function loads the
     correct md5 hashes from model-config-inputs repository."""
 
-    # Mock requests.get to return a predefined manifest response, instead of actually
-    # fetching it from the model-config-inputs repository.
+    # Mock requests.get to return a predefined manifest response.
+    # URLs not present in mock_input_response simulate a missing manifest file (HTTP 404), so that
+    # fetch_input_md5_hashes_from_repo falls back to treating the path as a directory.
     def mock_requests_get(manifest_url):
         response = Mock()
-        response.status_code = 200
-        response.text = mock_input_response[manifest_url]
+        if manifest_url in mock_input_response:
+            response.status_code = 200
+            response.text = mock_input_response[manifest_url]
+        else:
+            response.status_code = 404
         return response
 
     with patch("requests.get", side_effect=mock_requests_get):
         assert expected_hashes_from_repo == fetch_input_md5_hashes_from_repo(
             expected_fullpaths
         )
+
+
+def test_fetch_input_md5_hashes_from_repo_invalid():
+    """Test that the fetch_input_md5_hashes_from_repo() raises an error with an invalid input file."""
+
+    # Mock requests.get to return a 404 for all URLs, simulating missing manifests
+    def mock_requests_get(manifest_url):
+        response = Mock()
+        response.status_code = 502
+        return response
+
+    with patch("requests.get", side_effect=mock_requests_get):
+        with pytest.raises(RuntimeError, match="Failed to fetch MD5 hash"):
+            fetch_input_md5_hashes_from_repo(expected_fullpaths)
 
 
 def test_read_manifest_input_hashes():

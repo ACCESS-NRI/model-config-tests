@@ -29,10 +29,14 @@ LICENSE_URL = "https://creativecommons.org/licenses/by/4.0/legalcode.txt"
 RELEASE_MODULE_LOCATION = "/g/data/vk83/modules"
 
 # Model config inputs repository for input file MD5 verification
-MODEL_CONFIG_INPUTS_REPO = "https://github.com/ACCESS-NRI/model-config-inputs"
 MODEL_CONFIG_INPUTS_RAW_URL = (
     "https://raw.githubusercontent.com/ACCESS-NRI/model-config-inputs/main"
 )
+
+
+class ManifestNotFoundError(Exception):
+    """Raised when a .manifest.yaml file does not exist (HTTP 404) at the
+    expected location in the model-config-inputs repository."""
 
 
 def insist_array(str_or_array):
@@ -452,6 +456,8 @@ def _cache_manifest_from_input_repo(manifest_url, manifest_cache):
     # Only fetch the manifest file if it is not already cached
     if manifest_url not in manifest_cache:
         response = requests.get(manifest_url)
+        if response.status_code == 404:
+            raise ManifestNotFoundError(f"URL not found: {manifest_url}")
         if response.status_code != 200:
             raise RuntimeError(
                 f"Failed to fetch manifest file from {manifest_url}: "
@@ -504,8 +510,10 @@ def fetch_input_md5_hashes_from_repo(fullpaths: list[str]) -> dict[str, str]:
     )  # {manifest_url1: manifest_data1, manifest_url2: manifest_data2, ...}, cached from input repo
 
     for fullpath in fullpaths:
-        # Check if fullpath is a file
-        if Path(fullpath).is_file():
+        # Try treating fullpath as a file first: the manifest lives in its
+        # parent directory. If no manifest is found there (404), fall back to
+        # treating fullpath as a directory where manifest lives.
+        try:
             # Build the manifest file url on the model-config-inputs repo
             path = fullpath.split("/inputs/")[-1]
             manifest_url = (
@@ -525,9 +533,8 @@ def fetch_input_md5_hashes_from_repo(fullpaths: list[str]) -> dict[str, str]:
             md5hash = _extract_md5_from_repo_response(fullpath, file_info, manifest_url)
             model_config_input[fullpath] = md5hash
 
-        # If full path is a directory
-        elif Path(fullpath).is_dir():
-            # Build the manifest file url on the model-config-inputs repo
+        # If no manifest was found assuming fullpath is a file, treat it as a directory
+        except ManifestNotFoundError:
             path = fullpath.split("/inputs/")[-1]
             manifest_url = f"{MODEL_CONFIG_INPUTS_RAW_URL}/{path}/.manifest.yaml"
 
@@ -546,6 +553,11 @@ def fetch_input_md5_hashes_from_repo(fullpaths: list[str]) -> dict[str, str]:
                     complete_fullpath, file_info, manifest_url
                 )
                 model_config_input[complete_fullpath] = md5hash
+
+        except Exception as e:
+            raise RuntimeError(
+                f"Failed to fetch MD5 hash for {fullpath} from model-config-inputs repo: {e}"
+            )
 
     return model_config_input
 
