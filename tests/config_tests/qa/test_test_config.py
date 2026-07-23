@@ -23,6 +23,7 @@ from tests.resources.expected_md5hash import (
     expected_fullpaths,
     expected_hashes_from_repo,
     expected_local_hashes,
+    mock_input_response,
 )
 
 
@@ -177,11 +178,21 @@ def test_read_input_fullpaths_from_config():
 
 
 def test_fetch_input_md5_hashes_from_repo():
-    """Test that the fetch_input_md5_hashes_from_repo function fetches
+    """Test that the fetch_input_md5_hashes_from_repo function loads the
     correct md5 hashes from model-config-inputs repository."""
-    assert expected_hashes_from_repo == fetch_input_md5_hashes_from_repo(
-        expected_fullpaths
-    )
+
+    # Mock requests.get to return a predefined manifest response, instead of actually
+    # fetching it from the model-config-inputs repository.
+    def mock_requests_get(manifest_url):
+        response = Mock()
+        response.status_code = 200
+        response.text = mock_input_response[manifest_url]
+        return response
+
+    with patch("requests.get", side_effect=mock_requests_get):
+        assert expected_hashes_from_repo == fetch_input_md5_hashes_from_repo(
+            expected_fullpaths
+        )
 
 
 def test_read_manifest_input_hashes():

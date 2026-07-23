@@ -447,19 +447,23 @@ def read_manifest_input_hashes(control_path: Path) -> dict[str, str]:
     return local_input
 
 
-def cache_manifest_from_input_repo(manifest_url, manifest_cache):
+def _cache_manifest_from_input_repo(manifest_url, manifest_cache):
     """Fetch and cache the manifest file from model-config-inputs repository."""
     # Only fetch the manifest file if it is not already cached
     if manifest_url not in manifest_cache:
         response = requests.get(manifest_url)
-        assert response.status_code == 200, (
-            f"Failed to fetch manifest file from {manifest_url}: "
-            f"HTTP {response.status_code}"
-        )
+        if response.status_code != 200:
+            raise RuntimeError(
+                f"Failed to fetch manifest file from {manifest_url}: "
+                f"HTTP {response.status_code}"
+            )
+        if not response.text:
+            raise RuntimeError(f"Manifest file from {manifest_url} is empty.")
+
         # YAML manifest files have headers and data, separated by `---`
         # The actual data is after the --- separator
         docs = list(yaml.safe_load_all(response.text))
-        manifest_cache[manifest_url] = docs[-1] if docs else {}
+        manifest_cache[manifest_url] = docs[-1]
 
     return manifest_cache
 
@@ -509,7 +513,7 @@ def fetch_input_md5_hashes_from_repo(fullpaths: list[str]) -> dict[str, str]:
             )
 
             # Cache the manifest file from model-config-inputs repo
-            manifest_cache = cache_manifest_from_input_repo(
+            manifest_cache = _cache_manifest_from_input_repo(
                 manifest_url, manifest_cache
             )
 
@@ -528,7 +532,7 @@ def fetch_input_md5_hashes_from_repo(fullpaths: list[str]) -> dict[str, str]:
             manifest_url = f"{MODEL_CONFIG_INPUTS_RAW_URL}/{path}/.manifest.yaml"
 
             # Cache the manifest file from model-config-inputs repo
-            manifest_cache = cache_manifest_from_input_repo(
+            manifest_cache = _cache_manifest_from_input_repo(
                 manifest_url, manifest_cache
             )
 
