@@ -1,21 +1,29 @@
 import shlex
 import subprocess
 import warnings
-import yaml
 from pathlib import Path
 from unittest.mock import Mock, patch
 
 import pytest
+import yaml
 
 # Disable specific warnings from test_config tests
 warnings.filterwarnings("ignore", category=pytest.PytestUnknownMarkWarning)
 from model_config_tests.config_tests.qa.test_config import TestConfig as ConfigValidator
-from model_config_tests.config_tests.qa.test_config import get_spack_location_file
-from model_config_tests.config_tests.qa.test_config import read_input_fullpaths_from_config, fetch_input_md5_hashes_from_repo
-from model_config_tests.config_tests.qa.test_config import read_manifest_input_hashes, compare_input_md5_hashes
+from model_config_tests.config_tests.qa.test_config import (
+    compare_input_md5_hashes,
+    fetch_input_md5_hashes_from_repo,
+    get_spack_location_file,
+    read_input_fullpaths_from_config,
+    read_manifest_input_hashes,
+)
 
 # Import test fixtures
-from tests.resources.expected_md5hash import *
+from tests.resources.expected_md5hash import (
+    expected_fullpaths,
+    expected_hashes_from_repo,
+    expected_local_hashes,
+)
 
 
 def test_test_config_access_om2(tmp_path, isolated_config):
@@ -155,13 +163,15 @@ def test_test_sync_path_not_exists(checker):
 def test_read_input_fullpaths_from_config():
     """Test that the get_input_fullpaths_from_config function properly extracts input full paths from config."""
     # Load example config file
-    control_path = Path(__file__).parent.parent.parent / "resources" / "example_control_dir"
-    with open(control_path / "config.yaml", "r") as f:
+    control_path = (
+        Path(__file__).parent.parent.parent / "resources" / "example_control_dir"
+    )
+    with open(control_path / "config.yaml") as f:
         config = yaml.safe_load(f)
-    
+
     # Extract fullpaths using the function being tested
     fullpaths = read_input_fullpaths_from_config(config)
-    
+
     # Assert that the extracted fullpaths match the expected list
     assert fullpaths == expected_fullpaths
 
@@ -169,13 +179,18 @@ def test_read_input_fullpaths_from_config():
 def test_fetch_input_md5_hashes_from_repo():
     """Test that the fetch_input_md5_hashes_from_repo function fetches
     correct md5 hashes from model-config-inputs repository."""
-    assert expected_hashes_from_repo == fetch_input_md5_hashes_from_repo(expected_fullpaths)
+    assert expected_hashes_from_repo == fetch_input_md5_hashes_from_repo(
+        expected_fullpaths
+    )
+
 
 def test_read_manifest_input_hashes():
     """Test that the read_manifest_input_hashes function reads
     correct md5 hashes from the manifest file."""
     # Load example manifest file
-    control_path = Path(__file__).parent.parent.parent / "resources" / "example_control_dir"
+    control_path = (
+        Path(__file__).parent.parent.parent / "resources" / "example_control_dir"
+    )
 
     # Assert that the extracted md5 hashes match the expected dictionary
     assert read_manifest_input_hashes(control_path) == expected_local_hashes
@@ -184,9 +199,11 @@ def test_read_manifest_input_hashes():
 def test_compare_input_md5_hashes():
     """Test that the compare_input_md5_hashes function correctly compares
     MD5 hashes between local manifests and the model-config-inputs repository."""
-    control_path = Path(__file__).parent.parent.parent / "resources" / "example_control_dir"
+    control_path = (
+        Path(__file__).parent.parent.parent / "resources" / "example_control_dir"
+    )
     config_path = control_path / "config.yaml"
-    with open(config_path, "r") as f:
+    with open(config_path) as f:
         config = yaml.safe_load(f)
 
     compare_input_md5_hashes(control_path, config)
