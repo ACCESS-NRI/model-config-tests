@@ -9,14 +9,18 @@ import yaml
 
 # Disable specific warnings from test_config tests
 warnings.filterwarnings("ignore", category=pytest.PytestUnknownMarkWarning)
-from model_config_tests.config_tests.qa.test_config import TestConfig as ConfigValidator
 from model_config_tests.config_tests.qa.test_config import (
+    MODEL_CONFIG_INPUTS_LOCATION,
+    MODEL_CONFIG_INPUTS_PRERELEASE,
+    PUBLISH_DATA_LOCATION,
+    check_allowed_config_location,
     compare_input_md5_hashes,
     fetch_input_md5_hashes_from_repo,
     get_spack_location_file,
     read_input_fullpaths_from_config,
     read_manifest_input_hashes,
 )
+from model_config_tests.config_tests.qa.test_config import TestConfig as ConfigValidator
 
 # Import test fixtures
 from tests.resources.expected_md5hash import (
@@ -184,7 +188,7 @@ def test_fetch_input_md5_hashes_from_repo():
     # Mock requests.get to return a predefined manifest response.
     # URLs not present in mock_input_response simulate a missing manifest file (HTTP 404), so that
     # fetch_input_md5_hashes_from_repo falls back to treating the path as a directory.
-    def mock_requests_get(manifest_url):
+    def mock_requests_get(manifest_url, timeout):
         response = Mock()
         if manifest_url in mock_input_response:
             response.status_code = 200
@@ -203,7 +207,7 @@ def test_fetch_input_md5_hashes_from_repo_invalid():
     """Test that the fetch_input_md5_hashes_from_repo() raises an error with an invalid input file."""
 
     # Mock requests.get to return a 404 for all URLs, simulating missing manifests
-    def mock_requests_get(manifest_url):
+    def mock_requests_get(manifest_url, timeout):
         response = Mock()
         response.status_code = 502
         return response
@@ -236,3 +240,52 @@ def test_compare_input_md5_hashes():
         config = yaml.safe_load(f)
 
     compare_input_md5_hashes(control_path, config)
+
+
+@pytest.mark.parametrize(
+    "fullpaths, branch_type, expected_fullpaths, error_message",
+    [
+        # Should filter down to only vk83, but no error is raised for allowed locations
+        (
+            [
+                f"{MODEL_CONFIG_INPUTS_LOCATION}/inputs/JRA-55/RYF/v1-4/data/RYF.vas.1990_1991.nc",
+                f"{PUBLISH_DATA_LOCATION[0]}/fake/file.txt",
+                f"{PUBLISH_DATA_LOCATION[1]}/fake/file2.txt",
+                f"{MODEL_CONFIG_INPUTS_PRERELEASE}/fake/file3.txt",
+            ],
+            "dev",
+            [
+                f"{MODEL_CONFIG_INPUTS_LOCATION}/inputs/JRA-55/RYF/v1-4/data/RYF.vas.1990_1991.nc"
+            ],
+            None,
+        ),
+        # Should raise an error for a non-published project location
+        (
+            ["/g/data/i101/fake/file.txt"],
+            "release",
+            [],
+            "is not in vk83 or a published data project location.",
+        ),
+        # Should raise an error for a release branch using prerelease inputs
+        (
+            [f"{MODEL_CONFIG_INPUTS_PRERELEASE}/fake/file.txt"],
+            "release",
+            [],
+            "is in prerelease location, which is not allowed for release branches.",
+        ),
+    ],
+)
+def test_check_allowed_config_location(
+    fullpaths, branch_type, expected_fullpaths, error_message
+):
+    """Test that the check_allowed_config_location function raise errors
+    if the configuration is not in an allowed location, or a release branch using prerelease inputs.
+    """
+    if error_message:
+        with pytest.raises(
+            RuntimeError, match=f"Input file {fullpaths[0]} {error_message}"
+        ):
+            check_allowed_config_location(fullpaths, branch_type)
+    else:
+        filter_fps = check_allowed_config_location(fullpaths, branch_type)
+        assert filter_fps == expected_fullpaths

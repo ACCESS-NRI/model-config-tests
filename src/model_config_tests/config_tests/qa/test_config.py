@@ -12,6 +12,7 @@ import jsonschema
 import pytest
 import requests
 import yaml
+from yamanifest import Manifest
 
 from model_config_tests.util import get_git_branch_name
 
@@ -32,6 +33,16 @@ RELEASE_MODULE_LOCATION = "/g/data/vk83/modules"
 MODEL_CONFIG_INPUTS_RAW_URL = (
     "https://raw.githubusercontent.com/ACCESS-NRI/model-config-inputs/main"
 )
+
+# Model config input location and symlink
+MODEL_CONFIG_INPUTS_LOCATION_SYMLINK = "/g/data/vk83/experiments"
+MODEL_CONFIG_INPUTS_LOCATION = "/g/data/vk83/configurations"
+MODEL_CONFIG_INPUTS_PRERELEASE = "/g/data/vk83/prerelease"
+PUBLISH_DATA_LOCATION = [
+    "/g/data/qv56/replicas",
+    "/g/data/jq44",
+    MODEL_CONFIG_INPUTS_PRERELEASE,
+]
 
 
 class ManifestNotFoundError(Exception):
@@ -103,10 +114,10 @@ class TestRelConfig:
             + "manifest:\n    reproduce:\n        exe: True"
         )
 
-    def test_manifest_input_match_repo(self, control_path, config):
+    def test_manifest_input_match_repo(self, branch_type, control_path, config):
         """Check that input file MD5 hashes in manifests/input.yaml match
         those from model-config-inputs repository"""
-        compare_input_md5_hashes(control_path, config)
+        compare_input_md5_hashes(control_path, config, branch_type=branch_type)
 
     def test_metadata_is_enabled(self, config):
         if "metadata" in config and "enable" in config["metadata"]:
@@ -396,24 +407,17 @@ def read_input_fullpaths_from_config(config: dict[str, Any]) -> list[str]:
     """
     fullpaths = []
 
-    # Get top-level input paths
-    if "input" in config:
-        input_paths = insist_array(config["input"])
-        input_paths = [
-            p.replace("/g/data/vk83/experiments", "/g/data/vk83/configurations")
-            for p in input_paths
-        ]
-        fullpaths.extend(input_paths)
-
-    # Get submodel input paths
-    for submodel in config.get("submodels", []):
-        if "input" in submodel:
-            submodel_input_paths = insist_array(submodel["input"])
-            submodel_input_paths = [
-                p.replace("/g/data/vk83/experiments", "/g/data/vk83/configurations")
-                for p in submodel_input_paths
+    # Get top-level input paths and submodel input paths
+    for model in [config] + config.get("submodels", []):
+        if "input" in model:
+            input_paths = insist_array(model["input"])
+            input_paths = [
+                p.replace(
+                    MODEL_CONFIG_INPUTS_LOCATION_SYMLINK, MODEL_CONFIG_INPUTS_LOCATION
+                )
+                for p in input_paths
             ]
-            fullpaths.extend(submodel_input_paths)
+            fullpaths.extend(input_paths)
 
     return fullpaths
 
@@ -431,22 +435,18 @@ def read_manifest_input_hashes(control_path: Path) -> dict[str, str]:
     dict[str, str]
         Dictionary mapping fullpath to MD5 hash
     """
-
-    # This YAML manifest files have headers and data, separated by `---`
-    # The actual data is after the --- separator
-    manifest_path = control_path / "manifests" / "input.yaml"
-    with open(manifest_path) as f:
-        docs = list(yaml.safe_load_all(f))
-    data = docs[-1] if docs else {}
-
     local_input = {}
-    for _, file_info in data.items():
-        fullpath = file_info.get("fullpath")
+
+    manifest = Manifest(control_path / "manifests" / "input.yaml").load()
+
+    for filepath in manifest:
+
+        fullpath = manifest.fullpath(filepath)
         fullpath = fullpath.replace(
-            "/g/data/vk83/experiments", "/g/data/vk83/configurations"
+            MODEL_CONFIG_INPUTS_LOCATION_SYMLINK, MODEL_CONFIG_INPUTS_LOCATION
         )
-        md5hash = file_info.get("hashes", {}).get("md5", None)
-        local_input[fullpath] = md5hash
+
+        local_input[fullpath] = manifest.get(filepath, "md5")
 
     return local_input
 
@@ -455,7 +455,13 @@ def _cache_manifest_from_input_repo(manifest_url, manifest_cache):
     """Fetch and cache the manifest file from model-config-inputs repository."""
     # Only fetch the manifest file if it is not already cached
     if manifest_url not in manifest_cache:
-        response = requests.get(manifest_url)
+        try:
+            response = requests.get(manifest_url, timeout=10)
+        except requests.exceptions.Timeout:
+            raise RuntimeError(
+                f"Timeout (10s) while fetching manifest file from {manifest_url}"
+            )
+
         if response.status_code == 404:
             raise ManifestNotFoundError(f"URL not found: {manifest_url}")
         if response.status_code != 200:
@@ -562,7 +568,9 @@ def fetch_input_md5_hashes_from_repo(fullpaths: list[str]) -> dict[str, str]:
     return model_config_input
 
 
-def compare_input_md5_hashes(control_path: Path, config: dict[str, Any]):
+def compare_input_md5_hashes(
+    control_path: Path, config: dict[str, Any], branch_type: str = "release"
+):
     """Check that input file MD5 hashes match those in manifests/input.yaml
     and from model-config-inputs repository.
 
@@ -581,6 +589,9 @@ def compare_input_md5_hashes(control_path: Path, config: dict[str, Any]):
     # Get input fullpaths from config.yaml
     fullpaths = read_input_fullpaths_from_config(config)
 
+    # Check if all input files are in vk83 or published data project location
+    fullpaths = check_allowed_config_location(fullpaths, branch_type=branch_type)
+
     # Read local MD5 hashes from manifests/input.yaml
     local_input = read_manifest_input_hashes(control_path)
 
@@ -594,3 +605,37 @@ def compare_input_md5_hashes(control_path: Path, config: dict[str, Any]):
             f"MD5 hash mismatch for {fullpath}: "
             f"repo hash: {repo_hash}, local manifest hash: {local_hash}"
         )
+
+
+def check_allowed_config_location(
+    fullpaths: list[str], branch_type: str = "release"
+) -> list[str]:
+    """
+    Picks out input files in /g/data/vk83/configurations for furture md5 hash checking.
+    It raises a RuntimeError if:
+    - any input file is not in /g/data/vk83 or a published data project location,
+    - a release branch uses prerelease input files.
+    """
+
+    filter_fps = []
+
+    for path in fullpaths:
+        # Pick up input files in /g/data/vk83/configurations(experiments) for md5 hash checking
+        if path.startswith(MODEL_CONFIG_INPUTS_LOCATION):
+            filter_fps.append(path)
+            # Skip following checks
+            continue
+
+        # Check if input file is in a published data project location
+        if not any(path.startswith(loc) for loc in PUBLISH_DATA_LOCATION):
+            raise RuntimeError(
+                f"Input file {path} is not in vk83 or a published data project location. "
+            )
+
+        # Check if a release branch is using prerelease input files
+        if branch_type == "release" and path.startswith(MODEL_CONFIG_INPUTS_PRERELEASE):
+            raise RuntimeError(
+                f"Input file {path} is in prerelease location, which is not allowed for release branches. "
+            )
+
+    return filter_fps

@@ -93,3 +93,8 @@ work/atmosphere/INPUT/RYF.vas.1990_1991.nc:
   hashes:
     binhash: 17224eecb745b6ce72604b41201c1fe7
     md5: 88dc8c70338bbc8f5efc48ed0009a99f
+  work/fake/file.txt:
+    fullpath: /g/data/qv56/replicas/fake/file.txt
+    hashes:
+      binhash: I_make_this_up
+      md5: Also_I_make_this_up
