@@ -541,8 +541,8 @@ def parse_pbs_submitted_jobs(stdout: str) -> Optional[str]:
         Any submitted payu run ID. If a subsequent run job was
         not submitted, the id will be None.
     """
-    # The "Submitted job:" is optional
-    run_pattern = r"^(?:Submitted job: )?qsub.*/bin/payu-run$"
+    # The "Submitted command:" is optional
+    run_pattern = r"^(?:Submitted command: )?qsub.*/bin/payu-run$"
     run_submitted = re.search(run_pattern, stdout, re.MULTILINE) is not None
 
     job_ids = parse_gadi_pbs_ids(stdout)
