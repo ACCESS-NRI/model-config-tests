@@ -41,7 +41,6 @@ MODEL_CONFIG_INPUTS_PRERELEASE = "/g/data/vk83/prerelease"
 PUBLISH_DATA_LOCATION = [
     "/g/data/qv56/replicas",
     "/g/data/jq44",
-    MODEL_CONFIG_INPUTS_PRERELEASE,
 ]
 
 
@@ -451,7 +450,7 @@ def read_manifest_input_hashes(control_path: Path) -> dict[str, str]:
     return local_input
 
 
-def _cache_manifest_from_input_repo(manifest_url, manifest_cache):
+def _cache_manifest_from_input_repo(manifest_url, manifest_cache, fullpath):
     """Fetch and cache the manifest file from model-config-inputs repository."""
     # Only fetch the manifest file if it is not already cached
     if manifest_url not in manifest_cache:
@@ -463,14 +462,15 @@ def _cache_manifest_from_input_repo(manifest_url, manifest_cache):
             )
 
         if response.status_code == 404:
-            raise ManifestNotFoundError(f"URL not found: {manifest_url}")
+            raise ManifestNotFoundError(f"While checking input file: {fullpath},\n URL not found at {manifest_url}")
         if response.status_code != 200:
             raise RuntimeError(
                 f"Failed to fetch manifest file from {manifest_url}: "
                 f"HTTP {response.status_code}"
             )
-        if not response.text:
-            raise RuntimeError(f"Manifest file from {manifest_url} is empty.")
+        assert response.text, (
+            f"Manifest file from {manifest_url} is empty."
+        )
 
         # YAML manifest files have headers and data, separated by `---`
         # The actual data is after the --- separator
@@ -528,7 +528,7 @@ def fetch_input_md5_hashes_from_repo(fullpaths: list[str]) -> dict[str, str]:
 
             # Cache the manifest file from model-config-inputs repo
             manifest_cache = _cache_manifest_from_input_repo(
-                manifest_url, manifest_cache
+                manifest_url, manifest_cache, fullpath
             )
 
             # Extract the input information for the current fullpath
@@ -537,7 +537,7 @@ def fetch_input_md5_hashes_from_repo(fullpaths: list[str]) -> dict[str, str]:
 
             # Extract the md5 hash for the current fullpath file
             md5hash = _extract_md5_from_repo_response(fullpath, file_info, manifest_url)
-            model_config_input[fullpath] = md5hash
+            model_config_input[fullpath] = {"md5hash": md5hash, "repo_url": manifest_url}
 
         # If no manifest was found assuming fullpath is a file, treat it as a directory
         except ManifestNotFoundError:
@@ -546,7 +546,7 @@ def fetch_input_md5_hashes_from_repo(fullpaths: list[str]) -> dict[str, str]:
 
             # Cache the manifest file from model-config-inputs repo
             manifest_cache = _cache_manifest_from_input_repo(
-                manifest_url, manifest_cache
+                manifest_url, manifest_cache, fullpath
             )
 
             # Extract all fullpath and md5 hashes in this manifest file
@@ -558,7 +558,7 @@ def fetch_input_md5_hashes_from_repo(fullpaths: list[str]) -> dict[str, str]:
                 md5hash = _extract_md5_from_repo_response(
                     complete_fullpath, file_info, manifest_url
                 )
-                model_config_input[complete_fullpath] = md5hash
+                model_config_input[complete_fullpath] = {"md5hash": md5hash, "repo_url": manifest_url}
 
         except Exception as e:
             raise RuntimeError(
@@ -599,11 +599,16 @@ def compare_input_md5_hashes(
     repo_hashes = fetch_input_md5_hashes_from_repo(fullpaths)
 
     # Compare hashes for each input file
-    for fullpath, repo_hash in repo_hashes.items():
+    for fullpath, repo_response in repo_hashes.items():
+        assert fullpath in local_input, (
+            f"Expected local input manifest to include input file:  {fullpath}"
+        )
         local_hash = local_input.get(fullpath)
+
+        repo_hash = repo_response.get("md5hash")
         assert repo_hash == local_hash, (
             f"MD5 hash mismatch for {fullpath}: "
-            f"repo hash: {repo_hash}, local manifest hash: {local_hash}"
+            f"local manifest hash: {local_hash}, repo hash: {repo_hash} from {repo_response.get('repo_url')}"
         )
 
 
@@ -626,16 +631,15 @@ def check_allowed_config_location(
             # Skip following checks
             continue
 
-        # Check if input file is in a published data project location
-        if not any(path.startswith(loc) for loc in PUBLISH_DATA_LOCATION):
-            raise RuntimeError(
-                f"Input file {path} is not in vk83 or a published data project location. "
-            )
-
         # Check if a release branch is using prerelease input files
-        if branch_type == "release" and path.startswith(MODEL_CONFIG_INPUTS_PRERELEASE):
-            raise RuntimeError(
+        if path.startswith(MODEL_CONFIG_INPUTS_PRERELEASE):
+            assert branch_type != "release", (
                 f"Input file {path} is in prerelease location, which is not allowed for release branches. "
+            )
+        else:
+            # Check if input file is in a published data project location
+            assert any(path.startswith(loc) for loc in PUBLISH_DATA_LOCATION), (
+                f"Input file {path} is not in vk83 or a published data project location: {PUBLISH_DATA_LOCATION}. "
             )
 
     return filter_fps
