@@ -252,7 +252,7 @@ def test_parse_run_id_parsing_error(example_stdout):
     [
         ("pre-industrial.o137768371", ["137776068.gadi-pbs"]),
         ("pre-industrial.o137776068", []),
-        ("pre-industrial-hpc.o138768371", ["138776068.gadi-pbs"]),
+        ("pre-industrial-hpc.o138768371", ["175421114.gadi-pbs"]),
     ],
 )
 def test_parse_gadi_pbs_ids(stdout_filename, expected_ids):
