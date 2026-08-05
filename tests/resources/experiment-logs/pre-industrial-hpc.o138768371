@@ -1,0 +1,49 @@
+archive path:  /scratch/tm70/qc4677/tmp/test-model-repro/lab/archive
+Experiment name is configured in config.yaml:  new_expt-exp_1d_runtime
+nruns: 2 nruns_per_submit: 1 subrun: 1
+payu: Found modules in /opt/Modules/v4.3.0
+Loading input manifest: manifests/input.yaml
+Loading restart manifest: manifests/restart.yaml
+Loading exe manifest: manifests/exe.yaml
+Setting up atmosphere
+Setting up ocean
+Setting up ice
+Setting up access-om2
+Checking exe, input and restart manifests
+Writing manifests/restart.yaml
+mod oasis3-mct/2025.03.001-umkbobq
+mod libaccessom2/2026.02.000-ufu526k
+mod cice5/2026.01.000-ejgeocv
+mod mom5/2026.02.000-vxwlyl7
+mod access-om2/2026.05.000
+mod model-tools/fre-nctools/2024.05-1
+mpirun --mca io ompio --mca io_ompio_num_aggregators 1 -wdir /scratch/tm70/qc4677/tmp/test-model-repro/lab/work/new_expt-exp_1d_runtime/atmosphere -np 1  /scratch/tm70/qc4677/tmp/test-model-repro/lab/work/new_expt-exp_1d_runtime/atmosphere/yatm.exe : -wdir /scratch/tm70/qc4677/tmp/test-model-repro/lab/work/new_expt-exp_1d_runtime/ocean -np 216  /scratch/tm70/qc4677/tmp/test-model-repro/lab/work/new_expt-exp_1d_runtime/ocean/mom5_access_om : -wdir /scratch/tm70/qc4677/tmp/test-model-repro/lab/work/new_expt-exp_1d_runtime/ice -np 24  /scratch/tm70/qc4677/tmp/test-model-repro/lab/work/new_expt-exp_1d_runtime/ice/cice_auscom_360x300_15x300.exe
+rm -f resubmit.count
+payu: Found modules in /opt/Modules/v4.3.0
+laboratory path:  /scratch/tm70/qc4677/tmp/test-model-repro/lab
+binary path:  /scratch/tm70/qc4677/tmp/test-model-repro/lab/bin
+input path:  /scratch/tm70/qc4677/tmp/test-model-repro/lab/input
+work path:  /scratch/tm70/qc4677/tmp/test-model-repro/lab/work
+archive path:  /scratch/tm70/qc4677/tmp/test-model-repro/lab/archive
+Experiment name is configured in config.yaml:  new_expt-exp_1d_runtime
+payu: warning: Job request includes 47 unused CPUs.
+payu: warning: CPU request increased from 241 to 288
+Loading input manifest: manifests/input.yaml
+Loading restart manifest: manifests/restart.yaml
+Loading exe manifest: manifests/exe.yaml
+payu: Found modules in /opt/Modules/v4.3.0
+------ Job submitted ------
+Submitted command: qsub -P tm70 -l walltime=10800 -l ncpus=288 -l mem=1000GB -N 1deg_jra55_ryf -l wd -j n -W umask=027 -q normal -l storage=gdata/vk83+scratch/tm70 -v LD_LIBRARY_PATH=/usr/lib64,PAYU_PATH=/scratch/tm70/qc4677/model-config-tests/bin,PAYU_CURRENT_RUN=1,PAYU_N_RUNS=1,MODULESHOME=/opt/Modules/v4.3.0,MODULES_CMD=/opt/Modules/v4.3.0/libexec/modulecmd.tcl,MODULEPATH=/g/data/vk83/modules:/etc/scl/modulefiles:/opt/Modules/modulefiles:/opt/Modules/v4.3.0/modulefiles:/apps/Modules/modulefiles -- /scratch/tm70/qc4677/model-config-tests/bin/python3.11 /scratch/tm70/qc4677/model-config-tests/bin/payu-run
+Job ID: 175421114.gadi-pbs
+
+======================================================================================
+                  Resource Usage on 2026-08-05 12:34:50:
+   Job Id:             175420923.gadi-pbs
+   Project:            tm70
+   Exit Status:        0
+   Service Units:      5.92
+   NCPUs Requested:    288                 CPU Time Used: 00:36:52
+   Memory Requested:   1000.0GB              Memory Used: 71.94GB
+   Walltime Requested: 03:00:00            Walltime Used: 00:00:37
+   JobFS Requested:    600.0MB                JobFS Used: 0B
+======================================================================================

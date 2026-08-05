@@ -225,6 +225,7 @@ def test_experiment_submit_payu_run_error(mock_run, exp):
     [
         "137650670.gadi-pbs\ngadi-pbs ID output is first line\n",
         "gadi-pbs ID\nIs the last line\n137650670.gadi-pbs\n",
+        "Some output\nJob ID: 137650670.gadi-pbs\nMore output\n",
     ],
 )
 def test_parse_run_id(example_stdout):
@@ -237,6 +238,7 @@ def test_parse_run_id(example_stdout):
     [
         "No job ID here\nJust some output\n",
         "Multiple IDs\n12345.gadi-pbs\n67890.gadi-pbs\n",
+        "Multiple IDs with Job ID prefix\nJob ID: 12345.gadi-pbs\nJob ID: 67890.gadi-pbs\n",
     ],
 )
 def test_parse_run_id_parsing_error(example_stdout):
@@ -250,6 +252,7 @@ def test_parse_run_id_parsing_error(example_stdout):
     [
         ("pre-industrial.o137768371", ["137776068.gadi-pbs"]),
         ("pre-industrial.o137776068", []),
+        ("pre-industrial-hpc.o138768371", ["175421114.gadi-pbs"]),
     ],
 )
 def test_parse_gadi_pbs_ids(stdout_filename, expected_ids):

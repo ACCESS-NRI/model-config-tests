@@ -493,8 +493,8 @@ def parse_gadi_pbs_ids(stdout: str) -> list[str]:
     list[str]
         A list of jobs IDs printed out to a line
     """
-    # Define the regex pattern, e.g. 137776067.gadi-pbs
-    pattern = r"^(\d+\.gadi-pbs)$"
+    # Define the regex pattern, e.g. 137776067.gadi-pbs. The "Job ID:" prefix is optional
+    pattern = r"^(?:Job ID: )?(\d+\.gadi-pbs)$"
 
     # Find all matches in the text
     matches = re.findall(pattern, stdout, re.MULTILINE)
@@ -541,7 +541,8 @@ def parse_pbs_submitted_jobs(stdout: str) -> Optional[str]:
         Any submitted payu run ID. If a subsequent run job was
         not submitted, the id will be None.
     """
-    run_pattern = r"^qsub.*/bin/payu-run$"
+    # The "Submitted command:" is optional
+    run_pattern = r"^(?:Submitted command: )?qsub.*/bin/payu-run$"
     run_submitted = re.search(run_pattern, stdout, re.MULTILINE) is not None
 
     job_ids = parse_gadi_pbs_ids(stdout)
