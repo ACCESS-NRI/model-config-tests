@@ -198,9 +198,10 @@ def test_fetch_input_md5_hashes_from_repo():
         return response
 
     with patch("requests.get", side_effect=mock_requests_get):
-        assert expected_hashes_from_repo == fetch_input_md5_hashes_from_repo(
-            expected_fullpaths
-        )
+        fetch_result = fetch_input_md5_hashes_from_repo(expected_fullpaths)
+        assert expected_hashes_from_repo == {
+            fullpath: info["md5hash"] for fullpath, info in fetch_result.items()
+        }
 
 
 def test_fetch_input_md5_hashes_from_repo_invalid():
@@ -264,7 +265,7 @@ def test_compare_input_md5_hashes():
             ["/g/data/i101/fake/file.txt"],
             "release",
             [],
-            "is not in vk83 or a published data project location.",
+            "is not in vk83 or a published data project location:",
         ),
         # Should raise an error for a release branch using prerelease inputs
         (
@@ -283,7 +284,7 @@ def test_check_allowed_config_location(
     """
     if error_message:
         with pytest.raises(
-            RuntimeError, match=f"Input file {fullpaths[0]} {error_message}"
+            AssertionError, match=f"Input file {fullpaths[0]} {error_message}"
         ):
             check_allowed_config_location(fullpaths, branch_type)
     else:
