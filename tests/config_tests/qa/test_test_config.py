@@ -1,4 +1,5 @@
 import shlex
+import shutil
 import subprocess
 import warnings
 from pathlib import Path
@@ -13,9 +14,11 @@ from model_config_tests.config_tests.qa.test_config import (
     MODEL_CONFIG_INPUTS_LOCATION,
     MODEL_CONFIG_INPUTS_PRERELEASE,
     PUBLISH_DATA_LOCATION,
+    _cache_input_repo,
+    cache_input_dir,
     check_allowed_config_location,
     compare_input_md5_hashes,
-    fetch_input_md5_hashes_from_repo,
+    extract_input_md5_hashes_from_repo,
     get_spack_location_file,
     read_input_fullpaths_from_config,
     read_manifest_input_hashes,
@@ -181,41 +184,16 @@ def test_read_input_fullpaths_from_config():
     assert fullpaths == expected_fullpaths
 
 
-def test_fetch_input_md5_hashes_from_repo():
-    """Test that the fetch_input_md5_hashes_from_repo function loads the
-    correct md5 hashes from model-config-inputs repository."""
+def test_extract_input_md5_hashes_from_repo():
+    """Test that the extract_input_md5_hashes_from_repo function loads the
+    correct md5 hashes from the local-cloned model-config-inputs repository."""
+    cache_input_dir = _cache_input_repo()
+    fetch_result = extract_input_md5_hashes_from_repo(expected_fullpaths, cache_input_dir)
+    assert expected_hashes_from_repo == {
+        fullpath: info["md5hash"] for fullpath, info in fetch_result.items()
+    }
+    shutil.rmtree(cache_input_dir, ignore_errors=True)
 
-    # Mock requests.get to return a predefined manifest response.
-    # URLs not present in mock_input_response simulate a missing manifest file (HTTP 404), so that
-    # fetch_input_md5_hashes_from_repo falls back to treating the path as a directory.
-    def mock_requests_get(manifest_url, timeout):
-        response = Mock()
-        if manifest_url in mock_input_response:
-            response.status_code = 200
-            response.text = mock_input_response[manifest_url]
-        else:
-            response.status_code = 404
-        return response
-
-    with patch("requests.get", side_effect=mock_requests_get):
-        fetch_result = fetch_input_md5_hashes_from_repo(expected_fullpaths)
-        assert expected_hashes_from_repo == {
-            fullpath: info["md5hash"] for fullpath, info in fetch_result.items()
-        }
-
-
-def test_fetch_input_md5_hashes_from_repo_invalid():
-    """Test that the fetch_input_md5_hashes_from_repo() raises an error with an invalid input file."""
-
-    # Mock requests.get to return a 404 for all URLs, simulating missing manifests
-    def mock_requests_get(manifest_url, timeout):
-        response = Mock()
-        response.status_code = 502
-        return response
-
-    with patch("requests.get", side_effect=mock_requests_get):
-        with pytest.raises(RuntimeError, match="Failed to fetch MD5 hash"):
-            fetch_input_md5_hashes_from_repo(expected_fullpaths)
 
 
 def test_read_manifest_input_hashes():
@@ -230,7 +208,7 @@ def test_read_manifest_input_hashes():
     assert read_manifest_input_hashes(control_path) == expected_local_hashes
 
 
-def test_compare_input_md5_hashes():
+def test_compare_input_md5_hashes(cache_input_dir):
     """Test that the compare_input_md5_hashes function correctly compares
     MD5 hashes between local manifests and the model-config-inputs repository."""
     control_path = (
@@ -240,7 +218,7 @@ def test_compare_input_md5_hashes():
     with open(config_path) as f:
         config = yaml.safe_load(f)
 
-    compare_input_md5_hashes(control_path, config)
+    compare_input_md5_hashes(control_path, config, cache_input_dir)
 
 
 @pytest.mark.parametrize(
