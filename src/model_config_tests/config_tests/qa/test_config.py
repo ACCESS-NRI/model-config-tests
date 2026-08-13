@@ -5,6 +5,8 @@
 
 import re
 import shutil
+import subprocess
+import tempfile
 import warnings
 from pathlib import Path
 from typing import Any
@@ -14,8 +16,6 @@ import pytest
 import requests
 import yaml
 from yamanifest import Manifest
-import tempfile
-import subprocess
 
 from model_config_tests.util import get_git_branch_name
 
@@ -33,12 +33,8 @@ LICENSE_URL = "https://creativecommons.org/licenses/by/4.0/legalcode.txt"
 RELEASE_MODULE_LOCATION = "/g/data/vk83/modules"
 
 # Model config inputs repository for input file MD5 verification
-MODEL_CONFIG_INPUTS_URL = (
-    "https://github.com/ACCESS-NRI/model-config-inputs"
-)
-MODEL_CONFIG_INPUTS_CLONE_URL = (
-    "https://github.com/ACCESS-NRI/model-config-inputs.git"
-)
+MODEL_CONFIG_INPUTS_URL = "https://github.com/ACCESS-NRI/model-config-inputs"
+MODEL_CONFIG_INPUTS_CLONE_URL = "https://github.com/ACCESS-NRI/model-config-inputs.git"
 
 # Model config input location and symlink
 MODEL_CONFIG_INPUTS_LOCATION_SYMLINK = "/g/data/vk83/experiments"
@@ -485,7 +481,7 @@ def _cache_input_repo() -> Path:
         raise RuntimeError(
             f"Failed to clone model-config-inputs repository from {MODEL_CONFIG_INPUTS_CLONE_URL}: {e}"
         ) from e
-    
+
     return cache_input_dir
 
 
@@ -498,7 +494,8 @@ def cache_input_dir():
     shutil.rmtree(cache_dir, ignore_errors=True)
 
 
-def match_file_name_in_repo(file_name: str,
+def match_file_name_in_repo(
+    file_name: str,
     data: Manifest,
     repo_manifest_path: Path,
 ) -> str:
@@ -516,7 +513,10 @@ def match_file_name_in_repo(file_name: str,
 
     return manifest_file_name
 
-def extract_input_md5_hashes_from_repo(fullpaths: list[str], cache_input_dir: Path) -> dict[str, dict[str, str]]:
+
+def extract_input_md5_hashes_from_repo(
+    fullpaths: list[str], cache_input_dir: Path
+) -> dict[str, dict[str, str]]:
     """Extract MD5 hashes for input files from local-cloned model-config-inputs repository.
 
     Parameters
@@ -539,23 +539,29 @@ def extract_input_md5_hashes_from_repo(fullpaths: list[str], cache_input_dir: Pa
         # If fullpath is a file, manifest_path should exist
         manifest_path = path.parent / ".manifest.yaml"
         if manifest_path.is_file():
-            repo_manifest_path = manifest_path.relative_to(cache_input_dir) # For error message
+            repo_manifest_path = manifest_path.relative_to(
+                cache_input_dir
+            )  # For error message
 
             # Load the manifest and extract fullpath for this input file
             data = Manifest(manifest_path).load()
 
             # Get the file name matching the input repo
-            manifest_file_name = match_file_name_in_repo(path.name, data, repo_manifest_path)
+            manifest_file_name = match_file_name_in_repo(
+                path.name, data, repo_manifest_path
+            )
 
             # Check if the fullpath in the input repo matches the fullpath from config.yaml
             repo_fullpath = data.fullpath(manifest_file_name)
             assert fullpath == repo_fullpath, (
-                f"Fullpath in config.yaml \"{fullpath}\" does not match the one \"{repo_fullpath}\" in model-config-inputs repo"
+                f'Fullpath in config.yaml "{fullpath}" does not match the one "{repo_fullpath}" in model-config-inputs repo'
                 f"in {MODEL_CONFIG_INPUTS_URL}/tree/main/{repo_manifest_path}."
             )
 
-            model_config_input[fullpath] = {"md5hash": data.get(manifest_file_name, "md5"),
-                                            "repo_url": f"{MODEL_CONFIG_INPUTS_URL}/tree/main/{repo_manifest_path}"}
+            model_config_input[fullpath] = {
+                "md5hash": data.get(manifest_file_name, "md5"),
+                "repo_url": f"{MODEL_CONFIG_INPUTS_URL}/tree/main/{repo_manifest_path}",
+            }
 
         else:
             # Assume that fullpath is a directory
@@ -563,14 +569,14 @@ def extract_input_md5_hashes_from_repo(fullpaths: list[str], cache_input_dir: Pa
             manifest_paths = list(path.rglob(".manifest.yaml"))
 
             # Raise an error if still no manifest files are found
-            if not manifest_paths: 
+            if not manifest_paths:
                 raise ManifestNotFoundError(
-                    f"No manifest files found for input file/directory \"{fullpath}\"."
+                    f'No manifest files found for input file/directory "{fullpath}".'
                     f"Searched recursively in model-config-inputs repo at {MODEL_CONFIG_INPUTS_URL}/tree/main/{path.relative_to(cache_input_dir)}."
                     f"Expected to find at least one .manifest.yaml file."
                 )
 
-            # Load each manifest file 
+            # Load each manifest file
             for manifest_path in manifest_paths:
                 data = Manifest(manifest_path).load()
                 repo_manifest_path = manifest_path.relative_to(cache_input_dir)
@@ -583,9 +589,11 @@ def extract_input_md5_hashes_from_repo(fullpaths: list[str], cache_input_dir: Pa
 
                     repo_fullpath = data.fullpath(file)
                     md5hash = data.get(file, "md5")
-                    model_config_input[repo_fullpath] = {"md5hash": md5hash,
-                                                        "repo_url": f"{MODEL_CONFIG_INPUTS_URL}/tree/main/{repo_manifest_path}"}
-                        
+                    model_config_input[repo_fullpath] = {
+                        "md5hash": md5hash,
+                        "repo_url": f"{MODEL_CONFIG_INPUTS_URL}/tree/main/{repo_manifest_path}",
+                    }
+
     return model_config_input
 
 
@@ -625,7 +633,9 @@ def compare_input_md5_hashes(
     try:
         repo_hashes = extract_input_md5_hashes_from_repo(fullpaths, cache_input_dir)
     except RuntimeError as e:
-        raise RuntimeError(f"Error extracting MD5 hashes from model-config-inputs repo: {e}")
+        raise RuntimeError(
+            f"Error extracting MD5 hashes from model-config-inputs repo: {e}"
+        )
 
     # Compare hashes for each input file
     for fullpath, repo_response in repo_hashes.items():

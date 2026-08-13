@@ -1,5 +1,4 @@
 import shlex
-import shutil
 import subprocess
 import warnings
 from pathlib import Path
@@ -14,8 +13,6 @@ from model_config_tests.config_tests.qa.test_config import (
     MODEL_CONFIG_INPUTS_LOCATION,
     MODEL_CONFIG_INPUTS_PRERELEASE,
     PUBLISH_DATA_LOCATION,
-    _cache_input_repo,
-    cache_input_dir,
     check_allowed_config_location,
     compare_input_md5_hashes,
     extract_input_md5_hashes_from_repo,
@@ -30,7 +27,6 @@ from tests.resources.expected_md5hash import (
     expected_fullpaths,
     expected_hashes_from_repo,
     expected_local_hashes,
-    mock_input_response,
 )
 
 
@@ -184,16 +180,15 @@ def test_read_input_fullpaths_from_config():
     assert fullpaths == expected_fullpaths
 
 
-def test_extract_input_md5_hashes_from_repo():
+def test_extract_input_md5_hashes_from_repo(cache_input_dir):
     """Test that the extract_input_md5_hashes_from_repo function loads the
     correct md5 hashes from the local-cloned model-config-inputs repository."""
-    cache_input_dir = _cache_input_repo()
-    fetch_result = extract_input_md5_hashes_from_repo(expected_fullpaths, cache_input_dir)
+    fetch_result = extract_input_md5_hashes_from_repo(
+        expected_fullpaths, cache_input_dir
+    )
     assert expected_hashes_from_repo == {
         fullpath: info["md5hash"] for fullpath, info in fetch_result.items()
     }
-    shutil.rmtree(cache_input_dir, ignore_errors=True)
-
 
 
 def test_read_manifest_input_hashes():
