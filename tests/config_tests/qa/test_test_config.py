@@ -1,4 +1,5 @@
 import shlex
+import shutil
 import subprocess
 import warnings
 from pathlib import Path
@@ -13,6 +14,7 @@ from model_config_tests.config_tests.qa.test_config import (
     MODEL_CONFIG_INPUTS_LOCATION,
     MODEL_CONFIG_INPUTS_PRERELEASE,
     PUBLISH_DATA_LOCATION,
+    _cache_input_repo,
     check_allowed_config_location,
     compare_input_md5_hashes,
     extract_input_md5_hashes_from_repo,
@@ -22,12 +24,21 @@ from model_config_tests.config_tests.qa.test_config import (
 )
 from model_config_tests.config_tests.qa.test_config import TestConfig as ConfigValidator
 
-# Import test fixtures
+# Import test resource
 from tests.resources.expected_md5hash import (
     expected_fullpaths,
     expected_hashes_from_repo,
     expected_local_hashes,
 )
+
+
+@pytest.fixture(scope="session")
+def cache_input_dir():
+    """Clone the model-config-inputs repository once per test session and
+    clean up the temporary clone once all tests using it have finished."""
+    cache_dir = _cache_input_repo()
+    yield cache_dir
+    shutil.rmtree(cache_dir, ignore_errors=True)
 
 
 def test_test_config_access_om2(tmp_path, isolated_config):
