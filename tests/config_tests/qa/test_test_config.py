@@ -2,11 +2,12 @@ import shlex
 import shutil
 import subprocess
 import warnings
-from pathlib import Path
 from unittest.mock import Mock, patch
 
 import pytest
 import yaml
+
+from tests.common import RESOURCES_DIR
 
 # Disable specific warnings from test_config tests
 warnings.filterwarnings("ignore", category=pytest.PytestUnknownMarkWarning)
@@ -178,9 +179,7 @@ def test_test_sync_path_not_exists(checker):
 def test_read_input_fullpaths_from_config():
     """Test that the get_input_fullpaths_from_config function properly extracts input full paths from config."""
     # Load example config file
-    control_path = (
-        Path(__file__).parent.parent.parent / "resources" / "example_control_dir"
-    )
+    control_path = RESOURCES_DIR / "example_control_dir"
     with open(control_path / "config.yaml") as f:
         config = yaml.safe_load(f)
 
@@ -202,13 +201,22 @@ def test_extract_input_md5_hashes_from_repo(cache_input_dir):
     }
 
 
+def test_extract_input_md5_hashes_from_repo_no_manifest(cache_input_dir):
+    """Test that the extract_input_md5_hashes_from_repo function loads the
+    correct md5 hashes from the local-cloned model-config-inputs repository."""
+    fullpath = "/g/data/vk83/configurations/inputs/fake/model/fake/file.name"
+    with pytest.raises(
+        AssertionError,
+        match=f"No manifest files found for input file/directory '{fullpath}'. ",
+    ):
+        extract_input_md5_hashes_from_repo([fullpath], cache_input_dir)
+
+
 def test_read_manifest_input_hashes():
     """Test that the read_manifest_input_hashes function reads
     correct md5 hashes from the manifest file."""
     # Load example manifest file
-    control_path = (
-        Path(__file__).parent.parent.parent / "resources" / "example_control_dir"
-    )
+    control_path = RESOURCES_DIR / "example_control_dir"
 
     # Assert that the extracted md5 hashes match the expected dictionary
     assert read_manifest_input_hashes(control_path) == expected_local_hashes
@@ -217,14 +225,47 @@ def test_read_manifest_input_hashes():
 def test_compare_input_md5_hashes(cache_input_dir):
     """Test that the compare_input_md5_hashes function correctly compares
     MD5 hashes between local manifests and the model-config-inputs repository."""
-    control_path = (
-        Path(__file__).parent.parent.parent / "resources" / "example_control_dir"
-    )
+    control_path = RESOURCES_DIR / "example_control_dir"
     config_path = control_path / "config.yaml"
     with open(config_path) as f:
         config = yaml.safe_load(f)
 
     compare_input_md5_hashes(control_path, config, cache_input_dir)
+
+
+def test_compare_input_md5_hashes_filename_not_found(cache_input_dir):
+    """Test that the compare_input_md5_hashes function raise an error when no matching file is found."""
+    control_path = RESOURCES_DIR / "example_control_dir"
+    config_path = control_path / "config.yaml"
+
+    fake_file_name = "fake_file.name"
+    with open(config_path) as f:
+        config = yaml.safe_load(f)
+        config["input"] = (
+            f"/g/data/vk83/experiments/inputs/access-om2/remapping_weights/JRA55/global.1deg/2020.05.30/{fake_file_name}"
+        )
+
+    with pytest.raises(
+        ValueError,
+        match=f"Neither file name {fake_file_name} and ./{fake_file_name} not found in manifest",
+    ):
+        compare_input_md5_hashes(control_path, config, cache_input_dir)
+
+
+def test_compare_input_md5_hashes_fullpath_not_match(cache_input_dir):
+    """Test that the compare_input_md5_hashes function raise an error when the fullpath does not match."""
+    control_path = RESOURCES_DIR / "example_control_dir"
+    config_path = control_path / "config.yaml"
+
+    with open(config_path) as f:
+        config = yaml.safe_load(f)
+        fullpath = "/g/data/vk83/configurations/inputs/access-om2/../access-om2/remapping_weights/JRA55/global.1deg/2020.05.30/JRA55_MOM1_conserve2nd.nc"
+        config["input"] = fullpath
+
+    with pytest.raises(
+        AssertionError, match=f'Fullpath in config.yaml "{fullpath}" does not match'
+    ):
+        compare_input_md5_hashes(control_path, config, cache_input_dir)
 
 
 @pytest.mark.parametrize(

@@ -37,18 +37,13 @@ MODEL_CONFIG_INPUTS_URL = "https://github.com/ACCESS-NRI/model-config-inputs"
 MODEL_CONFIG_INPUTS_CLONE_URL = "https://github.com/ACCESS-NRI/model-config-inputs.git"
 
 # Model config input location and symlink
-MODEL_CONFIG_INPUTS_LOCATION_SYMLINK = "/g/data/vk83/experiments"
-MODEL_CONFIG_INPUTS_LOCATION = "/g/data/vk83/configurations"
+MODEL_CONFIG_INPUTS_LOCATION_SYMLINK = "/g/data/vk83/experiments/inputs/"
+MODEL_CONFIG_INPUTS_LOCATION = "/g/data/vk83/configurations/inputs/"
 MODEL_CONFIG_INPUTS_PRERELEASE = "/g/data/vk83/prerelease"
 PUBLISH_DATA_LOCATION = [
     "/g/data/qv56/replicas",
     "/g/data/jq44",
 ]
-
-
-class ManifestNotFoundError(Exception):
-    """Raised when a .manifest.yaml file does not exist at the
-    expected location in the model-config-inputs repository."""
 
 
 def insist_array(str_or_array):
@@ -554,7 +549,7 @@ def extract_input_md5_hashes_from_repo(
             # Check if the fullpath in the input repo matches the fullpath from config.yaml
             repo_fullpath = data.fullpath(manifest_file_name)
             assert fullpath == repo_fullpath, (
-                f'Fullpath in config.yaml "{fullpath}" does not match the one "{repo_fullpath}" in model-config-inputs repo'
+                f'Fullpath in config.yaml "{fullpath}" does not match the one "{repo_fullpath}" in model-config-inputs repo '
                 f"in {MODEL_CONFIG_INPUTS_URL}/tree/main/{repo_manifest_path}."
             )
 
@@ -569,12 +564,11 @@ def extract_input_md5_hashes_from_repo(
             manifest_paths = list(path.rglob(".manifest.yaml"))
 
             # Raise an error if still no manifest files are found
-            if not manifest_paths:
-                raise ManifestNotFoundError(
-                    f'No manifest files found for input file/directory "{fullpath}".'
-                    f"Searched recursively in model-config-inputs repo at {MODEL_CONFIG_INPUTS_URL}/tree/main/{path.relative_to(cache_input_dir)}."
-                    f"Expected to find at least one .manifest.yaml file."
-                )
+            assert len(manifest_paths) > 0, (
+                f"No manifest files found for input file/directory '{fullpath}'. "
+                f"Searched recursively in model-config-inputs repo at {MODEL_CONFIG_INPUTS_URL}/tree/main/{path.relative_to(cache_input_dir)}. "
+                f"Expected to find at least one .manifest.yaml file."
+            )
 
             # Load each manifest file
             for manifest_path in manifest_paths:
@@ -630,12 +624,7 @@ def compare_input_md5_hashes(
     local_input = read_manifest_input_hashes(control_path)
 
     # Fetch MD5 hashes from model-config-inputs repo
-    try:
-        repo_hashes = extract_input_md5_hashes_from_repo(fullpaths, cache_input_dir)
-    except RuntimeError as e:
-        raise RuntimeError(
-            f"Error extracting MD5 hashes from model-config-inputs repo: {e}"
-        )
+    repo_hashes = extract_input_md5_hashes_from_repo(fullpaths, cache_input_dir)
 
     # Compare hashes for each input file
     for fullpath, repo_response in repo_hashes.items():
