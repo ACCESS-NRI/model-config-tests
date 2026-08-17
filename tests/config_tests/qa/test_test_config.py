@@ -202,8 +202,8 @@ def test_extract_input_md5_hashes_from_repo(cache_input_dir):
 
 
 def test_extract_input_md5_hashes_from_repo_no_manifest(cache_input_dir):
-    """Test that the extract_input_md5_hashes_from_repo function loads the
-    correct md5 hashes from the local-cloned model-config-inputs repository."""
+    """Test that the extract_input_md5_hashes_from_repo function raise an error
+    when no manifest files are found."""
     fullpath = "/g/data/vk83/configurations/inputs/fake/model/fake/file.name"
     with pytest.raises(
         AssertionError,

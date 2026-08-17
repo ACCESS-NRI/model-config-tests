@@ -27,7 +27,7 @@ CLONE_CONFIGS = {
     # ACCESS-OM3, branch: dev-MCW_100km_jra_ryf
     "om3-100km-wav": {
         "repo_url": "https://github.com/ACCESS-NRI/access-om3-configs.git",
-        "branch": "dev-MCW_100km_jra_iaf",
+        "branch": "dev-MCW_100km_era_iaf",
         "commit": "f65fd4a",
     },
     # ACCESS-ESM1.5, branch: release-preindustrial+concentrations
