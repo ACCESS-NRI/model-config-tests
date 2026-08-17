@@ -43,6 +43,7 @@ MODEL_CONFIG_INPUTS_PRERELEASE = "/g/data/vk83/prerelease"
 PUBLISH_DATA_LOCATION = [
     "/g/data/qv56/replicas",
     "/g/data/jq44",
+    "/g/data/av17",
 ]
 
 
