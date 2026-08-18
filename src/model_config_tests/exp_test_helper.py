@@ -37,9 +37,13 @@ class ExpTestHelper:
         control_path: Path,
         lab_path: Path,
         disable_payu_run: Optional[bool] = False,
+        exp_name: Optional[str] = None,
     ):
 
-        self.exp_name = control_path.name
+        if exp_name:
+            self.exp_name = exp_name
+        else:
+            self.exp_name = control_path.name
         self.control_path = control_path
         self.lab_path = lab_path
         self.config_path = control_path / "config.yaml"
