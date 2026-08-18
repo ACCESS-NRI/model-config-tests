@@ -5,7 +5,7 @@ from pathlib import Path
 from model_config_tests.exp_test_helper import ExpTestHelper
 
 
-def get_lab_path(experiment: Path) -> Path:
+def get_lab_path_and_exp_name(experiment: Path) -> Path:
     """
     Derive the lab path from the experiment configuration directory
     archive symlink
@@ -26,7 +26,7 @@ def test_pairwise_repro(experiment_1: Path, experiment_2: Path):
     dynamically generate pairs of experiments to compare.
     """
 
-    lab_path1, exp_name1 = get_lab_path(experiment_1)
+    lab_path1, exp_name1 = get_lab_path_and_exp_name(experiment_1)
     exp1 = ExpTestHelper(
         control_path=experiment_1,
         lab_path=lab_path1,
@@ -34,7 +34,7 @@ def test_pairwise_repro(experiment_1: Path, experiment_2: Path):
         exp_name=exp_name1,
     )
 
-    lab_path2, exp_name2 = get_lab_path(experiment_2)
+    lab_path2, exp_name2 = get_lab_path_and_exp_name(experiment_2)
     exp2 = ExpTestHelper(
         control_path=experiment_2,
         lab_path=lab_path2,
