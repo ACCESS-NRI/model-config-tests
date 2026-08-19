@@ -5,17 +5,18 @@ from pathlib import Path
 from model_config_tests.exp_test_helper import ExpTestHelper
 
 
-def get_lab_path(experiment: Path) -> Path:
+def get_lab_path_and_exp_name(experiment: Path) -> tuple[Path, str]:
     """
-    Derive the lab path from the experiment configuration directory
-    archive symlink
+    Derive the lab path and experiment name from the
+    archive symlink in the experiment configuration directory.
     """
     archive_symlink = experiment / "archive"
     if not archive_symlink.is_symlink():
         raise ValueError(f"Archive symlink does not exist in {experiment}.")
 
     # experiment/archive symlink points to lab_path/archive/exp_name
-    return archive_symlink.resolve().parent.parent
+    archive_path = archive_symlink.resolve()
+    return archive_path.parent.parent, archive_path.name
 
 
 def test_pairwise_repro(experiment_1: Path, experiment_2: Path):
@@ -25,14 +26,20 @@ def test_pairwise_repro(experiment_1: Path, experiment_2: Path):
     dynamically generate pairs of experiments to compare.
     """
 
-    lab_path1 = get_lab_path(experiment_1)
+    lab_path1, exp_name1 = get_lab_path_and_exp_name(experiment_1)
     exp1 = ExpTestHelper(
-        control_path=experiment_1, lab_path=lab_path1, disable_payu_run=True
+        control_path=experiment_1,
+        lab_path=lab_path1,
+        disable_payu_run=True,
+        exp_name=exp_name1,
     )
 
-    lab_path2 = get_lab_path(experiment_2)
+    lab_path2, exp_name2 = get_lab_path_and_exp_name(experiment_2)
     exp2 = ExpTestHelper(
-        control_path=experiment_2, lab_path=lab_path2, disable_payu_run=True
+        control_path=experiment_2,
+        lab_path=lab_path2,
+        disable_payu_run=True,
+        exp_name=exp_name2,
     )
 
     # Compare the two experiments - compares checksums from output000

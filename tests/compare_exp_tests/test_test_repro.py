@@ -4,7 +4,10 @@ import shlex
 import subprocess
 import xml.etree.ElementTree as ET
 
+import pytest
 import yaml
+
+from model_config_tests.compare_exp_tests.test_repro import get_lab_path_and_exp_name
 
 
 def setup_exp(tmp_path, exp_name, fake_output):
@@ -105,3 +108,34 @@ def test_test_pairwise_repro(tmp_path):
 
     assert "test_pairwise_repro[exp2 vs exp3]" in test_results
     assert test_results["test_pairwise_repro[exp2 vs exp3]"] == "failed"
+
+
+def test_get_lab_path_and_exp_name(tmp_path):
+    """Test the get_lab_path_and_exp_name function returns correct lab path and experiment name"""
+    # Create a laboratory archive path
+    archive_path = tmp_path / "lab" / "archive" / "exp-branch-uuid"
+    archive_path.mkdir(parents=True)
+
+    # Create a control path and archive symlink
+    control_path = tmp_path / "exp1-control"
+    control_path.mkdir(parents=True)
+    archive_symlink = control_path / "archive"
+    archive_symlink.symlink_to(archive_path, target_is_directory=True)
+
+    lab_path, exp_name = get_lab_path_and_exp_name(control_path)
+    assert lab_path == tmp_path / "lab"
+    assert exp_name == "exp-branch-uuid"
+
+    # Error is raised if the archive symlink does not exist
+    archive_symlink.unlink()
+    with pytest.raises(
+        ValueError, match=f"Archive symlink does not exist in {control_path}"
+    ):
+        get_lab_path_and_exp_name(control_path)
+
+    # Error is raised if the archive symlink is not a symlink
+    (control_path / "archive").mkdir()
+    with pytest.raises(
+        ValueError, match=f"Archive symlink does not exist in {control_path}"
+    ):
+        get_lab_path_and_exp_name(control_path)
