@@ -5,10 +5,10 @@ from pathlib import Path
 from model_config_tests.exp_test_helper import ExpTestHelper
 
 
-def get_lab_path_and_exp_name(experiment: Path) -> Path:
+def get_lab_path_and_exp_name(experiment: Path) -> tuple[Path, str]:
     """
-    Derive the lab path from the experiment configuration directory
-    archive symlink
+    Derive the lab path and experiment name from the
+    archive symlink in the experiment configuration directory.
     """
     archive_symlink = experiment / "archive"
     if not archive_symlink.is_symlink():
