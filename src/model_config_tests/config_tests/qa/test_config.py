@@ -48,6 +48,7 @@ PUBLISH_DATA_LOCATION = [
 
 HARD_SWEPT_UUID = "uuid-wiped-by-sweep-hard"
 
+
 def insist_array(str_or_array):
     if isinstance(str_or_array, str):
         str_or_array = [
