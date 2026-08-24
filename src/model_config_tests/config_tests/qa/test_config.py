@@ -46,6 +46,7 @@ PUBLISH_DATA_LOCATION = [
     "/g/data/av17",
 ]
 
+HARD_SWEPT_UUID = "uuid-wiped-by-sweep-hard"
 
 def insist_array(str_or_array):
     if isinstance(str_or_array, str):
@@ -241,8 +242,9 @@ class TestConfig:
 
     @pytest.mark.usefixtures("skipif_no_metadata")
     def test_metadata_does_not_contain_UUID(self, metadata):
-        assert "experiment_uuid" not in metadata, (
-            "`experiment_uuid` should not be defined in metadata, "
+        assert metadata.get("experiment_uuid") in (None, HARD_SWEPT_UUID), (
+            "`experiment_uuid` should either not be defined in metadata, "
+            + f"or should be set to {HARD_SWEPT_UUID}, "
             + "as this is a configuration rather than an experiment. "
         )
 
