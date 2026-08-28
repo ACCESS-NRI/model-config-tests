@@ -277,9 +277,9 @@ class TestConfig:
         branch_name = get_git_branch_name(control_path)
         expt_name = branch_name.split(f"{branch_type}-", 1)[1]
 
-        assert jobname == expt_name, (
-            f"Jobname '{jobname}' in config does not match the second part of the branch name '{expt_name}'"
-        )
+        assert (
+            jobname == expt_name
+        ), f"Jobname '{jobname}' in config does not match the second part of the branch name '{expt_name}'"
 
 
 def read_exe_manifest_fullpaths(control_path: Path):
