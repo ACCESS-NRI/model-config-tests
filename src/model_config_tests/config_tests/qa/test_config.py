@@ -272,6 +272,15 @@ class TestConfig:
             + "If set, branching in payu would not work."
         )
 
+    def test_jobname_match_branch_name(self, config, control_path, branch_type):
+        jobname = config.get("jobname", None)
+        branch_name = get_git_branch_name(control_path)
+        expt_name = branch_name.split(f"{branch_type}-", 1)[1]
+
+        assert jobname == expt_name, (
+            f"Jobname '{jobname}' in config does not match the second part of the branch name '{expt_name}'"
+        )
+
 
 def read_exe_manifest_fullpaths(control_path: Path):
     """Return the full paths to the executables in the executable manifest file"""

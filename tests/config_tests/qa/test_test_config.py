@@ -315,3 +315,32 @@ def test_check_allowed_config_location(
     else:
         filter_fps = check_allowed_config_location(fullpaths, branch_type)
         assert filter_fps == expected_fullpaths
+
+
+@pytest.mark.parametrize(
+    "branch_type, branch_name, config, expected_failure",
+    [
+        ("release", "release-foo-bar", {"jobname": "foo-bar"}, False),
+        ("release", "release-foo-bar", {"jobname": "test"}, True),
+
+        ("dev", "dev-foo-bar", {"jobname": "foo-bar"}, False),
+        ("dev", "dev-foo-bar", {"jobname": "test"}, True),
+    ],
+)
+def test_test_jobname_match_branch_name(checker, monkeypatch, branch_type, branch_name, config, expected_failure):
+    """Test that the jobname in the config matches the second part of the branch name."""
+    control_path = RESOURCES_DIR / "example_control_dir"
+
+    monkeypatch.setattr(
+        "model_config_tests.config_tests.qa.test_config.get_git_branch_name",
+        Mock(return_value = branch_name)
+    )
+
+    if expected_failure:
+        with pytest.raises(
+            AssertionError,
+            match=f"Jobname '{config['jobname']}' in config does not match the second part of the branch name 'foo-bar'",
+        ):
+            checker.test_jobname_match_branch_name(config, control_path, branch_type)
+    else:
+        checker.test_jobname_match_branch_name(config, control_path, branch_type)
