@@ -1,3 +1,4 @@
+import re
 import shlex
 import shutil
 import subprocess
@@ -321,7 +322,9 @@ def test_check_allowed_config_location(
     "branch_type, branch_name, config",
     [
         ("release", "release-foo-bar", {"jobname": "foo-bar"}),
-        ("dev", "dev-foo-bar", {"jobname": "foo-bar"})
+        ("release", "release-foo-bar+wombat", {"jobname": "foo-bar"}),
+        ("dev", "dev-foo-bar", {"jobname": "foo-bar"}),
+        ("dev", "dev-foo-bar+wombat", {"jobname": "foo-bar"}),
     ],
 )
 def test_test_jobname_match_branch_name_pass(
@@ -341,12 +344,16 @@ def test_test_jobname_match_branch_name_pass(
 @pytest.mark.parametrize(
     "branch_type, branch_name, config",
     [
-        ("release", "release-foo-bar", {"jobname": "test"}),
-        ("dev", "dev-foo-bar", {"jobname": "haha"}),
-        ("dev", "dev-foo-bar", {})
+        ("release", "release-foo-bar", {"jobname": "foo"}),
+        ("release", "release-foo-bar+wombat", {"jobname": "foo-bar+wombat"}),
+        ("dev", "dev-foo-bar", {"jobname": "bar"}),
+        ("dev", "dev-foo-bar+wombat", {"jobname": "bar+wombat"}),
+        ("dev", "dev-foo-bar", {}),
     ],
 )
-def test_test_jobname_match_branch_name_fail(checker, monkeypatch, branch_type, branch_name, config):
+def test_test_jobname_match_branch_name_fail(
+    checker, monkeypatch, branch_type, branch_name, config
+):
     """Test that the jobname in the config does not match the second part of the branch name."""
     control_path = RESOURCES_DIR / "example_control_dir"
 
@@ -355,11 +362,13 @@ def test_test_jobname_match_branch_name_fail(checker, monkeypatch, branch_type, 
         Mock(return_value=branch_name),
     )
 
+    error_msg = f"Jobname '{config.get('jobname', None)}' in config does not match the experiment name 'foo-bar' extracted from branch name '{branch_name}'"
     with pytest.raises(
         AssertionError,
-        match=f"Jobname '{config.get('jobname', None)}' in config does not match the second part of the branch name 'foo-bar'",
+        match=re.escape(error_msg),
     ):
         checker.test_jobname_match_branch_name(config, control_path, branch_type)
+
 
 @pytest.mark.parametrize(
     "config_name, branch_type",
@@ -368,7 +377,9 @@ def test_test_jobname_match_branch_name_fail(checker, monkeypatch, branch_type, 
         ("esm1p6-piCtrl", "release"),
     ],
 )
-def test_test_jobname_match_branch_name_om3(checker, monkeypatch, isolated_config, config_name, branch_type):
+def test_test_jobname_match_branch_name_om3(
+    checker, monkeypatch, isolated_config, config_name, branch_type
+):
     """Use some real config to test the functionality of test_jobname_match_branch_name."""
     branch_name, config_dir = isolated_config(config_name)
 
