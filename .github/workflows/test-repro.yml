@@ -67,6 +67,7 @@ on:
         description: Location of the experiment on the target environment
 env:
   ARTIFACT_LOCAL_LOCATION: /opt/artifact
+  PIP_UPLOADED_PRIOR_TO: P7D
 jobs:
   repro:
     # NOTE: A lot of these `vars` and `secrets` are not found in this repository. Instead, they are inherited
