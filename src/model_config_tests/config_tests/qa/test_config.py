@@ -278,6 +278,8 @@ class TestConfig:
 
         branch_name = get_git_branch_name(control_path)
         prefix = f"{branch_type}-"
+
+        # ignore +modifier because job names are clipped at 15 characters by payu
         expt_name = branch_name.split(prefix, 1)[1].split("+", 1)[0]
 
         assert (
