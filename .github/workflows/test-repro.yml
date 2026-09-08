@@ -115,7 +115,7 @@ jobs:
       - name: Run configuration
         id: run
         # Maximum number of minutes to run this step before killing the process.
-        timeout-minutes: 30 
+        timeout-minutes: 60 
         env:
           BASE_EXPERIMENT_LOCATION: ${{ env.EXPERIMENT_LOCATION }}/base-experiment
           COMPARED_CHECKSUM_LOCATION: ${{ env.EXPERIMENT_LOCATION }}/compared

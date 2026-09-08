@@ -185,6 +185,9 @@ but `payu setup` will take longer to run as it needs to re-calculate all the md5
         # Disable git runlog
         doc["runlog"] = False
 
+        # Reduce walltime for test runs to 10 minutes
+        doc["walltime"] = "00:10:00"
+
         # Disable metadata and set override experiment name for work/archive
         # directories
         doc["metadata"] = {"enable": False}
