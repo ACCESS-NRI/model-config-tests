@@ -82,6 +82,7 @@ def test_experiment_setup_for_test_run(exp, tmp_path):
     expected_config = {
         "model": "access-om2",
         "runlog": False,
+        "walltime": "00:10:00",
         "metadata": {"enable": False},
         "experiment": "control",
         "laboratory": str(tmp_path / "lab"),
@@ -113,6 +114,7 @@ def test_experiment_setup_for_test_run_remove_postprocessing(exp, tmp_path):
     expected_config = expected_config = {
         "model": "access-om2",
         "runlog": False,
+        "walltime": "00:10:00",
         "metadata": {"enable": False},
         "experiment": "control",
         "laboratory": str(tmp_path / "lab"),
