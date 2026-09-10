@@ -9,6 +9,7 @@ from typing import Any
 
 import f90nml
 import pytest
+import yaml
 
 from model_config_tests.config_tests.qa.test_config import (
     check_manifest_exes_in_spack_location,
@@ -296,3 +297,25 @@ class TestAccessEsm1p6:
                 f" in {CICE_IN_NML_FNAME} and {ICE_HISTORY_NML_FNAME}"
                 f": {repeated_fields}"
             )
+
+    @pytest.mark.config
+    def test_addmeta_base_configuration(self, branch, control_path):
+        """
+        Check that the 'base_configuration' option used by addmeta matches
+        the release branch name.
+        """
+        dataspec_path = control_path / "scripts" / "post-processing" / "addmeta" / "dataspec.yaml"
+
+        assert dataspec_path.is_file(), (
+            "Expected configuration to contain 'dataspec.yaml' file for addmeta call during post-processing."
+        )
+
+        with open(dataspec_path) as f:
+            dataspec = yaml.safe_load(f)
+
+        assert "global" in dataspec, error_field_nonexistence("global", "dataspec.yaml")
+
+        assert "base_configuration" in dataspec["global"], error_field_nonexistence("global.base_configuration", "dataspec.yaml")
+
+        base_configuration = dataspec["global"]["base_configuration"]
+        assert base_configuration == branch.branch_name, error_field_incorrect("global.base_configuration", "dataspec.yaml", branch.branch_name)
