@@ -377,7 +377,7 @@ def test_test_jobname_match_branch_name_fail(
         ("esm1p6-piCtrl", "release"),
     ],
 )
-def test_test_jobname_match_branch_name_om3(
+def test_test_jobname_match_branch_name_cloned(
     checker, monkeypatch, isolated_config, config_name, branch_type
 ):
     """Use some real config to test the functionality of test_jobname_match_branch_name."""
@@ -394,3 +394,18 @@ def test_test_jobname_match_branch_name_om3(
         config = yaml.safe_load(f)
 
     checker.test_jobname_match_branch_name(config, config, branch_type)
+
+
+def test_test_jobname_match_branch_name_released_esm15(checker, monkeypatch):
+    """Test with the config.yaml from release ACCESS-ESM1.5 in the resources directory."""
+    monkeypatch.setattr(
+        "model_config_tests.config_tests.qa.test_config.get_git_branch_name",
+        Mock(return_value="release-historical+concentrations"),
+    )
+
+    # Load the config.yaml from the isolated configuration
+    config_path = RESOURCES_DIR / "access" / "config.yaml"
+    with open(config_path) as f:
+        config = yaml.safe_load(f)
+
+    checker.test_jobname_match_branch_name(config, config, "release")
