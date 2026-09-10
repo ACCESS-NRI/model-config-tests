@@ -1,3 +1,4 @@
+import re
 import shlex
 import shutil
 import subprocess
@@ -315,3 +316,96 @@ def test_check_allowed_config_location(
     else:
         filter_fps = check_allowed_config_location(fullpaths, branch_type)
         assert filter_fps == expected_fullpaths
+
+
+@pytest.mark.parametrize(
+    "branch_type, branch_name, config",
+    [
+        ("release", "release-foo-bar", {"jobname": "foo-bar"}),
+        ("release", "release-foo-bar+wombat", {"jobname": "foo-bar"}),
+        ("dev", "dev-foo-bar", {"jobname": "foo-bar"}),
+        ("dev", "dev-foo-bar+wombat", {"jobname": "foo-bar"}),
+    ],
+)
+def test_test_jobname_match_branch_name_pass(
+    checker, monkeypatch, branch_type, branch_name, config
+):
+    """Test that the jobname in the config matches the second part of the branch name."""
+    control_path = RESOURCES_DIR / "example_control_dir"
+
+    monkeypatch.setattr(
+        "model_config_tests.config_tests.qa.test_config.get_git_branch_name",
+        Mock(return_value=branch_name),
+    )
+
+    checker.test_jobname_match_branch_name(config, control_path, branch_type)
+
+
+@pytest.mark.parametrize(
+    "branch_type, branch_name, config",
+    [
+        ("release", "release-foo-bar", {"jobname": "foo"}),
+        ("release", "release-foo-bar+wombat", {"jobname": "foo-bar+wombat"}),
+        ("dev", "dev-foo-bar", {"jobname": "bar"}),
+        ("dev", "dev-foo-bar+wombat", {"jobname": "bar+wombat"}),
+        ("dev", "dev-foo-bar", {}),
+    ],
+)
+def test_test_jobname_match_branch_name_fail(
+    checker, monkeypatch, branch_type, branch_name, config
+):
+    """Test that the jobname in the config does not match the second part of the branch name."""
+    control_path = RESOURCES_DIR / "example_control_dir"
+
+    monkeypatch.setattr(
+        "model_config_tests.config_tests.qa.test_config.get_git_branch_name",
+        Mock(return_value=branch_name),
+    )
+
+    error_msg = f"Jobname '{config.get('jobname', None)}' in config does not match the experiment name 'foo-bar' extracted from branch name '{branch_name}'"
+    with pytest.raises(
+        AssertionError,
+        match=re.escape(error_msg),
+    ):
+        checker.test_jobname_match_branch_name(config, control_path, branch_type)
+
+
+@pytest.mark.parametrize(
+    "config_name, branch_type",
+    [
+        ("om2-025deg", "release"),
+        ("esm1p6-piCtrl", "release"),
+    ],
+)
+def test_test_jobname_match_branch_name_cloned(
+    checker, monkeypatch, isolated_config, config_name, branch_type
+):
+    """Use some real config to test the functionality of test_jobname_match_branch_name."""
+    branch_name, config_dir = isolated_config(config_name)
+
+    monkeypatch.setattr(
+        "model_config_tests.config_tests.qa.test_config.get_git_branch_name",
+        Mock(return_value=branch_name),
+    )
+
+    # Load the config.yaml from the isolated configuration
+    config_path = config_dir / "config.yaml"
+    with open(config_path) as f:
+        config = yaml.safe_load(f)
+
+    checker.test_jobname_match_branch_name(config, config, branch_type)
+
+
+def test_test_jobname_match_branch_name_released_esm15(checker, monkeypatch):
+    """Test with the config.yaml from release ACCESS-ESM1.5 in the resources directory."""
+    monkeypatch.setattr(
+        "model_config_tests.config_tests.qa.test_config.get_git_branch_name",
+        Mock(return_value="release-historical+concentrations"),
+    )
+
+    # Load the config.yaml from the isolated configuration
+    config_path = RESOURCES_DIR / "access" / "config.yaml"
+    with open(config_path) as f:
+        config = yaml.safe_load(f)
+
+    checker.test_jobname_match_branch_name(config, config, "release")

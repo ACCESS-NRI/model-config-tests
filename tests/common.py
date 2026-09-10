@@ -45,8 +45,8 @@ CLONE_CONFIGS = {
     # ACCESS-ESM1.6, branch: dev-preindustrial+concentrations
     "esm1p6-piCtrl": {
         "repo_url": "https://github.com/ACCESS-NRI/access-esm1.6-configs.git",
-        "branch": "dev-piControl",
-        "commit": "747d848",
+        "branch": "release-piControl",
+        "commit": "bc8db5b",
     },
 }
 
