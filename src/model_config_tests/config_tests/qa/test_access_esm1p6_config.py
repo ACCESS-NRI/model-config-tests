@@ -306,7 +306,7 @@ class TestAccessEsm1p6:
         """
         dataspec_path = (
             control_path / "scripts" / "post-processing" / "addmeta" / "dataspec.yaml"
-           )
+        )
 
         assert (
             dataspec_path.is_file()
