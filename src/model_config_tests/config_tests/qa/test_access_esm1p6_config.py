@@ -321,7 +321,9 @@ class TestAccessEsm1p6:
         )
 
         base_configuration = dataspec["global"]["base_configuration"]
-        expected_base_configuration = f"release{branch.branch_name.removeprefix(branch.config_type)}"
+        expected_base_configuration = (
+            f"release{branch.branch_name.removeprefix(branch.config_type)}"
+        )
         assert base_configuration == expected_base_configuration, error_field_incorrect(
             "global.base_configuration", "dataspec.yaml", expected_base_configuration
         )
