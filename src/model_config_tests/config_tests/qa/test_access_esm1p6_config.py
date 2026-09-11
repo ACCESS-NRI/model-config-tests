@@ -298,11 +298,10 @@ class TestAccessEsm1p6:
                 f": {repeated_fields}"
             )
 
-    @pytest.mark.config
     def test_addmeta_base_configuration(self, branch, control_path):
         """
         Check that the 'base_configuration' option used by addmeta matches
-        the release branch name.
+        the corresponding release branch name.
         """
         dataspec_path = (
             control_path / "scripts" / "post-processing" / "addmeta" / "dataspec.yaml"
@@ -322,6 +321,7 @@ class TestAccessEsm1p6:
         )
 
         base_configuration = dataspec["global"]["base_configuration"]
-        assert base_configuration == branch.branch_name, error_field_incorrect(
-            "global.base_configuration", "dataspec.yaml", branch.branch_name
+        expected_base_configuration = f"release{branch.branch_name.removeprefix(branch.config_type)}"
+        assert base_configuration == expected_base_configuration, error_field_incorrect(
+            "global.base_configuration", "dataspec.yaml", expected_base_configuration
         )
