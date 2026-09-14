@@ -1,132 +1,178 @@
 import json
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 import pytest
 
 from model_config_tests.util import (
-    JobInfoCache,
-    extract_job_info,
-    qstat_all_jobs,
-    wait_for_qsub,
+    get_latest_run_info,
+    payu_status_json,
+    wait_for_run_job,
 )
 
-# Fake qstat data
-TEST_QSTAT_JSON = {
-    "timestamp": 1744267002,
-    "pbs_version": "some_version",
-    "Jobs": {
-        "12345.gadi-pbs": {
-            "Job_Name": "test_jobname",
-            "resources_used": {
-                "mem": "75520704kb",
-                "walltime": "00:00:21",
-            },
-            "job_state": "F",
-            "queue": "normal-exec",
-            "Resource_List": {
-                "mem": "1073741823996b",
-                "walltime": "03:00:00",
-            },
-            "comment": "Job run",
-            "Exit_status": 0,
-            "some_other_info": "some_value",
+
+def generate_payu_status_output(
+    run_number, exit_status=None, model_exit_status=None, update=False
+):
+    run_info = {
+        "experiment_uuid": "test-uuid",
+        "runs": {
+            str(run_number): {
+                "run": [
+                    {
+                        "job_id": f"17000{run_number}.gadi-pbs",
+                        "stage": "queued",
+                        "exit_status": exit_status,
+                        "stdout_file": (
+                            f"test-stdout.o17000{run_number}"
+                            if exit_status is not None
+                            else None
+                        ),
+                        "stderr_file": (
+                            f"test-stderr.e17000{run_number}"
+                            if exit_status is not None
+                            else None
+                        ),
+                        "job_file": (
+                            f"/scratch/tm70/tmp/test-model-repro/lab/"
+                            f"archive/new_expt-exp_1d_runtime_repeat/"
+                            f"payu_jobs/{run_number}/run/"
+                            f"17000{run_number}.gadi-pbs.json"
+                        ),
+                        "start_time": None,
+                        "depends_on": None,
+                        "run_id": None,
+                        "model_exit_status": model_exit_status,
+                        "model_finish_time": (
+                            "1951-07-01T00:00:00"
+                            if model_exit_status is not None
+                            else None
+                        ),
+                    }
+                ]
+            }
         },
-        "67890.gadi-pbs": {
-            "Job_Name": "test_jobname",
-            "job_state": "Q",
-            "queue": "normal-exec",
-            "Resource_List": {
-                "jobfs": "629145600b",
-                "mem": "1073741823996b",
-            },
-            "comment": "Not Running: Insufficient amount of resource: ncpus ",
-            "project": "test_project",
-            "some_other_info": "another_value",
-        },
-    },
-}
+    }
+
+    output = json.dumps(run_info, indent=4)
+
+    if update:
+        output = "payu: Found modules in /opt/Modules/v4.3.0\n" + output
+    return output, run_info
 
 
 @pytest.fixture
-def job_info_cache():
-    """Fixture to reset the cache after each test"""
-    cache = JobInfoCache()
-    yield cache
-    cache.clear()
+def make_tmp_dirs(tmp_path):
+    # Create control and lab directories
+    control_path = tmp_path / "control"
+    lab_path = tmp_path / "lab"
+    control_path.mkdir()
+    lab_path.mkdir()
+
+    yield control_path, lab_path
 
 
-def test_qstat_all_jobs():
-    """Test qstat query for all jobs"""
-    example_output = json.dumps(TEST_QSTAT_JSON)
+@pytest.mark.parametrize(
+    "update",
+    [True, False],
+)
+def test_payu_status_json(make_tmp_dirs, update):
+    """Test that payu_status_json parses payu status JSON output."""
+    control_path, lab_path = make_tmp_dirs
+    mock_status_output, mock_run_info = generate_payu_status_output(
+        0, exit_status=0, model_exit_status=0, update=update
+    )
+
     with patch("subprocess.run") as mock_run:
-        # Patch the subprocess.run stdout to return the example output
-        example_result = Mock()
-        example_result.stdout = example_output
-        mock_run.return_value = example_result
+        mock_run.return_value.stdout = mock_status_output
+        mock_run.return_value.returncode = 0
 
-        result = qstat_all_jobs()
-        assert result == TEST_QSTAT_JSON
-        mock_run.assert_called_once_with(
-            ["qstat", "-x", "-f", "-F", "json"],
-            capture_output=True,
-            text=True,
-            check=True,
+        status_data = payu_status_json(control_path, lab_path, run_number=0)
+
+        assert status_data == mock_run_info
+
+
+def test_payu_status_json_failure(make_tmp_dirs):
+    """Test that payu_status_json raises RuntimeError when payu status failed to fetch."""
+    control_path, lab_path = make_tmp_dirs
+
+    with patch("subprocess.run") as mock_run:
+        mock_run.return_value.stdout = "test-stdout"
+        mock_run.return_value.returncode = 1
+
+        with pytest.raises(RuntimeError, match="payu status command failed"):
+            payu_status_json(control_path, lab_path, run_number=0)
+
+
+def test_wait_for_run_job_succeed(make_tmp_dirs):
+    """Test that wait_for_run_job returns run_info when exit_status and model_exit_status are both zero."""
+    control_path, lab_path = make_tmp_dirs
+
+    with patch("model_config_tests.util.payu_status_json") as mock_payu_status_json:
+        # Simulate payu status output with exit_status=0 and model_exit_status=0
+        _, mock_run_info = generate_payu_status_output(
+            0, exit_status=0, model_exit_status=0, update=True
         )
+        mock_payu_status_json.return_value = mock_run_info
+
+        run_info = wait_for_run_job(control_path, lab_path, run_number=0)
+
+        assert run_info == mock_run_info["runs"]["0"]["run"][-1]
 
 
-def test_extract_job_info():
-    """Test extracting job info from qstat output"""
-    job_info = extract_job_info(TEST_QSTAT_JSON)
-    assert "12345.gadi-pbs" in job_info
-    assert "67890.gadi-pbs" in job_info
-    assert job_info["12345.gadi-pbs"]["job_state"] == "F"
-    assert job_info["67890.gadi-pbs"]["job_state"] == "Q"
+@pytest.mark.parametrize(
+    "exit_status, model_exit_status",
+    [
+        (1, 0),  # Non-zero exit_status
+        (0, 1),  # Non-zero model_exit_status
+        (1, 1),  # Both non-zero
+    ],
+)
+def test_wait_for_run_job_fail_run(make_tmp_dirs, exit_status, model_exit_status):
+    """Test that wait_for_run_job raise RuntimeError if exit_status or model_exit_status is not zero."""
+    control_path, lab_path = make_tmp_dirs
+
+    with patch("model_config_tests.util.payu_status_json") as mock_payu_status_json:
+        # Simulate payu status output with exit_status=0 and model_exit_status=0
+        _, mock_run_info = generate_payu_status_output(
+            0, exit_status, model_exit_status, update=True
+        )
+        mock_payu_status_json.return_value = mock_run_info
+
+        with pytest.raises(RuntimeError, match="Payu run job failed for run number 0"):
+            wait_for_run_job(control_path, lab_path, run_number=0)
 
 
-def test_wait_for_qsub_job_found_in_cache(job_info_cache):
-    """Test wait_for_qsub when job is found in cache."""
-    job_info_cache.set({"5678": {"job_state": "F"}})
-    with (
-        patch("model_config_tests.util.qstat_all_jobs") as mock_qstat_all_jobs,
-        patch("time.sleep") as mock_sleep,
-    ):
-        mock_qstat_all_jobs.return_value = TEST_QSTAT_JSON
-        result = wait_for_qsub("5678")
-        mock_qstat_all_jobs.assert_not_called()
-        mock_sleep.assert_not_called()
+def test_wait_for_run_job_no_run_info(make_tmp_dirs):
+    """Test that wait_for_run_job raises RuntimeError if no run job information is found."""
+    control_path, lab_path = make_tmp_dirs
 
-    assert result == {"job_state": "F"}
+    with patch("model_config_tests.util.payu_status_json") as mock_payu_status_json:
+        # Simulate payu status output with no run job information
+        mock_payu_status_json.return_value = {"runs": {}}
 
-
-def test_wait_for_qsub_job_not_found(job_info_cache):
-    """Test wait_for_qsub when job is not found in cache."""
-    with (
-        patch("model_config_tests.util.qstat_all_jobs") as mock_qstat_all_jobs,
-        patch("time.sleep") as mock_sleep,
-    ):
-        mock_qstat_all_jobs.return_value = TEST_QSTAT_JSON
-
-        with pytest.raises(RuntimeError, match="Job ID 9999 not found in qstat output"):
-            wait_for_qsub("9999")
-
-        mock_qstat_all_jobs.assert_called()
-        mock_sleep.assert_called()
+        with pytest.raises(
+            RuntimeError, match="No run job information found for run number 0"
+        ):
+            wait_for_run_job(control_path, lab_path, run_number=0)
 
 
-def test_wait_for_qsub_job_completes(job_info_cache):
-    """Test wait_for_qsub when job completes after waiting."""
-    with (
-        patch("model_config_tests.util.qstat_all_jobs") as mock_qstat_all_jobs,
-        patch("time.sleep") as mock_sleep,
-    ):
-        # Simulate job not found initially, then found and completed
-        mock_qstat_all_jobs.side_effect = [
-            {"Jobs": {"1234": {"job_state": "R"}}},  # First call
-            {"Jobs": {"1234": {"job_state": "F"}}},  # Second call
-        ]
+def test_get_latest_run_info():
+    """Test that get_latest_run_info returns the latest run job information."""
+    # Simulate payu status output with multiple run jobs
+    _, mock_run_info_0 = generate_payu_status_output(
+        0, exit_status=0, model_exit_status=0, update=True
+    )
+    _, mock_run_info_1 = generate_payu_status_output(
+        1, exit_status=0, model_exit_status=0, update=True
+    )
+    status_data = {
+        "runs": {
+            "0": mock_run_info_0["runs"]["0"],
+            "1": mock_run_info_1["runs"]["1"],
+        }
+    }
 
-        result = wait_for_qsub("1234")
-        assert result["job_state"] == "F"
+    latest_run_number, latest_run_info = get_latest_run_info(status_data)
 
-        mock_qstat_all_jobs.assert_called()
-        mock_sleep.assert_called()
+    assert latest_run_number == 1
+    assert latest_run_info == mock_run_info_1["runs"]["1"]["run"][-1]
