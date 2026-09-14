@@ -63,6 +63,7 @@ class ExpTestHelper:
 
         self.disable_payu_run = disable_payu_run
 
+        self.run_id = None
         self.run_number = None
         self.n_runs = None
 
@@ -233,7 +234,7 @@ but `payu setup` will take longer to run as it needs to re-calculate all the md5
             # Change to experiment directory and run.
             os.chdir(self.control_path)
 
-            # Run payu setup commandpayu 
+            # Run payu setup command
             print("Running payu setup")
             result = sp.run(
                 ["payu", "setup", "--lab", str(self.lab_path)],
@@ -303,8 +304,12 @@ but `payu setup` will take longer to run as it needs to re-calculate all the md5
         # A RuntimeRrror is raised if exit_status/model_exit_status is non-zero
         for current_run_number in range(self.run_number, self.run_number + self.n_runs):
             print(f"Waiting for run job to finish. Run number: {current_run_number}")
-            run_info = wait_for_run_job(self.control_path, self.lab_path, current_run_number)
-            print(f"Job {run_info.get('job_id')} for run {current_run_number} finished successfully.")
+            run_info = wait_for_run_job(
+                self.control_path, self.lab_path, current_run_number
+            )
+            print(
+                f"Job {run_info.get('job_id')} for run {current_run_number} finished successfully."
+            )
 
         return
 
@@ -474,5 +479,3 @@ def setup_exp(
     exp.setup_for_test_run()
 
     return exp
-
-

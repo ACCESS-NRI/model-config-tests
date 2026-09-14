@@ -1,7 +1,5 @@
 import json
-import subprocess as sp
-from pathlib import Path
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -10,6 +8,7 @@ from model_config_tests.util import (
     payu_status_json,
     wait_for_run_job,
 )
+
 
 def generate_payu_status_output(
     run_number, exit_status=None, model_exit_status=None, update=False
@@ -23,8 +22,16 @@ def generate_payu_status_output(
                         "job_id": f"17000{run_number}.gadi-pbs",
                         "stage": "queued",
                         "exit_status": exit_status,
-                        "stdout_file": f"test-stdout.o17000{run_number}" if exit_status is not None else None,
-                        "stderr_file": f"test-stderr.e17000{run_number}" if exit_status is not None else None,
+                        "stdout_file": (
+                            f"test-stdout.o17000{run_number}"
+                            if exit_status is not None
+                            else None
+                        ),
+                        "stderr_file": (
+                            f"test-stderr.e17000{run_number}"
+                            if exit_status is not None
+                            else None
+                        ),
                         "job_file": (
                             f"/scratch/tm70/tmp/test-model-repro/lab/"
                             f"archive/new_expt-exp_1d_runtime_repeat/"
@@ -35,7 +42,11 @@ def generate_payu_status_output(
                         "depends_on": None,
                         "run_id": None,
                         "model_exit_status": model_exit_status,
-                        "model_finish_time": "1951-07-01T00:00:00" if model_exit_status is not None else None,
+                        "model_finish_time": (
+                            "1951-07-01T00:00:00"
+                            if model_exit_status is not None
+                            else None
+                        ),
                     }
                 ]
             }
@@ -45,10 +56,7 @@ def generate_payu_status_output(
     output = json.dumps(run_info, indent=4)
 
     if update:
-        output = (
-            "payu: Found modules in /opt/Modules/v4.3.0\n"
-            + output
-        )
+        output = "payu: Found modules in /opt/Modules/v4.3.0\n" + output
     return output, run_info
 
 
@@ -70,7 +78,9 @@ def make_tmp_dirs(tmp_path):
 def test_payu_status_json(make_tmp_dirs, update):
     """Test that payu_status_json parses payu status JSON output."""
     control_path, lab_path = make_tmp_dirs
-    mock_status_output, mock_run_info = generate_payu_status_output(0, exit_status=0, model_exit_status=0, update=update)
+    mock_status_output, mock_run_info = generate_payu_status_output(
+        0, exit_status=0, model_exit_status=0, update=update
+    )
 
     with patch("subprocess.run") as mock_run:
         mock_run.return_value.stdout = mock_status_output
@@ -99,7 +109,9 @@ def test_wait_for_run_job_succeed(make_tmp_dirs):
 
     with patch("model_config_tests.util.payu_status_json") as mock_payu_status_json:
         # Simulate payu status output with exit_status=0 and model_exit_status=0
-        _, mock_run_info = generate_payu_status_output(0, exit_status=0, model_exit_status=0, update=True)
+        _, mock_run_info = generate_payu_status_output(
+            0, exit_status=0, model_exit_status=0, update=True
+        )
         mock_payu_status_json.return_value = mock_run_info
 
         run_info = wait_for_run_job(control_path, lab_path, run_number=0)
@@ -121,7 +133,9 @@ def test_wait_for_run_job_fail_run(make_tmp_dirs, exit_status, model_exit_status
 
     with patch("model_config_tests.util.payu_status_json") as mock_payu_status_json:
         # Simulate payu status output with exit_status=0 and model_exit_status=0
-        _, mock_run_info = generate_payu_status_output(0, exit_status, model_exit_status, update=True)
+        _, mock_run_info = generate_payu_status_output(
+            0, exit_status, model_exit_status, update=True
+        )
         mock_payu_status_json.return_value = mock_run_info
 
         with pytest.raises(RuntimeError, match="Payu run job failed for run number 0"):
@@ -136,24 +150,29 @@ def test_wait_for_run_job_no_run_info(make_tmp_dirs):
         # Simulate payu status output with no run job information
         mock_payu_status_json.return_value = {"runs": {}}
 
-        with pytest.raises(RuntimeError, match="No run job information found for run number 0"):
+        with pytest.raises(
+            RuntimeError, match="No run job information found for run number 0"
+        ):
             wait_for_run_job(control_path, lab_path, run_number=0)
 
 
 def test_get_latest_run_info():
     """Test that get_latest_run_info returns the latest run job information."""
-    with patch("model_config_tests.util.payu_status_json") as mock_payu_status_json:
-        # Simulate payu status output with multiple run jobs
-        _, mock_run_info_0 = generate_payu_status_output(0, exit_status=0, model_exit_status=0, update=True)
-        _, mock_run_info_1 = generate_payu_status_output(1, exit_status=0, model_exit_status=0, update=True)
-        status_data = {
-            "runs": {
-                "0": mock_run_info_0["runs"]["0"],
-                "1": mock_run_info_1["runs"]["1"],
-            }
+    # Simulate payu status output with multiple run jobs
+    _, mock_run_info_0 = generate_payu_status_output(
+        0, exit_status=0, model_exit_status=0, update=True
+    )
+    _, mock_run_info_1 = generate_payu_status_output(
+        1, exit_status=0, model_exit_status=0, update=True
+    )
+    status_data = {
+        "runs": {
+            "0": mock_run_info_0["runs"]["0"],
+            "1": mock_run_info_1["runs"]["1"],
         }
+    }
 
-        latest_run_number, latest_run_info = get_latest_run_info(status_data)
+    latest_run_number, latest_run_info = get_latest_run_info(status_data)
 
-        assert latest_run_number == 1
-        assert latest_run_info == mock_run_info_1["runs"]["1"]["run"][-1]
+    assert latest_run_number == 1
+    assert latest_run_info == mock_run_info_1["runs"]["1"]["run"][-1]

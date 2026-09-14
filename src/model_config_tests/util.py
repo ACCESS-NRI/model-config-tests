@@ -70,7 +70,7 @@ def payu_status_json(
         os.chdir(owd)
 
     stdout = result.stdout
-    json_output = stdout[stdout.index("{"):]
+    json_output = stdout[stdout.index("{") :]
     return json.loads(json_output)
 
 
@@ -78,7 +78,7 @@ def wait_for_run_job(control_path: Path, lab_path: Path, run_number: int) -> dic
     """
     Call `payu status --json` until the run job for the given run number has
     an exit code.
-    Return job information if exit code and model exit code are both zero, 
+    Return job information if exit code and model exit code are both zero,
     otherwise raise a RuntimeError.
 
     Parameters
@@ -102,11 +102,11 @@ def wait_for_run_job(control_path: Path, lab_path: Path, run_number: int) -> dic
                 f"No run job information found for run number {run_number} "
                 f"in payu status output: {status_data}"
             )
-        
+
         run_info = run_jobs[-1]
         exit_status = run_info.get("exit_status", None)
 
-        # If exit_status exists, 
+        # If exit_status exists,
         # return run_info if both exit_status and model_exit_status are zero,
         # otherwise raise a RuntimeError.
         if exit_status is not None:
@@ -125,7 +125,8 @@ def wait_for_run_job(control_path: Path, lab_path: Path, run_number: int) -> dic
             )
 
         # Wait for a minute if no exit_status yet
-        time.sleep(MINUTE_IN_SECONDS) 
+        time.sleep(MINUTE_IN_SECONDS)
+
 
 def get_latest_run_info(status_data: dict) -> tuple:
     """

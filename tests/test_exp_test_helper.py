@@ -125,7 +125,9 @@ def test_experiment_setup_for_test_run_remove_postprocessing(exp, tmp_path):
 
 @patch("subprocess.run")
 def test_experiment_submit_payu_run(mock_run, exp):
-    mock_run.return_value.stdout = "1234567.gadi-pbs\nsome other output"
+    mock_run.return_value.stdout = (
+        '{"runs": {"0": {"run": [{"job_id": "1234567.gadi-pbs"}]}}}'
+    )
     mock_run.return_value.returncode = 0
 
     current_working_dir = Path.cwd()
@@ -133,12 +135,13 @@ def test_experiment_submit_payu_run(mock_run, exp):
 
     lab_path = str(exp.lab_path)
 
-    assert mock_run.call_count == 3
-    # Check prior calls to setup and sweep
+    assert mock_run.call_count == 4
+    # Check prior calls to setup, sweep, and run
     assert mock_run.call_args_list[0][0][0] == ["payu", "setup", "--lab", lab_path]
     assert mock_run.call_args_list[1][0][0] == ["payu", "sweep", "--lab", lab_path]
-    # Latest call
-    assert mock_run.call_args[0][0] == ["payu", "run", "--lab", lab_path]
+    assert mock_run.call_args_list[2][0][0] == ["payu", "run", "--lab", lab_path]
+    # Latest call for payu status to get the run_id
+    assert mock_run.call_args[0][0] == ["payu", "status", "--lab", lab_path, "--json"]
 
     assert exp.run_id == "1234567.gadi-pbs"
 
@@ -149,21 +152,23 @@ def test_experiment_submit_payu_run(mock_run, exp):
 @patch("subprocess.run")
 def test_experiment_submit_payu_run_n_runs(mock_run, exp):
     """Test --n-runs is added to the payu run command"""
-    mock_run.return_value.stdout = "1234567.gadi-pbs\nsome other output"
+    mock_run.return_value.stdout = (
+        '{"runs": {"0": {"run": [{"job_id": "1234567.gadi-pbs"}]}}}'
+    )
     mock_run.return_value.returncode = 0
 
     exp.submit_payu_run(n_runs=2)
 
     lab_path = str(exp.lab_path)
     expected_run_args = ["payu", "run", "--lab", lab_path, "--nruns", "2"]
-    # Payu run is the latest subprocess call
-    assert mock_run.call_args[0][0] == expected_run_args
+    # Payu run is the second last subprocess call
+    assert mock_run.call_args_list[2][0][0] == expected_run_args
 
 
 @patch("subprocess.run")
 def test_experiment_submit_payu_run_disabled(mock_run, exp):
     """Payu run is not called when disabled field is set to True"""
-    mock_run.return_value.stdout = "1234567.gadi-pbs\nsome other output"
+    mock_run.return_value.stdout = "some output"
 
     exp.disable_payu_run = True
 
@@ -217,38 +222,41 @@ def test_experiment_submit_payu_run_error(mock_run, exp):
     assert f"Return code: {run_return_code}" in str(exec_info.value)
 
 
-
-def mock_wait_for_qsub(job_id):
-    """
-    Mock function to simulate waiting for a qsub job to finish.
-    """
-    return None
-
-
-
-def test_experiment_wait_for_payu_run(exp, tmp_path):
+@patch("model_config_tests.exp_test_helper.wait_for_run_job")
+def test_experiment_wait_for_payu_run(mock_wait_for_run_job, exp, capsys):
     """
     Test that wait_for_payu_run waits for the payu run to finish.
     """
-    # Copy a example stdout/stderr files to the control path
-    test_files = [
-        "pre-industrial.o137776068",
-        "pre-industrial.e137776068",
-    ]
-    for file in test_files:
-        shutil.copy(LOG_DIR / file, tmp_path / "control")
 
-    # Mock the wait_for_qsub function so it returns immediately
-    with patch(
-        "model_config_tests.exp_test_helper.wait_for_qsub"
-    ) as mock_wait_for_qsub:
-        mock_wait_for_qsub.return_value = None
+    # mock the wait_for_run_job function so it returns immediately
+    def mock_wait(control_path, lab_path, run_number):
+        return {
+            "job_id": f"17000{run_number}.gadi-pbs",
+            "exit_status": 0,
+            "model_exit_status": 0,
+        }
 
-        exp.run_id = "137776068.gadi-pbs"
-        output_files = exp.wait_for_payu_run()
+    mock_wait_for_run_job.side_effect = mock_wait
 
-        output_filenames = [Path(filepath).name for filepath in output_files]
-        assert output_filenames == test_files
+    exp.run_number = 0
+    exp.n_runs = 2
+    exp.wait_for_payu_run()
+
+    assert mock_wait_for_run_job.call_count == 2
+    assert mock_wait_for_run_job.call_args_list[0][0] == (
+        exp.control_path,
+        exp.lab_path,
+        0,
+    )
+    assert mock_wait_for_run_job.call_args_list[1][0] == (
+        exp.control_path,
+        exp.lab_path,
+        1,
+    )
+
+    captured = capsys.readouterr()
+    assert "Job 170000.gadi-pbs for run 0 finished successfully." in captured.out
+    assert "Job 170001.gadi-pbs for run 1 finished successfully." in captured.out
 
 
 def test_experiment_wait_for_payu_run_disabled(exp):
@@ -257,24 +265,15 @@ def test_experiment_wait_for_payu_run_disabled(exp):
     """
     exp.disable_payu_run = True
 
-    # Mock the wait_for_qsub function so it returns immediately
+    # Mock the wait_for_run_job function so it returns immediately
     with patch(
-        "model_config_tests.exp_test_helper.wait_for_qsub"
-    ) as mock_wait_for_qsub:
-        mock_wait_for_qsub.return_value = None
+        "model_config_tests.exp_test_helper.wait_for_run_job"
+    ) as mock_wait_for_run_job:
+        mock_wait_for_run_job.return_value = None
 
-        exp.wait_for_payu_run("137776068.gadi-pbs")
+        exp.wait_for_payu_run()
 
-        assert not mock_wait_for_qsub.called
-
-
-def _test_collect_restart_tiles_unified(exp_with_restarts):
-    exp_accessom3 = AccessOm3(exp_with_restarts)
-    restart = exp_accessom3.output_0 / "access-om3.mom6.r.1900-01-02-00000.nc"
-    restart.write_bytes(b"")
-
-    restart_path = AccessOm3.collect_restart_tiles(restart)
-    assert restart_path == restart
+        assert not mock_wait_for_run_job.called
 
 
 def test_collect_restart_tiles_split(exp_with_restarts):
