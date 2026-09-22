@@ -115,7 +115,7 @@ jobs:
       - name: Run configuration
         id: run
         # Maximum number of minutes to run this step before killing the process.
-        timeout-minutes: 60 
+        timeout-minutes: 60
         env:
           BASE_EXPERIMENT_LOCATION: ${{ env.EXPERIMENT_LOCATION }}/base-experiment
           COMPARED_CHECKSUM_LOCATION: ${{ env.EXPERIMENT_LOCATION }}/compared
@@ -193,7 +193,7 @@ jobs:
             --target-branch "${{ inputs.compared-config-ref }}" \
             --output-path "${{ env.EXPERIMENT_LOCATION }}" \
             ${{ inputs.compared-config-ref != '' && '--checksum-path $COMPARED_CHECKSUM_FILE \' || '\' }}
-            --junitxml="${{ env.EXPERIMENT_LOCATION }}/checksum/test_report.xml"
+            --junitxml="${{ env.EXPERIMENT_LOCATION }}/test_report.xml"
 
           # Deactivate and remove the test virtual environment
           deactivate
@@ -208,6 +208,7 @@ jobs:
       - name: Copy Back Checksums and Test Report
         run: |
           rsync --recursive --verbose -e 'ssh -i ${{ steps.ssh.outputs.private-key-path }}' \
+            '${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST_DATA }}:${{ env.EXPERIMENT_LOCATION }}/test_report.xml' \
             '${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST_DATA }}:${{ env.EXPERIMENT_LOCATION }}/checksum' \
             ${{ env.ARTIFACT_LOCAL_LOCATION }}
 
@@ -268,7 +269,7 @@ jobs:
         id: tests
         uses: EnricoMi/publish-unit-test-result-action/linux@c950f6fb443cb5af20a377fd0dfaa78838901040  #v2.23.0
         with:
-          files: ${{ env.TESTING_LOCAL_LOCATION }}/checksum/test_report.xml
+          files: ${{ env.TESTING_LOCAL_LOCATION }}/test_report.xml
           comment_mode: off
           check_run: true
           check_name: Repro Test Results
@@ -293,7 +294,7 @@ jobs:
         id: parse_test_report
         uses: access-nri/model-config-tests/.github/actions/parse-junit-xml@main
         with:
-          filepath: ${{ env.TESTING_LOCAL_LOCATION }}/checksum/test_report.xml
+          filepath: ${{ env.TESTING_LOCAL_LOCATION }}/test_report.xml
 
   clean-up:
     name: Clean up test outputs
