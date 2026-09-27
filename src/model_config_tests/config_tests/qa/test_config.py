@@ -272,6 +272,20 @@ class TestConfig:
             + "If set, branching in payu would not work."
         )
 
+    def test_jobname_match_branch_name(self, config, control_path, branch_type):
+        """Check that jobname in config.yaml matches the scenario part of the branch name."""
+        jobname = config.get("jobname", None)
+
+        branch_name = get_git_branch_name(control_path)
+        prefix = f"{branch_type}-"
+
+        # ignore +modifier because job names are clipped at 15 characters by payu
+        expt_name = branch_name.split(prefix, 1)[1].split("+", 1)[0]
+
+        assert (
+            jobname == expt_name
+        ), f"Jobname '{jobname}' in config does not match the experiment name '{expt_name}' extracted from branch name '{branch_name}'"
+
 
 def read_exe_manifest_fullpaths(control_path: Path):
     """Return the full paths to the executables in the executable manifest file"""
