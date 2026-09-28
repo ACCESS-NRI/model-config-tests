@@ -204,6 +204,15 @@ jobs:
           EOT
           echo "experiment-location=${{ env.EXPERIMENT_LOCATION }}" >> $GITHUB_OUTPUT
 
+      - name: Check and install rsync
+        # rsync doesn't seem to be installed on self-hosted runners
+        run: |
+          if ! command -v rsync >/dev/null; then
+            echo "rsync is not available on this runner, installing..."
+            sudo apt-get update
+            sudo apt-get install rsync -y
+          fi
+
       - name: Copy Back Checksums and Test Report
         run: |
           rsync --recursive --verbose -e 'ssh -i ${{ steps.ssh.outputs.private-key-path }}' \
