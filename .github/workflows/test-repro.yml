@@ -72,7 +72,8 @@ jobs:
     # NOTE: A lot of these `vars` and `secrets` are not found in this repository. Instead, they are inherited
     # from the calling workflow (for example, `ACCESS-NRI/access-om2-configs`)
     name: Run Config On ${{ inputs.config-ref }}
-    runs-on: ubuntu-latest
+    runs-on:
+      group: repro-ci
     environment: ${{ inputs.environment-name }}
     outputs:
       artifact-name: ${{ steps.artifact.outputs.name }}
@@ -114,8 +115,6 @@ jobs:
 
       - name: Run configuration
         id: run
-        # Maximum number of minutes to run this step before killing the process.
-        timeout-minutes: 120
         env:
           BASE_EXPERIMENT_LOCATION: ${{ env.EXPERIMENT_LOCATION }}/base-experiment
           COMPARED_CHECKSUM_LOCATION: ${{ env.EXPERIMENT_LOCATION }}/compared
