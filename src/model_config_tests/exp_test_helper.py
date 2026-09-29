@@ -1,20 +1,20 @@
 # Copyright 2024 ACCESS-NRI and contributors. See the top-level COPYRIGHT file for details.
 # SPDX-License-Identifier: Apache-2.0
 
-import glob
 import os
-import re
 import shutil
 import subprocess as sp
-import warnings
-from collections.abc import Callable
 from pathlib import Path
 from typing import Optional
 
 import yaml
 
 from model_config_tests.models import index as model_index
-from model_config_tests.util import wait_for_qsub
+from model_config_tests.util import (
+    get_latest_run_info,
+    payu_status_json,
+    wait_for_run_job,
+)
 
 
 class ExpTestHelper:
@@ -64,6 +64,8 @@ class ExpTestHelper:
         self.disable_payu_run = disable_payu_run
 
         self.run_id = None
+        self.run_number = None
+        self.n_runs = None
 
     def set_model(self):
         """Set model based on payu config. Currently only setting top-level
@@ -222,6 +224,8 @@ but `payu setup` will take longer to run as it needs to re-calculate all the md5
         str
             The job ID of the submitted payu run job
         """
+        self.n_runs = n_runs if n_runs is not None else 1
+
         if self.disable_payu_run:
             return
 
@@ -259,11 +263,17 @@ but `payu setup` will take longer to run as it needs to re-calculate all the md5
 
             # Run payu run command
             run_command = ["payu", "run", "--lab", str(self.lab_path)]
-            if n_runs:
-                run_command.extend(["--nruns", str(n_runs)])
+            if self.n_runs > 1:
+                run_command.extend(["--nruns", str(self.n_runs)])
             print(f"Running payu run command: {' '.join(run_command)}")
-            result = sp.run(run_command, capture_output=True, text=True, check=True)
-            self.run_id = parse_run_id(result.stdout)
+            sp.run(run_command, capture_output=True, text=True, check=True)
+
+            # Query payu status
+            status_data = payu_status_json(self.control_path, self.lab_path)
+
+            # Store the run number and job id
+            self.run_number, run_info = get_latest_run_info(status_data)
+            self.run_id = run_info.get("job_id")
             print(f"Run Job ID: {self.run_id}")
 
         except sp.CalledProcessError as e:
@@ -277,14 +287,10 @@ but `payu setup` will take longer to run as it needs to re-calculate all the md5
             # Change back to original working directory
             os.chdir(owd)
 
-    def wait_for_payu_run(self, run_id: str = None) -> list[str]:
-        """Given a run ID, wait for all the payu run jobs to finish.
-
-        Parameters
-        ----------
-        run_id: str
-            The job ID of the payu run job to wait for. If None, use the
-            run ID saved in the class.
+    def wait_for_payu_run(self) -> list[str]:
+        """Wait for the submitted payu run job(s) to finish, querying
+        `payu status --json` for job status rather than parsing stdout/log
+        files.
 
         Returns
         ----------
@@ -294,16 +300,18 @@ but `payu setup` will take longer to run as it needs to re-calculate all the md5
         if self.disable_payu_run:
             return
 
-        if run_id is None:
-            run_id = self.run_id
+        # Wait for initial run and subsequent run jobs to complete
+        # A RuntimeRrror is raised if exit_status/model_exit_status is non-zero
+        for current_run_number in range(self.run_number, self.run_number + self.n_runs):
+            print(f"Waiting for run job to finish. Run number: {current_run_number}")
+            run_info = wait_for_run_job(
+                self.control_path, self.lab_path, current_run_number
+            )
+            print(
+                f"Job {run_info.get('job_id')} for run {current_run_number} finished successfully."
+            )
 
-        # Wait for payu PBS jobs to complete
-        output_files = wait_for_payu_jobs(
-            control_path=self.control_path,
-            run_id=run_id,
-            wait_for_qsub_func=wait_for_qsub,
-        )
-        return output_files
+        return
 
 
 class Experiments:
@@ -471,237 +479,3 @@ def setup_exp(
     exp.setup_for_test_run()
 
     return exp
-
-
-def parse_run_id(stdout: str) -> str:
-    """Parses the Gadi PBS run ID from the subprocess stdout that submits payu
-    run"""
-    ids = parse_gadi_pbs_ids(stdout)
-    if len(ids) != 1:
-        raise RuntimeError(
-            "Expected 1 job ID in payu run submission, "
-            f"but found {len(ids)}. IDs: {ids}"
-        )
-    return ids[0]
-
-
-def parse_gadi_pbs_ids(stdout: str) -> list[str]:
-    """
-    Parse all Gadi PBS job IDs that are printed out in to a line
-    in the payu stdout file
-
-    Parameters
-    ----------
-    stdout: str
-        The contents of a payu PBS job stdout file
-
-    Returns
-    ----------
-    list[str]
-        A list of jobs IDs printed out to a line
-    """
-    # Define the regex pattern, e.g. 137776067.gadi-pbs. The "Job ID:" prefix is optional
-    pattern = r"^(?:Job ID: )?(\d+\.gadi-pbs)$"
-
-    # Find all matches in the text
-    matches = re.findall(pattern, stdout, re.MULTILINE)
-    return matches
-
-
-def parse_exit_status_from_file(stdout: str) -> Optional[int]:
-    """
-    Parse the exit status from the payu stdout file
-
-    Parameters
-    ----------
-    stdout: str
-        The contents of a payu PBS job stdout file
-
-    Returns
-    ----------
-    int
-        The exit status of the job. If not found, return None.
-    """
-    # Regex pattern for exit status - allow spaces before and after
-    pattern = r"^\s*Exit Status:\s*(\d+)\s*$"
-
-    # Find all matches in the text
-    matches = re.findall(pattern, stdout, re.MULTILINE)
-    if len(matches) == 0:
-        return None
-    return int(matches[-1])
-
-
-def parse_pbs_submitted_jobs(stdout: str) -> Optional[str]:
-    """
-    Parse a payu STDOUT file for run job ID. If there are multiple job IDs,
-    assume payu run is the last one found.
-
-    Parameters
-    ----------
-    stdout: str
-        The contents of a payu job stdout file
-
-    Returns
-    ----------
-    Optional[str]
-        Any submitted payu run ID. If a subsequent run job was
-        not submitted, the id will be None.
-    """
-    # The "Submitted command:" is optional
-    run_pattern = r"^(?:Submitted command: )?qsub.*/bin/payu-run$"
-    run_submitted = re.search(run_pattern, stdout, re.MULTILINE) is not None
-
-    job_ids = parse_gadi_pbs_ids(stdout)
-
-    run_id = None
-    if run_submitted:
-        if len(job_ids) < 1:
-            raise RuntimeError(
-                "No job ID found in stdout file for subsequent payu run job"
-            )
-        elif len(job_ids) > 1:
-            # Warning as post-processing is currently disabled
-            warnings.warn(f"Found more than 1 job IDs in stdout file (IDs: {job_ids})")
-        run_id = job_ids[-1]
-
-    return run_id
-
-
-def read_job_output_file(
-    control_path: Path, job_id: str, file_type: str = "stdout"
-) -> tuple[str, str]:
-    """
-    Read the output file of a job
-
-    Parameters
-    ----------
-    control_path: str
-        The path to the control directory
-    job_id: str
-        The ID of the job to read the output file for.
-    file_type: str
-        The type of file to read ("stdout" or "stderr")
-
-    Returns
-    ----------
-    tuple[str, str]
-        A tuple of (contents, filename) where contents of the stdout/stderr
-        file and filename is the path to the file.
-    """
-    job_id = job_id.split(".")[0]
-    if file_type == "stdout":
-        filename = glob.glob(str(control_path / f"*.o{job_id}"))
-    elif file_type == "stderr":
-        filename = glob.glob(str(control_path / f"*.e{job_id}"))
-    else:
-        raise ValueError("file_type must be 'stdout' or 'stderr'")
-
-    if len(filename) != 1:
-        raise RuntimeError(
-            f"Expected 1 {file_type} file for job ID {job_id}, "
-            f"but found {len(filename)}. Files: {filename}"
-        )
-
-    with open(filename[0]) as f:
-        contents = f.read()
-
-    return contents, filename[0]
-
-
-def wait_for_qsub_job(
-    control_path: Path,
-    job_id: str,
-    wait_for_qsub_func: Callable[[str], None],
-    job_type: str = "run",
-) -> tuple[str, str, list]:
-    """
-    Wait for a qsub job to finish, checks the exit status,
-    and returns the job output files.
-
-    Parameters
-    ----------
-    control_path: str
-        The path to the control directory
-    job_id: str
-        The ID of the job to wait for.
-    wait_for_qsub_func: Callable[[str], None]
-        A function that waits for a PBS job to complete
-    job_type: str
-        The type of job to wait for - e.g. "run"
-
-    Returns
-    ----------
-    tuple[str, str, list]
-        A tuple of (stdout, stderr, output_files) where stdout and stderr
-        are the contents of the stdout and stderr files, and output_files
-        is a list of filepaths to the output files
-    """
-    # Wait for job to complete
-    print(f"Waiting for {job_type} job to finish. Job ID: {job_id}")
-    wait_for_qsub_func(job_id)
-
-    # Read stdout/stderr files
-    stdout, stdout_filename = read_job_output_file(control_path, job_id, "stdout")
-    stderr, stderr_filename = read_job_output_file(control_path, job_id, "stderr")
-    output_files = [stdout_filename, stderr_filename]
-
-    # Check whether the run job was successful
-    exit_status = parse_exit_status_from_file(stdout)
-    if exit_status != 0:
-        raise RuntimeError(
-            f"Payu {job_type} job failed with exit status {exit_status}:\n"
-            f"Job_ID: {job_id}\n"
-            f"Output files: {output_files}\n"
-            f"--- stdout ---\n{stdout}\n"
-            f"--- stderr ---\n{stderr}\n"
-        )
-
-    return stdout, stderr, output_files
-
-
-def wait_for_payu_jobs(
-    control_path: Path, run_id: str, wait_for_qsub_func: Callable[[str], None]
-) -> list[str]:
-    """
-    Wait for a initial payu run PBS job to finsh, then waits
-    for any subsequent run jobs.
-
-    Raises an Runtime Error if any of the jobs fail, or unable to parse
-    STDOUT/STDERR files for job IDs.
-
-    Parameters
-    ----------
-    control_path: str
-        The path to the control directory. This is where to find the
-        STDOUT/STDERR files for the jobs.
-    run_id: str
-        The ID of the run job to wait for.
-    wait_for_qsub_func: Callable[[str], None]
-        A function that waits for a PBS job to complete
-
-    Returns
-    ----------
-    list[str]
-        A list of filepaths to the output log files created by the run jobs.
-    """
-    output_files = []
-    run_count = 0
-    while run_id is not None:
-        # Wait for run to complete
-        run_stdout, _, run_output_files = wait_for_qsub_job(
-            control_path, run_id, wait_for_qsub_func
-        )
-        output_files.extend(run_output_files)
-
-        # Check whether a job job was submitted
-        next_run_id = parse_pbs_submitted_jobs(run_stdout)
-
-        if next_run_id is not None:
-            run_count += 1
-            print(
-                f"Waiting for subsequent submitted payu run job (run_count: {run_count})"
-            )
-
-        run_id = next_run_id
-    return output_files
