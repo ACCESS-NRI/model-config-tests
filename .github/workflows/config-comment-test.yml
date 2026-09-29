@@ -8,8 +8,6 @@ on:
   #     - edited
   #     - created
 env:
-  USAGE: '!test TYPE [commit]'
-  USAGE_TYPES: repro
   RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
 jobs:
   permission-check:
@@ -83,7 +81,7 @@ jobs:
     env:
       GH_TOKEN: ${{ github.token }}
     outputs:
-      test-type: ${{ steps.test.outputs.type }}
+      test-type: ${{ steps.args.outputs.test-type }}
       # the full git hash of the configuration being tested
       config-hash: ${{ steps.pr.outputs.hash }}
       # the short git hash of the configuration being tested
@@ -96,8 +94,10 @@ jobs:
       compared-config-short-hash: ${{ steps.compared.outputs.short-hash }}
       # the git ref (branch or tag) of the configuration being compared against
       compared-config-ref: ${{ steps.compared.outputs.ref }}
-      # whether the commenter can commit to the repo (either 'true', 'false' or '' (when no 'commit' option given))
-      commit-requested: ${{ steps.commit.outputs.requested }}
+      # whether the commenter can commit to the repo
+      commit-requested: ${{ steps.args.outputs.commit-requested }}
+      # A pytest marker string to override the config in ci.json
+      markers: ${{ steps.args.outputs.markers }}
       # TODO: Make this an input to the command when we start deploying to multiple targets
       environment-name: Gadi
     permissions:
@@ -108,39 +108,12 @@ jobs:
           fetch-depth: 0
           fetch-tags: true
 
-      - name: Verify !test
-        run: |
-          if [[ "${{ startsWith(github.event.comment.body, '!test') }}" == "true" ]]; then
-            echo 'Command starts with !test'
-          else
-            echo "::error::Usage: ${{ env.USAGE }}"
-            echo "::error::Command must start with !test to invoke model-config-tests' config-comment-test.yml."
-            exit 1
-          fi
-
-      - name: Get !test type
-        id: test
-        run: |
-          # Only get the first line of the comment for processing as a command.
-          command=$(head -n 1 <<< "${{ github.event.comment.body }}")
-          read -ra command_tokens <<< "$command"
-          type_in_comment="${command_tokens[1]}"
-          type_in_comment_valid=false
-
-          for type in ${{ env.USAGE_TYPES }}; do
-            if [[ "$type_in_comment" == "$type" ]]; then
-              type_in_comment_valid=true
-              break
-            fi
-          done
-
-          if [[ "$type_in_comment_valid" == "false" ]]; then
-            echo "::error::Usage: ${{ env.USAGE }}"
-            echo "::error::The command '$command' doesn't have a valid TYPE. Was given '$type_in_comment', but needed to be one of: ${{ env.USAGE_TYPES }}."
-            exit 1
-          fi
-
-          echo "type=$type_in_comment" >> $GITHUB_OUTPUT
+      - name: Parse command args
+        id: args
+        uses: $/.github/actions/parse-test-comment-command
+        with:
+          command-body: |
+            ${{ github.event.comment.body }}
 
       - name: Get config ref from PR comment
         id: pr
@@ -166,41 +139,6 @@ jobs:
           echo "short-hash=$short_hash" >> $GITHUB_OUTPUT
           echo "ref=$ref" >> $GITHUB_OUTPUT
 
-      - name: Determine whether to commit
-        id: commit
-        # Determine whether the commenter wants to commit something to the repository
-        run: |
-          # Again only taking the first line as the command
-          command=$(head -n 1 <<< "${{ github.event.comment.body }}")
-          read -ra command_tokens <<< "$command"
-          potential_commit_token="${command_tokens[2]}"
-
-          if [[ "$potential_commit_token" == "commit" ]]; then
-            echo "'commit' option given"
-            echo "requested=true" >> $GITHUB_OUTPUT
-          elif [ -z "$potential_commit_token" ]; then
-            echo "'commit' option not given"
-            echo "requested=false" >> $GITHUB_OUTPUT
-          else
-            echo "::error::Non-commit option '$potential_commit_token' given. Usage: ${{ env.USAGE }}"
-            exit 1
-          fi
-
-      - name: Erroneous tokens check
-        # If commit is given, any tokens after the 3rd are considered erroneous - otherwise it is after the 2nd
-        # TODO: This will need to be made more robust if there are other options added
-        run: |
-          # Again only taking the first line as the command
-          command=$(head -n 1 <<< "${{ github.event.comment.body }}")
-          read -ra command_tokens <<< "$command"
-
-          max_tokens_allowed=$([[ "${{ steps.commit.outputs.requested }}" == "true" ]] && echo "3" || echo "2")
-
-          if [ "${#command_tokens[@]}" -gt "$max_tokens_allowed" ]; then
-            echo "::error::Erroneous tokens given. Usage: ${{ env.USAGE }}"
-            exit 1
-          fi
-
   repro-ci:
     name: Compare ${{ needs.prepare-command.outputs.config-ref }} against ${{ needs.prepare-command.outputs.compared-config-ref }}
     needs:
@@ -215,7 +153,7 @@ jobs:
       environment-name: ${{ needs.prepare-command.outputs.environment-name }}
       payu-version: ${{ needs.ci-config.outputs.payu-version }}
       model-config-tests-version: ${{ needs.ci-config.outputs.model-config-tests-version }}
-      test-markers: ${{ needs.ci-config.outputs.markers }}
+      test-markers: ${{ needs.prepare-command.outputs.markers || needs.ci-config.outputs.markers }}
       run-context: pr${{ github.event.issue.number }}
     secrets: inherit
     permissions:
@@ -342,7 +280,7 @@ jobs:
         with:
           comment: >-
             :x: `!test` Command Failed :x:
-            ${{ needs.prepare-command.result == 'failure' && format('The command given could not be parsed correctly. Usage: {0}', env.USAGE) || '' }}
+            ${{ needs.prepare-command.result == 'failure' && 'The command given could not be parsed correctly.' || '' }}
             ${{ needs.permission-check.result == 'failure' && 'You do not have at least write permissions on this repository.' || '' }}
             ${{ needs.commit.result == 'failure' && 'There was a problem committing the result of the reproducibility run.' || '' }}
             See ${{ env.RUN_URL }}
