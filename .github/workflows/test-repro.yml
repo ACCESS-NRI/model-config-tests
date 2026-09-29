@@ -66,7 +66,7 @@ on:
         value: ${{ jobs.repro.outputs.experiment-location }}
         description: Location of the experiment on the target environment
 env:
-  ARTIFACT_LOCAL_LOCATION: /opt/artifact
+  ARTIFACT_LOCAL_LOCATION: ${{ github.workspace }}/artifact
 jobs:
   repro:
     # NOTE: A lot of these `vars` and `secrets` are not found in this repository. Instead, they are inherited
