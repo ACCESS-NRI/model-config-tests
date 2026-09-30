@@ -95,7 +95,7 @@ jobs:
       # the git ref (branch or tag) of the configuration being compared against
       compared-config-ref: ${{ steps.compared.outputs.ref }}
       # whether the commenter can commit to the repo
-      commit-requested: ${{ steps.args.outputs.commit-requested }}
+      commit-requested: ${{ steps.args.outputs.requires-commit }}
       # A pytest marker string to override the config in ci.json
       markers: ${{ steps.args.outputs.markers }}
       # TODO: Make this an input to the command when we start deploying to multiple targets

@@ -21,30 +21,12 @@ runs:
         python-version: 3.11
         update-environment: false
 
-    - name: Format command body
-      id: format
-      shell: bash
-      env:
-        COMMAND_BODY: ${{ inputs.command-body }}
-      run: |
-        # Only the first line of the comment is the command, and comment
-        # bodies are CRLF-delimited, so drop the trailing carriage return.
-        # Then remove the leading !test and the whitespace around it.
-        args=$(
-          printf '%s' "$COMMAND_BODY" |
-            head -n 1 |
-            tr -d '\r' |
-            sed -E 's/^[[:space:]]*!test[[:space:]]*//'
-        )
-
-        echo "args=${args}" >> "$GITHUB_OUTPUT"
-
     - name: Parse !test command
       id: parse
       shell: bash
       env:
         # Passed as env vars so comment text is not directly executed in shell
-        COMMAND_ARGS: ${{ steps.format.outputs.args }}
+        COMMAND_BODY: ${{ inputs.command-body }}
         PYTHON_PATH: ${{ steps.cp311.outputs.python-path }}
         SCRIPT_PATH: ${{ github.action_path }}/parse_test_comment_command.py
       run: |
