@@ -24,4 +24,4 @@ if __name__ == "__main__":
         output.write(f"test-type={args.test_type}\n")
         # We want the outputs to have yaml bools rather than python ones, for GitHub Actions
         output.write(f"requires-commit={'true' if args.commit else 'false'}\n")
-        output.write(f"markers={args.markers}\n")
+        output.write(f"markers='{args.markers}'\n")

@@ -50,3 +50,10 @@ runs:
       run: |
         # Use python script to parse the args
         "$PYTHON_PATH" "$SCRIPT_PATH"
+
+    - name: Output parsed args
+      shell: bash
+      run: |
+        echo "test-type: ${{ steps.parse.outputs.test-type }}"
+        echo "requires-commit: ${{ steps.parse.outputs.requires-commit }}"
+        echo "markers: ${{ steps.parse.outputs.markers }}"
