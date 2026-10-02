@@ -20,17 +20,17 @@ INJECTION_MARKERS = [
 ]
 
 
-def assert_rejected(command_body: str) -> None:
+def assert_rejected(command_body: str, exception_type: Exception) -> None:
     """Assert a command body is rejected.
 
     Bad input is refused either by argparse (SystemExit) or, for input that
     isn't even well-formed enough to split, by shlex (ValueError). Both abort
     the action before anything is written to GITHUB_OUTPUT, so accept either.
     """
-    with pytest.raises((SystemExit, ValueError)) as exc:
+    with pytest.raises(exception_type) as exc:
         parse_command(command_body)
 
-    if exc.type is SystemExit:
+    if exception_type is SystemExit:
         assert exc.value.code == 2
 
 
