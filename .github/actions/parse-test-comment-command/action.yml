@@ -16,7 +16,7 @@ runs:
   steps:
     - name: Set up Python
       id: cp311
-      uses: actions/setup-python@v6
+      uses: actions/setup-python@v7
       with:
         python-version: 3.11
         update-environment: false
@@ -33,9 +33,14 @@ runs:
         # Use python script to parse the args
         "$PYTHON_PATH" "$SCRIPT_PATH"
 
-    - name: Output parsed args
+    - name: Print out parsed args
       shell: bash
+      env:
+      # Passed as env vars so comment text is not directly executed in shell
+        TEST_TYPE: ${{ steps.parse.outputs.test-type }}
+        REQUIRES_COMMIT: ${{ steps.parse.outputs.requires-commit }}
+        MARKERS: ${{ steps.parse.outputs.markers }}
       run: |
-        echo "test-type: ${{ steps.parse.outputs.test-type }}"
-        echo "requires-commit: ${{ steps.parse.outputs.requires-commit }}"
-        echo "markers: ${{ steps.parse.outputs.markers }}"
+        echo "test-type: $TEST_TYPE"
+        echo "requires-commit: $REQUIRES_COMMIT"
+        echo "markers: $MARKERS"
