@@ -100,10 +100,7 @@ class TestInvalidCommands:
         ],
     )
     def test_rejects_invalid_args(self, body):
-        with pytest.raises(SystemExit) as exc:
-            parse_command(body)
-
-        assert exc.value.code == 2
+        assert_rejected(body)
 
     @pytest.mark.parametrize("markers", INJECTION_MARKERS)
     def test_rejects_shell_metacharacters(self, markers):
