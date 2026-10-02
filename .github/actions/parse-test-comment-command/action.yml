@@ -27,11 +27,10 @@ runs:
       env:
         # Passed as env vars so comment text is not directly executed in shell
         COMMAND_BODY: ${{ inputs.command-body }}
-        PYTHON_PATH: ${{ steps.cp311.outputs.python-path }}
         SCRIPT_PATH: ${{ github.action_path }}/parse_test_comment_command.py
       run: |
         # Use python script to parse the args
-        "$PYTHON_PATH" "$SCRIPT_PATH"
+        python3 "$SCRIPT_PATH"
 
     - name: Print out parsed args
       shell: bash
