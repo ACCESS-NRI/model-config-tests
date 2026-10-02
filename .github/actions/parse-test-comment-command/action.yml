@@ -1,0 +1,45 @@
+name: Parse !test args
+description: Simple action to parse arguments to the !test comment command
+inputs:
+  command-body:
+    required: true
+    description: Comment that starts with !test
+outputs:
+  test-type:
+    value: ${{ steps.parse.outputs.test-type }}
+  requires-commit:
+    value: ${{ steps.parse.outputs.requires-commit }}
+  markers:
+    value: ${{ steps.parse.outputs.markers }}
+runs:
+  using: "composite"
+  steps:
+    - name: Set up Python
+      id: cp311
+      uses: actions/setup-python@v7
+      with:
+        python-version: 3.11
+        update-environment: false
+
+    - name: Parse !test command
+      id: parse
+      shell: bash
+      env:
+        # Passed as env vars so comment text is not directly executed in shell
+        COMMAND_BODY: ${{ inputs.command-body }}
+        SCRIPT_PATH: ${{ github.action_path }}/parse_test_comment_command.py
+      run: |
+        # Use python script to parse the args
+        python3 "$SCRIPT_PATH"
+
+    - name: Print out parsed args
+      shell: bash
+      env:
+      # Passed as env vars so comment text is not directly executed in shell
+        TEST_TYPE: ${{ steps.parse.outputs.test-type }}
+        REQUIRES_COMMIT: ${{ steps.parse.outputs.requires-commit }}
+        MARKERS: ${{ steps.parse.outputs.markers }}
+      run: |
+        echo "test-type: $TEST_TYPE"
+        echo "requires-commit: $REQUIRES_COMMIT"
+        echo "markers: $MARKERS"
