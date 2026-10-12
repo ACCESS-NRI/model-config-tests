@@ -103,8 +103,9 @@ class ExpTestHelper:
         print(f"Running payu setup command: {setup_command}")
 
         # Change to experiment directory and run payu setup
-        result = sp.run(setup_command, capture_output=True, text=True,
-                        cwd=self.control_path)
+        result = sp.run(
+            setup_command, capture_output=True, text=True, cwd=self.control_path
+        )
 
         if result.returncode != 0:
             raise RuntimeError(
@@ -266,7 +267,9 @@ but `payu setup` will take longer to run as it needs to re-calculate all the md5
 
             # Store the run number and job id
             self.run_number, run_info = get_latest_run_info(status_data)
-            print(f"Run Number: {self.run_number}, Run Job ID: {run_info.get('job_id')}")
+            print(
+                f"Run Number: {self.run_number}, Run Job ID: {run_info.get('job_id')}"
+            )
 
         except sp.CalledProcessError as e:
             raise RuntimeError(

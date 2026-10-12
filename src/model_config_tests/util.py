@@ -2,7 +2,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import json
-import os
 import subprocess as sp
 import time
 from pathlib import Path
@@ -52,8 +51,7 @@ def payu_status_json(
 
     print(f"Checking payu status with command: {' '.join(status_cmd)}")
     # Use subprocess to run payu status in the experiment control directory
-    result = sp.run(status_cmd, capture_output=True, text=True,
-                    cwd=control_path)
+    result = sp.run(status_cmd, capture_output=True, text=True, cwd=control_path)
 
     if result.returncode != 0:
         raise RuntimeError(
@@ -85,8 +83,10 @@ def wait_for_run_job(control_path: Path, lab_path: Path, run_number: int) -> dic
         The run number of the run job to wait for
     """
     # Call payu status without update first
-    status_data = payu_status_json(control_path, lab_path, run_number=run_number, update=False)
-    
+    status_data = payu_status_json(
+        control_path, lab_path, run_number=run_number, update=False
+    )
+
     while True:
         run_jobs = status_data.get("runs", {}).get(str(run_number), {}).get("run")
         if not run_jobs:
@@ -118,7 +118,7 @@ def wait_for_run_job(control_path: Path, lab_path: Path, run_number: int) -> dic
 
         # Wait for a minute if no exit_status yet
         time.sleep(MINUTE_IN_SECONDS)
-            
+
         # Call payu status --update
         status_data = payu_status_json(
             control_path, lab_path, run_number=run_number, update=True
