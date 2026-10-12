@@ -63,7 +63,6 @@ class ExpTestHelper:
 
         self.disable_payu_run = disable_payu_run
 
-        self.run_id = None
         self.run_number = None
         self.n_runs = None
 
@@ -93,25 +92,19 @@ class ExpTestHelper:
         Run payu setup command. If reproduce is True, run with --reproduce flag
         to check if md5 hashes have changed in the manifests.
         """
-        owd = Path.cwd()
-        # Change to experiment directory and run.
-        os.chdir(self.control_path)
+        setup_command = [
+            "payu",
+            "setup",
+            "--lab",
+            str(self.lab_path),
+        ]
+        if reproduce:
+            setup_command.append("--reproduce")
+        print(f"Running payu setup command: {setup_command}")
 
-        try:
-            setup_command = [
-                "payu",
-                "setup",
-                "--lab",
-                str(self.lab_path),
-            ]
-            if reproduce:
-                setup_command.append("--reproduce")
-            print(f"Running payu setup command: {setup_command}")
-            result = sp.run(setup_command, capture_output=True, text=True)
-
-        finally:
-            # Change back to original working directory
-            os.chdir(owd)
+        # Change to experiment directory and run payu setup
+        result = sp.run(setup_command, capture_output=True, text=True,
+                        cwd=self.control_path)
 
         if result.returncode != 0:
             raise RuntimeError(
@@ -273,8 +266,7 @@ but `payu setup` will take longer to run as it needs to re-calculate all the md5
 
             # Store the run number and job id
             self.run_number, run_info = get_latest_run_info(status_data)
-            self.run_id = run_info.get("job_id")
-            print(f"Run Job ID: {self.run_id}")
+            print(f"Run Number: {self.run_number}, Run Job ID: {run_info.get('job_id')}")
 
         except sp.CalledProcessError as e:
             raise RuntimeError(

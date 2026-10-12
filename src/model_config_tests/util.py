@@ -44,30 +44,24 @@ def payu_status_json(
     dict
         The parsed JSON output of `payu status`
     """
-    owd = Path.cwd()
-    # Change to experiment directory and run.
-    os.chdir(control_path)
-    try:
-        status_cmd = ["payu", "status", "--lab", str(lab_path), "--json"]
-        if update:
-            status_cmd.append("--update")
-        if run_number is not None:
-            status_cmd.extend(["-n", str(run_number)])
+    status_cmd = ["payu", "status", "--lab", str(lab_path), "--json"]
+    if update:
+        status_cmd.append("--update")
+    if run_number is not None:
+        status_cmd.extend(["-n", str(run_number)])
 
-        print(f"Checking payu status with command: {' '.join(status_cmd)}")
-        result = sp.run(status_cmd, capture_output=True, text=True)
+    print(f"Checking payu status with command: {' '.join(status_cmd)}")
+    # Use subprocess to run payu status in the experiment control directory
+    result = sp.run(status_cmd, capture_output=True, text=True,
+                    cwd=control_path)
 
-        if result.returncode != 0:
-            raise RuntimeError(
-                "payu status command failed:\n"
-                f"Return code: {result.returncode}\n"
-                f"--- stdout ---\n{result.stdout}\n"
-                f"--- stderr ---\n{result.stderr}"
-            )
-
-    finally:
-        # Change back to original working directory
-        os.chdir(owd)
+    if result.returncode != 0:
+        raise RuntimeError(
+            "payu status command failed:\n"
+            f"Return code: {result.returncode}\n"
+            f"--- stdout ---\n{result.stdout}\n"
+            f"--- stderr ---\n{result.stderr}"
+        )
 
     stdout = result.stdout
     json_output = stdout[stdout.index("{") :]
@@ -90,12 +84,10 @@ def wait_for_run_job(control_path: Path, lab_path: Path, run_number: int) -> dic
     run_number: int
         The run number of the run job to wait for
     """
+    # Call payu status without update first
+    status_data = payu_status_json(control_path, lab_path, run_number=run_number, update=False)
+    
     while True:
-        # Call payu status --update
-        status_data = payu_status_json(
-            control_path, lab_path, run_number=run_number, update=True
-        )
-
         run_jobs = status_data.get("runs", {}).get(str(run_number), {}).get("run")
         if not run_jobs:
             raise RuntimeError(
@@ -126,6 +118,11 @@ def wait_for_run_job(control_path: Path, lab_path: Path, run_number: int) -> dic
 
         # Wait for a minute if no exit_status yet
         time.sleep(MINUTE_IN_SECONDS)
+            
+        # Call payu status --update
+        status_data = payu_status_json(
+            control_path, lab_path, run_number=run_number, update=True
+        )
 
 
 def get_latest_run_info(status_data: dict) -> tuple:

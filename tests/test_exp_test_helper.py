@@ -64,7 +64,6 @@ def test_experiment_init(exp, tmp_path):
     assert exp.restart000 == exp.archive_path / "restart000"
     assert exp.restart001 == exp.archive_path / "restart001"
     assert not exp.disable_payu_run
-    assert exp.run_id is None
     assert exp.config == {"model": "access-om2"}
     assert exp.model_name == "access-om2"
 
@@ -143,7 +142,7 @@ def test_experiment_submit_payu_run(mock_run, exp):
     # Latest call for payu status to get the run_id
     assert mock_run.call_args[0][0] == ["payu", "status", "--lab", lab_path, "--json"]
 
-    assert exp.run_id == "1234567.gadi-pbs"
+    assert exp.run_number == 0
 
     # Check that the working directory is restored
     assert current_working_dir == Path.cwd()
@@ -188,8 +187,6 @@ def test_experiment_submit_payu_run_setup_error(mock_run, exp):
     with pytest.raises(RuntimeError, match="Failed to run payu setup*"):
         exp.submit_payu_run()
 
-    assert exp.run_id is None
-
 
 @patch("subprocess.run")
 def test_experiment_submit_payu_run_error(mock_run, exp):
@@ -216,7 +213,6 @@ def test_experiment_submit_payu_run_error(mock_run, exp):
     with pytest.raises(RuntimeError, match="Failed to submit payu run.*") as exec_info:
         exp.submit_payu_run()
 
-    assert exp.run_id is None
     assert f"--- stdout ---\n{run_error_stdout}" in str(exec_info.value)
     assert f"--- stderr ---\n{run_error_stderr}" in str(exec_info.value)
     assert f"Return code: {run_return_code}" in str(exec_info.value)
