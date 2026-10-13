@@ -4,6 +4,7 @@
 import json
 import subprocess as sp
 import time
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
@@ -85,6 +86,7 @@ def wait_for_run_job(control_path: Path, lab_path: Path, run_number: int) -> dic
     status_data = payu_status_json(
         control_path, lab_path, run_number=run_number, update=False
     )
+    previous_stage = None
 
     while True:
         run_jobs = status_data.get("runs", {}).get(str(run_number), {}).get("run")
@@ -97,6 +99,16 @@ def wait_for_run_job(control_path: Path, lab_path: Path, run_number: int) -> dic
         run_info = run_jobs[-1]
         exit_status = run_info.get("exit_status", None)
 
+        # If stage is changed, print a message to the user
+        stage = run_info.get("stage", None)
+        job_id = run_info.get("job_id")
+        if previous_stage != stage:
+            previous_stage = stage
+            timestamp = datetime.now(timezone.utc).strftime("UTC %Y-%m-%d %H:%M:%S")
+            print(
+                f"[{timestamp}]: Job {job_id} for run {run_number} stage changed to '{stage}'."
+            )
+
         # If exit_status exists,
         # return run_info if both exit_status and model_exit_status are zero,
         # otherwise raise a RuntimeError.
@@ -108,7 +120,8 @@ def wait_for_run_job(control_path: Path, lab_path: Path, run_number: int) -> dic
 
             raise RuntimeError(
                 f"Payu run job failed for run number {run_number}:\n"
-                f"Job ID: {run_info.get('job_id')}\n"
+                f"Job ID: {job_id}\n"
+                f"Stage: {stage}\n"
                 f"Exit status: {exit_status}\n"
                 f"Model exit status: {model_exit_status}\n"
                 f"Output Log: {run_info.get('stdout_file')}\n"

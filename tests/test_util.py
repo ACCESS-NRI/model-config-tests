@@ -4,6 +4,7 @@ from unittest.mock import patch
 import pytest
 
 from model_config_tests.util import (
+    MINUTE_IN_SECONDS,
     get_latest_run_info,
     payu_status_json,
     wait_for_run_job,
@@ -156,6 +157,40 @@ def test_wait_for_run_job_no_run_info(make_tmp_dirs):
             RuntimeError, match="No run job information found for run number 0"
         ):
             wait_for_run_job(control_path, lab_path, run_number=0)
+
+
+def test_wait_for_run_job_stage_change(make_tmp_dirs, capsys):
+    """Test that wait_for_run_job prints a message when the stage changes."""
+    control_path, lab_path = make_tmp_dirs
+
+    with (
+        patch("model_config_tests.util.payu_status_json") as mock_payu_status_json,
+        patch("model_config_tests.util.time.sleep") as mock_sleep,
+    ):
+        # Simulate payu status output with stage change
+        _, mock_run_info_0 = generate_payu_status_output(
+            0, exit_status=None, model_exit_status=None, update=True
+        )
+        _, mock_run_info_1 = generate_payu_status_output(
+            0, exit_status=0, model_exit_status=0, update=True
+        )
+        mock_run_info_1["runs"]["0"]["run"][-1]["stage"] = "archive"
+
+        mock_payu_status_json.side_effect = [
+            mock_run_info_0,
+            mock_run_info_1,
+        ]
+        run_info = wait_for_run_job(control_path, lab_path, run_number=0)
+
+        # Check that time sleep only once
+        mock_sleep.assert_called_once_with(MINUTE_IN_SECONDS)
+
+        # Check the the stage update messages are printed
+        stdout = capsys.readouterr().out
+        assert "stage changed to 'queued'" in stdout
+        assert "stage changed to 'archive'" in stdout
+
+        assert run_info == mock_run_info_1["runs"]["0"]["run"][-1]
 
 
 def test_get_latest_run_info():
