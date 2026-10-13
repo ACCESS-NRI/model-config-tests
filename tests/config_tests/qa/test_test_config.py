@@ -323,8 +323,10 @@ def test_check_allowed_config_location(
     [
         ("release", "release-foo-bar", {"jobname": "foo-bar"}),
         ("release", "release-foo-bar+wombat", {"jobname": "foo-bar"}),
+        ("release", "release-foo-bar+wombat", {"jobname": "foo-bar+wom"}),
         ("dev", "dev-foo-bar", {"jobname": "foo-bar"}),
         ("dev", "dev-foo-bar+wombat", {"jobname": "foo-bar"}),
+        ("dev", "dev-foo-bar+wombat", {"jobname": "foo-bar+wombat"}),
     ],
 )
 def test_test_jobname_match_branch_name_pass(
@@ -345,7 +347,7 @@ def test_test_jobname_match_branch_name_pass(
     "branch_type, branch_name, config",
     [
         ("release", "release-foo-bar", {"jobname": "foo"}),
-        ("release", "release-foo-bar+wombat", {"jobname": "foo-bar+wombat"}),
+        ("release", "release-foo-bar+wombat", {"jobname": "foo+wombat"}),
         ("dev", "dev-foo-bar", {"jobname": "bar"}),
         ("dev", "dev-foo-bar+wombat", {"jobname": "bar+wombat"}),
         ("dev", "dev-foo-bar", {}),
@@ -362,7 +364,8 @@ def test_test_jobname_match_branch_name_fail(
         Mock(return_value=branch_name),
     )
 
-    error_msg = f"Jobname '{config.get('jobname', None)}' in config does not match the experiment name 'foo-bar' extracted from branch name '{branch_name}'"
+    jobname = config.get("jobname", "")
+    error_msg = f"Jobname '{jobname}' in config does not contain the experiment name 'foo-bar' extracted from branch name '{branch_name}'"
     with pytest.raises(
         AssertionError,
         match=re.escape(error_msg),
