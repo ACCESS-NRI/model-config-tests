@@ -99,7 +99,7 @@ def test_payu_status_json_failure(make_tmp_dirs):
         mock_run.return_value.stdout = "test-stdout"
         mock_run.return_value.returncode = 1
 
-        with pytest.raises(RuntimeError, match="payu status command failed"):
+        with pytest.raises(RuntimeError, match="Fail to check payu status:"):
             payu_status_json(control_path, lab_path, run_number=0)
 
 

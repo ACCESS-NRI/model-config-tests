@@ -49,13 +49,12 @@ def payu_status_json(
     if run_number is not None:
         status_cmd.extend(["-n", str(run_number)])
 
-    print(f"Checking payu status with command: {' '.join(status_cmd)}")
     # Use subprocess to run payu status in the experiment control directory
     result = sp.run(status_cmd, capture_output=True, text=True, cwd=control_path)
 
     if result.returncode != 0:
         raise RuntimeError(
-            "payu status command failed:\n"
+            f"Fail to check job status with command: {' '.join(status_cmd)}\n"
             f"Return code: {result.returncode}\n"
             f"--- stdout ---\n{result.stdout}\n"
             f"--- stderr ---\n{result.stderr}"
