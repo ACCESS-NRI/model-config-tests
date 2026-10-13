@@ -285,9 +285,17 @@ class TestConfig:
         # ignore the branch type- and +modifier
         expt_name = branch_name.split(prefix, 1)[1].split("+", 1)[0]
 
-        assert jobname.startswith(
-            expt_name
-        ), f"Jobname '{jobname}' in config does not start with the experiment name '{expt_name}' extracted from branch name '{branch_name}'"
+        if "+" not in branch_name:
+            # When no modifer is in branch name, jobname must match the scenario part
+            assert (
+                jobname == expt_name
+            ), f"Jobname '{jobname}' in config does not match the experiment name '{expt_name}' extracted from branch name '{branch_name}'"
+
+        else:
+            # When modifer is presented, jobname must start with the scenario part
+            assert jobname.startswith(
+                expt_name
+            ), f"Jobname '{jobname}' in config does not start with the experiment name '{expt_name}' extracted from branch name '{branch_name}'"
 
 
 def read_exe_manifest_fullpaths(control_path: Path):

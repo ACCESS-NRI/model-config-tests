@@ -344,17 +344,25 @@ def test_test_jobname_match_branch_name_pass(
 
 
 @pytest.mark.parametrize(
-    "branch_type, branch_name, config",
+    "branch_type, branch_name, config, modifier",
     [
-        ("release", "release-1deg_jra_ryf", {"jobname": "1deg_jra_iaf"}),
-        ("release", "release-1deg_jra_ryf+wombat", {"jobname": "1deg_jra+wombat"}),
-        ("dev", "dev-1deg_jra_ryf", {"jobname": "01deg_jra_ryf"}),
-        ("dev", "dev-1deg_jra_ryf+wombat", {"jobname": "1deg_jra_iaf+wombat"}),
-        ("dev", "dev-1deg_jra_ryf", {}),
+        ("release", "release-1deg_jra_ryf", {"jobname": "1deg_jra_iaf"}, False),
+        ("release", "release-1deg_jra_ryf", {"jobname": "01deg_jra_ryf"}, False),
+        ("release", "release-1deg_jra_ryf", {"jobname": "1deg_jra_ryf+wombat"}, False),
+        (
+            "release",
+            "release-1deg_jra_ryf+wombat",
+            {"jobname": "1deg_jra+wombat"},
+            True,
+        ),
+        ("release", "release-1deg_jra_ryf+wombat", {"jobname": "1deg_jra_iaf"}, True),
+        ("dev", "dev-1deg_jra_ryf", {"jobname": "01deg_jra_ryf"}, False),
+        ("dev", "dev-1deg_jra_ryf+wombat", {"jobname": "1deg_jra_iaf+wombat"}, True),
+        ("dev", "dev-1deg_jra_ryf", {}, False),
     ],
 )
 def test_test_jobname_match_branch_name_fail(
-    checker, monkeypatch, branch_type, branch_name, config
+    checker, monkeypatch, branch_type, branch_name, config, modifier
 ):
     """Test that the jobname in the config does not match the second part of the branch name."""
     control_path = RESOURCES_DIR / "example_control_dir"
@@ -365,7 +373,10 @@ def test_test_jobname_match_branch_name_fail(
     )
 
     jobname = config.get("jobname", "")
-    error_msg = f"Jobname '{jobname}' in config does not start with the experiment name '1deg_jra_ryf' extracted from branch name '{branch_name}'"
+    if modifier:
+        error_msg = f"Jobname '{jobname}' in config does not start with the experiment name '1deg_jra_ryf' extracted from branch name '{branch_name}'"
+    else:
+        error_msg = f"Jobname '{jobname}' in config does not match the experiment name '1deg_jra_ryf' extracted from branch name '{branch_name}'"
     with pytest.raises(
         AssertionError,
         match=re.escape(error_msg),
