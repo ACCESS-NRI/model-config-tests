@@ -321,12 +321,12 @@ def test_check_allowed_config_location(
 @pytest.mark.parametrize(
     "branch_type, branch_name, config",
     [
-        ("release", "release-foo-bar", {"jobname": "foo-bar"}),
-        ("release", "release-foo-bar+wombat", {"jobname": "foo-bar"}),
-        ("release", "release-foo-bar+wombat", {"jobname": "foo-bar+wom"}),
-        ("dev", "dev-foo-bar", {"jobname": "foo-bar"}),
-        ("dev", "dev-foo-bar+wombat", {"jobname": "foo-bar"}),
-        ("dev", "dev-foo-bar+wombat", {"jobname": "foo-bar+wombat"}),
+        ("release", "release-1deg_jra_ryf", {"jobname": "1deg_jra_ryf"}),
+        ("release", "release-1deg_jra_ryf+wombat", {"jobname": "1deg_jra_ryf"}),
+        ("release", "release-1deg_jra_ryf+wombat", {"jobname": "1deg_jra_ryf+wom"}),
+        ("dev", "dev-1deg_jra_ryf", {"jobname": "1deg_jra_ryf"}),
+        ("dev", "dev-1deg_jra_ryf+wombat", {"jobname": "1deg_jra_ryf"}),
+        ("dev", "dev-1deg_jra_ryf+wombat", {"jobname": "1deg_jra_ryf+wombat"}),
     ],
 )
 def test_test_jobname_match_branch_name_pass(
@@ -346,11 +346,11 @@ def test_test_jobname_match_branch_name_pass(
 @pytest.mark.parametrize(
     "branch_type, branch_name, config",
     [
-        ("release", "release-foo-bar", {"jobname": "foo"}),
-        ("release", "release-foo-bar+wombat", {"jobname": "foo+wombat"}),
-        ("dev", "dev-foo-bar", {"jobname": "bar"}),
-        ("dev", "dev-foo-bar+wombat", {"jobname": "bar+wombat"}),
-        ("dev", "dev-foo-bar", {}),
+        ("release", "release-1deg_jra_ryf", {"jobname": "1deg_jra_iaf"}),
+        ("release", "release-1deg_jra_ryf+wombat", {"jobname": "1deg_jra+wombat"}),
+        ("dev", "dev-1deg_jra_ryf", {"jobname": "01deg_jra_ryf"}),
+        ("dev", "dev-1deg_jra_ryf+wombat", {"jobname": "1deg_jra_iaf+wombat"}),
+        ("dev", "dev-1deg_jra_ryf", {}),
     ],
 )
 def test_test_jobname_match_branch_name_fail(
@@ -365,7 +365,7 @@ def test_test_jobname_match_branch_name_fail(
     )
 
     jobname = config.get("jobname", "")
-    error_msg = f"Jobname '{jobname}' in config does not contain the experiment name 'foo-bar' extracted from branch name '{branch_name}'"
+    error_msg = f"Jobname '{jobname}' in config does not start with the experiment name '1deg_jra_ryf' extracted from branch name '{branch_name}'"
     with pytest.raises(
         AssertionError,
         match=re.escape(error_msg),

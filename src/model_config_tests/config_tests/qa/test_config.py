@@ -282,12 +282,12 @@ class TestConfig:
         branch_name = get_git_branch_name(control_path)
         prefix = f"{branch_type}-"
 
-        # ignore +modifier because job names are clipped at 15 characters by payu and in qstat
+        # ignore the branch type- and +modifier
         expt_name = branch_name.split(prefix, 1)[1].split("+", 1)[0]
 
-        assert (
-            expt_name in jobname
-        ), f"Jobname '{jobname}' in config does not contain the experiment name '{expt_name}' extracted from branch name '{branch_name}'"
+        assert jobname.startswith(
+            expt_name
+        ), f"Jobname '{jobname}' in config does not start with the experiment name '{expt_name}' extracted from branch name '{branch_name}'"
 
 
 def read_exe_manifest_fullpaths(control_path: Path):
