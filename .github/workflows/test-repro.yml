@@ -22,6 +22,10 @@ on:
         type: string
         required: true
         description: A python expression of markers to pass to the reproducibility pytests
+      walltime:
+        type: string
+        required: false
+        description: A walltime to use for the reproducibility run, default is set in model-config-tests package
       model-config-tests-version:
         type: string
         required: true
@@ -189,6 +193,7 @@ jobs:
           # Run model-config-tests pytests - this also generates checksums files.
           # If there is a checksum to compare against, add --checksum-path arg.
           model-config-tests -s -m "${{ inputs.test-markers }}" \
+            ${{ inputs.walltime != '' && format('--walltime {0} \', inputs.walltime) || '\' }}
             --target-branch "${{ inputs.compared-config-ref }}" \
             --output-path "${{ env.EXPERIMENT_LOCATION }}" \
             ${{ inputs.compared-config-ref != '' && '--checksum-path $COMPARED_CHECKSUM_FILE \' || '\' }}

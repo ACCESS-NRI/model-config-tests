@@ -52,7 +52,11 @@ def read_historical_checksums(
 
 
 def _experiments(
-    markers: list, output_path: Path, control_path: Path, keep_archive: Optional[bool]
+    markers: list,
+    output_path: Path,
+    control_path: Path,
+    keep_archive: Optional[bool],
+    walltime: Optional[str],
 ) -> Experiments:
     """
     Run all requested experiments
@@ -70,6 +74,8 @@ def _experiments(
     keep_archive: Optional[bool]
         Whether to keep the previous archive for each experiment and
         disable calls to payu run. This is used in testing.
+    walltime: Optional[str]
+        Walltime for test run job submission.
 
     Returns
     -------
@@ -102,13 +108,12 @@ def _experiments(
                 requested_experiments[exp_name]["n_runs"] = max(
                     requested_experiment["n_runs"], n_runs
                 )
-
     # Cleaning up any pre-existing historical checksums output first
     # incase there's failures in setup
     set_checksum_output_dir(output_path=output_path)
 
     print("Submitting all requested experiments")
-    experiments = Experiments(control_path, output_path, keep_archive)
+    experiments = Experiments(control_path, output_path, keep_archive, walltime)
     for exp_name, config in requested_experiments.items():
         experiments.setup_and_submit(
             exp_name=exp_name,
@@ -126,7 +131,11 @@ def _experiments(
 
 @pytest.fixture(scope="class")
 def experiments(
-    request, output_path: Path, control_path: Path, keep_archive: Optional[bool]
+    request,
+    output_path: Path,
+    control_path: Path,
+    keep_archive: Optional[bool],
+    walltime: Optional[str],
 ):
     """
     Parse the experiments markers from the requested tests and
@@ -144,7 +153,9 @@ def experiments(
             if marker:
                 experiments_markers.append(marker.args[0])
 
-    return _experiments(experiments_markers, output_path, control_path, keep_archive)
+    return _experiments(
+        experiments_markers, output_path, control_path, keep_archive, walltime
+    )
 
 
 @pytest.fixture

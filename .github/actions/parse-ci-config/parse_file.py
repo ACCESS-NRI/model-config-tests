@@ -61,12 +61,14 @@ def parse_ci_config(test_type, reference, filepath):
     python_version = get_config_value(config, test_type, reference, "python-version")
     markers = get_config_value(config, test_type, reference, "markers")
     payu_version = get_config_value(config, test_type, reference, "payu-version")
+    walltime = get_config_value(config, test_type, reference, "walltime")
 
     return {
         "model-config-tests-version": model_config_tests_version,
         "python-version": python_version,
         "markers": markers,
         "payu-version": payu_version,
+        "walltime": walltime,
     }
 
 

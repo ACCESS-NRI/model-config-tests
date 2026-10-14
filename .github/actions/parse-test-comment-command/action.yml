@@ -11,6 +11,8 @@ outputs:
     value: ${{ steps.parse.outputs.requires-commit }}
   markers:
     value: ${{ steps.parse.outputs.markers }}
+  walltime:
+    value: ${{ steps.parse.outputs.walltime }}
 runs:
   using: "composite"
   steps:
@@ -43,3 +45,4 @@ runs:
         echo "test-type: $TEST_TYPE"
         echo "requires-commit: $REQUIRES_COMMIT"
         echo "markers: $MARKERS"
+        echo "walltime: $WALLTIME"

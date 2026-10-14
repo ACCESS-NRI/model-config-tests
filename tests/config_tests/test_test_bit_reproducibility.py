@@ -97,7 +97,11 @@ def test_experiments_fixture(requested_markers, expected_experiments, tmp_path):
     ):
         # Call the experiments function
         exps = _experiments(
-            requested_markers, output_path, control_path, keep_archive=True
+            requested_markers,
+            output_path,
+            control_path,
+            keep_archive=True,
+            walltime=None,
         )
 
     # Check that expected experiments were created
@@ -136,6 +140,7 @@ def test_experiments_fixture_conflict_runtimes(tmp_path):
             tmp_path / "output",
             tmp_path / "control",
             keep_archive=True,
+            walltime=None,
         )
 
 

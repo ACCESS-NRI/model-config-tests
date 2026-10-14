@@ -67,6 +67,20 @@ class TestParseCommand:
     def test_valid_marker_strings(self, markers):
         assert parse_command(f'!test repro -m "{markers}"').markers == markers
 
+    @pytest.mark.parametrize(
+        "walltime",
+        [
+            "00:30:00",
+            "1:00:00",
+            "3600",
+            "7200",
+            "00:15:30",
+        ],
+    )
+    def test_valid_walltime_strings(self, walltime):
+        """The valid walltime should be accepted and parsed correctly"""
+        assert parse_command(f'!test repro -w "{walltime}"').walltime == walltime
+
     def test_combined_flags(self):
         args = parse_command('!test repro -c -m "slow"')
 
@@ -115,6 +129,11 @@ class TestInvalidCommands:
         """The allowlist is a security control - it must reject anything
         that could break out of the quoting in the workflow `run:` block."""
         assert_rejected(f"!test repro --markers={markers}", ValueError)
+
+    @pytest.mark.parametrize("walltime", ["", "abc", "1:2:3", "1:2", "00:10:22.33"])
+    def test_rejects_invalid_walltime_strings(self, walltime):
+        """The invalid walltime should be rejected"""
+        assert_rejected(f"!test repro --walltime={walltime}", SystemExit)
 
     @pytest.mark.parametrize("body", ['!test repro -m "slow', "!test repro -m slow\\"])
     def test_rejects_malformed_quoting(self, body):
