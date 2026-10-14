@@ -82,6 +82,13 @@ def keep_archive(request):
     return request.config.getoption("--keep-archive")
 
 
+@pytest.fixture(scope="session")
+def walltime(request):
+    """Set walltime for test run job submission. If not provided, defaults to 00:30:00.
+    Can be in HH:MM:SS format or numeric seconds."""
+    return request.config.getoption("--walltime")
+
+
 # Set up command line options and default for directory paths
 def pytest_addoption(parser):
     """Attaches optional command line arguments"""
@@ -111,6 +118,13 @@ def pytest_addoption(parser):
         "--keep-archive",
         action="store_true",
         help="Keep archive from previous test run and disable running payu",
+    )
+
+    parser.addoption(
+        "--walltime",
+        action="store",
+        default="",
+        help="Walltime for test run job submission (HH:MM:SS or numeric seconds). Defaults to 00:30:00 if not provided",
     )
 
 

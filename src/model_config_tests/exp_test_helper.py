@@ -16,6 +16,8 @@ import yaml
 from model_config_tests.models import index as model_index
 from model_config_tests.util import wait_for_qsub
 
+DEFAULT_WALLTIME = "00:30:00"  # Default walltime for test runs (30 minutes)
+
 
 class ExpTestHelper:
     """
@@ -38,6 +40,7 @@ class ExpTestHelper:
         lab_path: Path,
         disable_payu_run: Optional[bool] = False,
         exp_name: Optional[str] = None,
+        walltime: Optional[str] = None,
     ):
 
         if exp_name:
@@ -62,6 +65,8 @@ class ExpTestHelper:
         self.set_model()
 
         self.disable_payu_run = disable_payu_run
+
+        self.walltime = walltime or DEFAULT_WALLTIME
 
         self.run_id = None
 
@@ -185,8 +190,8 @@ but `payu setup` will take longer to run as it needs to re-calculate all the md5
         # Disable git runlog
         doc["runlog"] = False
 
-        # Reduce walltime for test runs to 30 minutes to prevent jobs hanging
-        doc["walltime"] = "00:30:00"
+        # Set walltime for test runs (configurable, defaults to 30 minutes to prevent jobs hanging)
+        doc["walltime"] = self.walltime
 
         # Disable metadata and set override experiment name for work/archive
         # directories
@@ -320,6 +325,8 @@ class Experiments:
         for the test experiments
     keep_archive: bool
         Whether to keep previous test output. This is useful for testing
+    walltime: str
+        Walltime for test run job submission. If not provided, defaults to 00:30:00 in setup_for_test_run.
     """
 
     def __init__(
@@ -327,12 +334,14 @@ class Experiments:
         control_path: Path,
         output_path: Path,
         keep_archive: Optional[bool] = False,
+        walltime: Optional[str] = None,
     ):
         self.control_path = control_path
         self.output_path = output_path
         self.keep_archive = keep_archive
         self.experiments = {}
         self.experiment_errors = {}
+        self.walltime = walltime
 
     def setup_and_submit(
         self,
@@ -359,7 +368,11 @@ class Experiments:
         """
         # Setup experiment
         exp = setup_exp(
-            self.control_path, self.output_path, exp_name, self.keep_archive
+            self.control_path,
+            self.output_path,
+            exp_name,
+            self.keep_archive,
+            self.walltime,
         )
 
         print(f"-----Setting up experiment {exp_name}-----")
@@ -430,7 +443,11 @@ class Experiments:
 
 
 def setup_exp(
-    control_path: Path, output_path: Path, exp_name: str, keep_archive: bool = False
+    control_path: Path,
+    output_path: Path,
+    exp_name: str,
+    keep_archive: bool = False,
+    walltime: Optional[str] = None,
 ) -> ExpTestHelper:
     """
     Create a experiment by copying over a base configuration to the control
@@ -454,6 +471,7 @@ def setup_exp(
         control_path=exp_control_path,
         lab_path=exp_lab_path,
         disable_payu_run=keep_archive,
+        walltime=walltime,
     )
 
     # Remove any pre-existing archive or work directories for the experiment

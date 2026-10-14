@@ -41,6 +41,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       markers: ${{ steps.repro-config.outputs.markers }}
+      walltime: ${{ steps.repro-config.outputs.walltime }}
       payu-version: ${{ steps.repro-config.outputs.payu-version }}
       model-config-tests-version: ${{ steps.repro-config.outputs.model-config-tests-version }}
     steps:
@@ -98,6 +99,8 @@ jobs:
       commit-requested: ${{ steps.args.outputs.requires-commit }}
       # A pytest marker string to override the config in ci.json
       markers: ${{ steps.args.outputs.markers }}
+      # Walltime for test run job submission from the !test command
+      walltime: ${{ steps.args.outputs.walltime }}
       # TODO: Make this an input to the command when we start deploying to multiple targets
       environment-name: Gadi
     permissions:
@@ -155,6 +158,7 @@ jobs:
       model-config-tests-version: ${{ needs.ci-config.outputs.model-config-tests-version }}
       test-markers: ${{ needs.prepare-command.outputs.markers || needs.ci-config.outputs.markers }}
       run-context: pr${{ github.event.issue.number }}
+      walltime: ${{ needs.prepare-command.outputs.walltime }}
     secrets: inherit
     permissions:
       contents: write

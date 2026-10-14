@@ -14,6 +14,15 @@ def pytest_marker_string(marker: str) -> str:
     return marker
 
 
+def walltime_string(walltime: str) -> str:
+    # Walltime can be in HH:MM:SS format or numeric seconds with one or more digits.
+    if not re.fullmatch(r"(\d{1,2}:\d{2}:\d{2}|\d+)", walltime):
+        raise argparse.ArgumentTypeError(
+            f"The walltime '{walltime}' is not valid. Use HH:MM:SS format or numeric seconds."
+        )
+    return walltime
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Parse !test comment command.")
 
@@ -26,6 +35,13 @@ def build_parser() -> argparse.ArgumentParser:
         "--markers",
         type=pytest_marker_string,
         help="Pytest markers string to override ci.json",
+        default="",
+    )
+    parser.add_argument(
+        "-w",
+        "--walltime",
+        type=walltime_string,
+        help="Walltime for test run job submission (HH:MM:SS or numeric seconds)",
         default="",
     )
     return parser
@@ -53,6 +69,7 @@ def format_outputs(args: argparse.Namespace) -> str:
         # We want the outputs to have yaml bools rather than python ones, for GitHub Actions
         f"requires-commit={'true' if args.commit else 'false'}\n"
         f"markers={args.markers}\n"
+        f"walltime={args.walltime}\n"
     )
 
 
