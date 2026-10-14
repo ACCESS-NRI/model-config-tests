@@ -4,6 +4,9 @@
 import json
 import subprocess as sp
 import time
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Optional
 
 # Time related constants
 MINUTE_IN_SECONDS = 60
@@ -11,113 +14,153 @@ HOUR_IN_SECONDS = MINUTE_IN_SECONDS * 60
 DAY_IN_SECONDS = HOUR_IN_SECONDS * 24
 
 
-class JobInfoCache:
-    """Singleton class to store PBS job information"""
-
-    _instance = None
-    _cache = {}
-
-    def __new__(cls):
-        if cls._instance is None:
-            cls._instance = super().__new__(cls)
-        return cls._instance
-
-    def get(self):
-        return self._cache
-
-    def set(self, job_info):
-        self._cache = job_info
-
-    def clear(self):
-        self._cache.clear()
-
-
-def qstat_all_jobs() -> dict:
+def payu_status_json(
+    control_path: Path,
+    lab_path: Path,
+    run_number: Optional[int] = None,
+    update: bool = False,
+) -> dict:
     """
-    Query PBS scheduler for all job information (including queued and
-    finished jobs)
-
-    Returns
-    -------
-    dict
-        A dictionary containing the qstat output in json format
-    """
-    try:
-        qstat_out = sp.run(
-            ["qstat", "-x", "-f", "-F", "json"],
-            capture_output=True,
-            text=True,
-            check=True,
-        )
-    except sp.CalledProcessError as e:
-        raise RuntimeError(f"qstat command failed: {e}")
-
-    return json.loads(qstat_out.stdout)
-
-
-def extract_job_info(qstat_json: dict) -> dict:
-    """
-    Extract job information from qstat json output. Full output can be
-    reasonably large, so only keeping some key fields (e.g. job_state)
-    """
-    if "Jobs" not in qstat_json or len(qstat_json["Jobs"]) == 0:
-        raise RuntimeError("No jobs found in qstat output")
-
-    jobs = qstat_json["Jobs"]
-    job_info = {}
-    for job_id, info in jobs.items():
-        if "job_state" not in info:
-            raise RuntimeError(
-                f"job_state not found in qstat output for job ID: {job_id}"
-            )
-        job_info[job_id] = {
-            "job_state": info["job_state"],
-            "Exit_status": info.get("Exit_status", None),
-            # "Resource_List": info.get("Resource_List", {}),
-            # "resources_used": info.get("resources_used", {}),
-        }
-    return job_info
-
-
-def wait_for_qsub(run_id) -> dict:
-    """
-    Wait for the qsub job to terminate.
+    Run `payu status --json` for the experiment in the given control
+    directory, and return the parsed JSON output. This is a machine-readable
+    interface for querying job IDs and experiment run status, rather than
+    parsing payu stdout/log files.
 
     Parameters
     ----------
-    run_id : str
-        The job ID of the qsub job to wait for.
+    control_path: Path
+        The path to the payu control directory
+    lab_path: Path
+        The path to the payu lab directory
+    run_number: int
+        Only query information for the given run number. If None, query the
+        latest run
+    update: bool
+        Update the job files with the latest data from the scheduler before
+        returning the status
 
     Returns
     -------
     dict
-        A dictionary containing partial job information
+        The parsed JSON output of `payu status`
     """
-    job_info_cache = JobInfoCache()
+    status_cmd = ["payu", "status", "--lab", str(lab_path), "--json"]
+    if update:
+        status_cmd.append("--update")
+    if run_number is not None:
+        status_cmd.extend(["-n", str(run_number)])
 
-    # Check if the job is already in last qstat output and has completed
-    job_info = job_info_cache.get()
-    if run_id in job_info:
-        if job_info[run_id]["job_state"] == "F":
-            return job_info[run_id]
+    # Use subprocess to run payu status in the experiment control directory
+    result = sp.run(status_cmd, capture_output=True, text=True, cwd=control_path)
 
-    # Wait for job
+    if result.returncode != 0:
+        raise RuntimeError(
+            f"Fail to check job status with command: {' '.join(status_cmd)}\n"
+            f"Return code: {result.returncode}\n"
+            f"--- stdout ---\n{result.stdout}\n"
+            f"--- stderr ---\n{result.stderr}"
+        )
+
+    stdout = result.stdout
+    json_output = stdout[stdout.index("{") :]
+    return json.loads(json_output)
+
+
+def wait_for_run_job(control_path: Path, lab_path: Path, run_number: int) -> dict:
+    """
+    Call `payu status --json` until the run job for the given run number has
+    an exit code.
+    Return job information if exit code and model exit code are both zero,
+    otherwise raise a RuntimeError.
+
+    Parameters
+    ----------
+    control_path: Path
+        The path to the payu control directory
+    lab_path: Path
+        The path to the payu lab directory
+    run_number: int
+        The run number of the run job to wait for
+    """
+    # Call payu status without update first
+    status_data = payu_status_json(
+        control_path, lab_path, run_number=run_number, update=False
+    )
+    previous_stage = None
+
     while True:
+        run_jobs = status_data.get("runs", {}).get(str(run_number), {}).get("run")
+        if not run_jobs:
+            raise RuntimeError(
+                f"No run job information found for run number {run_number} "
+                f"in payu status output: {status_data}"
+            )
+
+        run_info = run_jobs[-1]
+        exit_status = run_info.get("exit_status", None)
+
+        # If stage is changed, print a message to the user
+        stage = run_info.get("stage", None)
+        job_id = run_info.get("job_id")
+        if previous_stage != stage:
+            previous_stage = stage
+            timestamp = datetime.now(timezone.utc).strftime("UTC %Y-%m-%d %H:%M:%S")
+            print(
+                f"[{timestamp}]: Job {job_id} for run {run_number} stage changed to '{stage}'."
+            )
+
+        # If exit_status exists,
+        # return run_info if both exit_status and model_exit_status are zero,
+        # otherwise raise a RuntimeError.
+        if exit_status is not None:
+            model_exit_status = run_info.get("model_exit_status", None)
+
+            if exit_status == 0 and model_exit_status == 0:
+                return run_info
+
+            raise RuntimeError(
+                f"Payu run job failed for run number {run_number}:\n"
+                f"Job ID: {job_id}\n"
+                f"Stage: {stage}\n"
+                f"Exit status: {exit_status}\n"
+                f"Model exit status: {model_exit_status}\n"
+                f"Output Log: {run_info.get('stdout_file')}\n"
+                f"Error Log: {run_info.get('stderr_file')}\n"
+            )
+
+        # Wait for a minute if no exit_status yet
         time.sleep(MINUTE_IN_SECONDS)
-        # Query qstat for all jobs and save output to qstat_output_cache
-        qstat_json = qstat_all_jobs()
-        job_info = extract_job_info(qstat_json)
 
-        if run_id not in job_info:
-            raise RuntimeError(f"Job ID {run_id} not found in qstat output")
+        # Call payu status --update
+        status_data = payu_status_json(
+            control_path, lab_path, run_number=run_number, update=True
+        )
 
-        # Update the job info cache
-        job_info_cache.set(job_info)
 
-        if job_info[run_id]["job_state"] == "F":
-            return job_info[run_id]
+def get_latest_run_info(status_data: dict) -> tuple:
+    """
+    Return the (run_number, run job info) for the latest run in
+    `payu status --json` output.
 
-        # TODO: Are there other job states should check for?
+    Parameters
+    ----------
+    status_data: dict
+        The parsed JSON output of `payu status`
+    """
+    runs = status_data.get("runs", {})
+    if not runs:
+        raise RuntimeError(
+            f"No run information found in payu status output: {status_data}"
+        )
+
+    latest_run_number = max(int(run_number) for run_number in runs.keys())
+    run_jobs = runs[str(latest_run_number)].get("run")
+    if not run_jobs:
+        raise RuntimeError(
+            f"No run job information found for run number {latest_run_number} "
+            f"in payu status output: {status_data}"
+        )
+    return latest_run_number, run_jobs[-1]
 
 
 def get_git_branch_name(path):
