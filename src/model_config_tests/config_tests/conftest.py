@@ -84,7 +84,7 @@ def keep_archive(request):
 
 @pytest.fixture(scope="session")
 def walltime(request):
-    """Set walltime for test run job submission. If not provided, defaults to 00:30:00.
+    """Set walltime for test run job submission. If not provided, defaults to DEFAULT_WALLTIME.
     Can be in HH:MM:SS format or numeric seconds."""
     return request.config.getoption("--walltime")
 
@@ -124,7 +124,7 @@ def pytest_addoption(parser):
         "--walltime",
         action="store",
         default="",
-        help="Walltime for test run job submission (HH:MM:SS or numeric seconds). Defaults to 00:30:00 if not provided",
+        help="Walltime for test run job submission (HH:MM:SS or numeric seconds). Defaults to DEFAULT_WALLTIME if not provided",
     )
 
 

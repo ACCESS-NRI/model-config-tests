@@ -25,7 +25,7 @@ on:
       walltime:
         type: string
         required: false
-        description: A walltime to use for the reproducibility run, default is 00:30:00
+        description: A walltime to use for the reproducibility run, default is set in model-config-tests package
       model-config-tests-version:
         type: string
         required: true

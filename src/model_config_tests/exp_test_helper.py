@@ -326,7 +326,7 @@ class Experiments:
     keep_archive: bool
         Whether to keep previous test output. This is useful for testing
     walltime: str
-        Walltime for test run job submission. If not provided, defaults to 00:30:00 in setup_for_test_run.
+        Walltime for test run job submission. If not provided, defaults to DEFAULT_WALLTIME.
     """
 
     def __init__(

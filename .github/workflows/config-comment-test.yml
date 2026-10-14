@@ -158,7 +158,7 @@ jobs:
       model-config-tests-version: ${{ needs.ci-config.outputs.model-config-tests-version }}
       test-markers: ${{ needs.prepare-command.outputs.markers || needs.ci-config.outputs.markers }}
       run-context: pr${{ github.event.issue.number }}
-      walltime: ${{ needs.prepare-command.outputs.walltime }}
+      walltime: ${{ needs.prepare-command.outputs.walltime || needs.ci-config.outputs.walltime }}
     secrets: inherit
     permissions:
       contents: write
