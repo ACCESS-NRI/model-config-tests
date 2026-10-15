@@ -335,12 +335,9 @@ def test_test_jobname_match_branch_name_pass(
     """Test that the jobname in the config matches the second part of the branch name."""
     control_path = RESOURCES_DIR / "example_control_dir"
 
-    monkeypatch.setattr(
-        "model_config_tests.config_tests.qa.test_config.get_git_branch_name",
-        Mock(return_value=branch_name),
+    checker.test_jobname_match_branch_name(
+        config, control_path, branch_type, branch_name
     )
-
-    checker.test_jobname_match_branch_name(config, control_path, branch_type)
 
 
 @pytest.mark.parametrize(
@@ -367,11 +364,6 @@ def test_test_jobname_match_branch_name_fail(
     """Test that the jobname in the config does not match the second part of the branch name."""
     control_path = RESOURCES_DIR / "example_control_dir"
 
-    monkeypatch.setattr(
-        "model_config_tests.config_tests.qa.test_config.get_git_branch_name",
-        Mock(return_value=branch_name),
-    )
-
     jobname = config.get("jobname", "")
     if modifier:
         error_msg = f"Jobname '{jobname}' in config does not start with the experiment name '1deg_jra_ryf' extracted from branch name '{branch_name}'"
@@ -381,7 +373,9 @@ def test_test_jobname_match_branch_name_fail(
         AssertionError,
         match=re.escape(error_msg),
     ):
-        checker.test_jobname_match_branch_name(config, control_path, branch_type)
+        checker.test_jobname_match_branch_name(
+            config, control_path, branch_type, branch_name
+        )
 
 
 @pytest.mark.parametrize(
@@ -397,29 +391,21 @@ def test_test_jobname_match_branch_name_cloned(
     """Use some real config to test the functionality of test_jobname_match_branch_name."""
     branch_name, config_dir = isolated_config(config_name)
 
-    monkeypatch.setattr(
-        "model_config_tests.config_tests.qa.test_config.get_git_branch_name",
-        Mock(return_value=branch_name),
-    )
-
     # Load the config.yaml from the isolated configuration
     config_path = config_dir / "config.yaml"
     with open(config_path) as f:
         config = yaml.safe_load(f)
 
-    checker.test_jobname_match_branch_name(config, config, branch_type)
+    checker.test_jobname_match_branch_name(config, config, branch_type, branch_name)
 
 
 def test_test_jobname_match_branch_name_released_esm15(checker, monkeypatch):
     """Test with the config.yaml from release ACCESS-ESM1.5 in the resources directory."""
-    monkeypatch.setattr(
-        "model_config_tests.config_tests.qa.test_config.get_git_branch_name",
-        Mock(return_value="release-historical+concentrations"),
-    )
-
     # Load the config.yaml from the isolated configuration
     config_path = RESOURCES_DIR / "access" / "config.yaml"
     with open(config_path) as f:
         config = yaml.safe_load(f)
 
-    checker.test_jobname_match_branch_name(config, config, "release")
+    checker.test_jobname_match_branch_name(
+        config, config, "release", target_branch="release-historical+concentrations"
+    )
