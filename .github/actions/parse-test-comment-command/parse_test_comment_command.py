@@ -72,7 +72,7 @@ def format_outputs(args: argparse.Namespace) -> str:
         # We want the outputs to have yaml bools rather than python ones, for GitHub Actions
         f"requires-commit={'true' if args.commit else 'false'}\n"
         f"markers={args.markers}\n"
-        f"walltime={args.walltime}\n"
+        f"walltime={args.walltime if args.walltime is not None else ''}\n"
     )
 
 
