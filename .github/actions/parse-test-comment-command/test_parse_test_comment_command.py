@@ -75,6 +75,7 @@ class TestParseCommand:
             "3600",
             "7200",
             "00:15:30",
+            "",
         ],
     )
     def test_valid_walltime_strings(self, walltime):
@@ -130,7 +131,7 @@ class TestInvalidCommands:
         that could break out of the quoting in the workflow `run:` block."""
         assert_rejected(f"!test repro --markers={markers}", ValueError)
 
-    @pytest.mark.parametrize("walltime", ["", "abc", "1:2:3", "1:2", "00:10:22.33"])
+    @pytest.mark.parametrize("walltime", ["abc", "1:2:3", "1:2", "00:10:22.33"])
     def test_rejects_invalid_walltime_strings(self, walltime):
         """The invalid walltime should be rejected"""
         assert_rejected(f"!test repro --walltime={walltime}", SystemExit)

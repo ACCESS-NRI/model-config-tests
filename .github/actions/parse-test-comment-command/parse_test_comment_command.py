@@ -15,7 +15,9 @@ def pytest_marker_string(marker: str) -> str:
 
 
 def walltime_string(walltime: str) -> str:
-    # Walltime can be in HH:MM:SS format or numeric seconds with one or more digits.
+    # Walltime can be empty string (by default) or in HH:MM:SS format or numeric seconds with one or more digits.
+    if walltime == "":
+        return walltime
     if not re.fullmatch(r"(\d{1,2}:\d{2}:\d{2}|\d+)", walltime):
         raise argparse.ArgumentTypeError(
             f"The walltime '{walltime}' is not valid. Use HH:MM:SS format or numeric seconds."
