@@ -2,6 +2,7 @@ import argparse
 import os
 import re
 import shlex
+from typing import Optional
 
 COMMAND_PREFIX = "!test"
 
@@ -14,10 +15,10 @@ def pytest_marker_string(marker: str) -> str:
     return marker
 
 
-def walltime_string(walltime: str) -> str:
-    # Walltime can be empty string (by default) or in HH:MM:SS format or numeric seconds with one or more digits.
-    if walltime == "":
-        return walltime
+def walltime_string(walltime: Optional[str]) -> Optional[str]:
+    # Walltime can be None, in (H)H:MM:SS format or numeric seconds with one or more digits.
+    if walltime is None:
+        return None
     if not re.fullmatch(r"(\d{1,2}:\d{2}:\d{2}|\d+)", walltime):
         raise argparse.ArgumentTypeError(
             f"The walltime '{walltime}' is not valid. Use HH:MM:SS format or numeric seconds."
@@ -44,7 +45,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--walltime",
         type=walltime_string,
         help="Walltime for test run job submission (HH:MM:SS or numeric seconds)",
-        default="",
+        default=None,
     )
     return parser
 

@@ -132,6 +132,77 @@ from parse_file import get_config_value, parse_ci_config
             "payu-version",
             "1.0.0",
         ),
+        # Test when walltime is set for reference
+        (
+            {
+                "reproducibility": {
+                    "branch_name_1": {
+                        "walltime": "2:30:00",
+                    },
+                    "default": {
+                        "walltime": "1:00:00",
+                    },
+                },
+                "default": {
+                    "walltime": "2:00:00",
+                },
+            },
+            "reproducibility",
+            "branch_name_1",
+            "walltime",
+            "2:30:00",
+        ),
+        # Test when walltime is not set for reference but set in test default
+        (
+            {
+                "reproducibility": {
+                    "default": {
+                        "walltime": "2:00:00",
+                    }
+                },
+                "default": {
+                    "walltime": "3:00:00",
+                },
+            },
+            "reproducibility",
+            "branch_name_1",
+            "walltime",
+            "2:00:00",
+        ),
+        # Test when walltime is not found in test_type and reference
+        (
+            {
+                "reproducibility": {
+                    "default": {
+                        "markers": "default-repro",
+                    }
+                },
+                "default": {
+                    "walltime": "3:00:00",
+                },
+            },
+            "reproducibility",
+            "branch_name_1",
+            "walltime",
+            "3:00:00",
+        ),
+        # Test when walltime is not set anywhere (should return None or not present)
+        (
+            {
+                "reproducibility": {
+                    "default": {
+                        "markers": "default-repro",
+                    }
+                },
+                "default": {
+                    "payu-version": "2.0.0",
+                },
+            },
+            "reproducibility",
+            "branch_name_1",
+            "walltime",
+            None,
+        ),
     ],
 )
 def test_get_config_value(config, test_type, reference, key, expected):
@@ -144,6 +215,7 @@ def sample_config():
         "reproducibility": {
             "release-1deg_jra55_ryf": {
                 "markers": "repro or repro_slow",
+                "walltime": "2:00:00",
             },
             "dev-branch-.*": {
                 "payu-version": "2.0.0",
@@ -185,6 +257,7 @@ def test_parse_ci_config(sample_config, tmp_path):
         "python-version": "3.10",
         "markers": "repro or repro_slow",
         "payu-version": "2.0.0",
+        "walltime": "2:00:00",
     }
 
     result = parse_ci_config("reproducibility", "dev-branch-2", config_file)
@@ -193,4 +266,5 @@ def test_parse_ci_config(sample_config, tmp_path):
         "python-version": "3.10",
         "markers": "default-repro",
         "payu-version": "2.0.0",
+        "walltime": None,
     }
