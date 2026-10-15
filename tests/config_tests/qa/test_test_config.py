@@ -1,3 +1,4 @@
+import re
 import shlex
 import shutil
 import subprocess
@@ -315,3 +316,96 @@ def test_check_allowed_config_location(
     else:
         filter_fps = check_allowed_config_location(fullpaths, branch_type)
         assert filter_fps == expected_fullpaths
+
+
+@pytest.mark.parametrize(
+    "branch_type, branch_name, config",
+    [
+        ("release", "release-1deg_jra_ryf", {"jobname": "1deg_jra_ryf"}),
+        ("release", "release-1deg_jra_ryf+wombat", {"jobname": "1deg_jra_ryf"}),
+        ("release", "release-1deg_jra_ryf+wombat", {"jobname": "1deg_jra_ryf+wom"}),
+        ("dev", "dev-1deg_jra_ryf", {"jobname": "1deg_jra_ryf"}),
+        ("dev", "dev-1deg_jra_ryf+wombat", {"jobname": "1deg_jra_ryf"}),
+        ("dev", "dev-1deg_jra_ryf+wombat", {"jobname": "1deg_jra_ryf+wombat"}),
+    ],
+)
+def test_test_jobname_match_branch_name_pass(
+    checker, monkeypatch, branch_type, branch_name, config
+):
+    """Test that the jobname in the config matches the second part of the branch name."""
+    control_path = RESOURCES_DIR / "example_control_dir"
+
+    checker.test_jobname_match_branch_name(
+        config, control_path, branch_type, branch_name
+    )
+
+
+@pytest.mark.parametrize(
+    "branch_type, branch_name, config, modifier",
+    [
+        ("release", "release-1deg_jra_ryf", {"jobname": "1deg_jra_iaf"}, False),
+        ("release", "release-1deg_jra_ryf", {"jobname": "01deg_jra_ryf"}, False),
+        ("release", "release-1deg_jra_ryf", {"jobname": "1deg_jra_ryf+wombat"}, False),
+        (
+            "release",
+            "release-1deg_jra_ryf+wombat",
+            {"jobname": "1deg_jra+wombat"},
+            True,
+        ),
+        ("release", "release-1deg_jra_ryf+wombat", {"jobname": "1deg_jra_iaf"}, True),
+        ("dev", "dev-1deg_jra_ryf", {"jobname": "01deg_jra_ryf"}, False),
+        ("dev", "dev-1deg_jra_ryf+wombat", {"jobname": "1deg_jra_iaf+wombat"}, True),
+        ("dev", "dev-1deg_jra_ryf", {}, False),
+    ],
+)
+def test_test_jobname_match_branch_name_fail(
+    checker, monkeypatch, branch_type, branch_name, config, modifier
+):
+    """Test that the jobname in the config does not match the second part of the branch name."""
+    control_path = RESOURCES_DIR / "example_control_dir"
+
+    jobname = config.get("jobname", "")
+    if modifier:
+        error_msg = f"Jobname '{jobname}' in config does not start with the experiment name '1deg_jra_ryf' extracted from branch name '{branch_name}'"
+    else:
+        error_msg = f"Jobname '{jobname}' in config does not match the experiment name '1deg_jra_ryf' extracted from branch name '{branch_name}'"
+    with pytest.raises(
+        AssertionError,
+        match=re.escape(error_msg),
+    ):
+        checker.test_jobname_match_branch_name(
+            config, control_path, branch_type, branch_name
+        )
+
+
+@pytest.mark.parametrize(
+    "config_name, branch_type",
+    [
+        ("om2-025deg", "release"),
+        ("esm1p6-piCtrl", "release"),
+    ],
+)
+def test_test_jobname_match_branch_name_cloned(
+    checker, monkeypatch, isolated_config, config_name, branch_type
+):
+    """Use some real config to test the functionality of test_jobname_match_branch_name."""
+    branch_name, config_dir = isolated_config(config_name)
+
+    # Load the config.yaml from the isolated configuration
+    config_path = config_dir / "config.yaml"
+    with open(config_path) as f:
+        config = yaml.safe_load(f)
+
+    checker.test_jobname_match_branch_name(config, config, branch_type, branch_name)
+
+
+def test_test_jobname_match_branch_name_released_esm15(checker, monkeypatch):
+    """Test with the config.yaml from release ACCESS-ESM1.5 in the resources directory."""
+    # Load the config.yaml from the isolated configuration
+    config_path = RESOURCES_DIR / "access" / "config.yaml"
+    with open(config_path) as f:
+        config = yaml.safe_load(f)
+
+    checker.test_jobname_match_branch_name(
+        config, config, "release", target_branch="release-historical+concentrations"
+    )

@@ -272,6 +272,37 @@ class TestConfig:
             + "If set, branching in payu would not work."
         )
 
+    def test_jobname_match_branch_name(
+        self, config, control_path, branch_type, target_branch
+    ):
+        """Check that jobname in config.yaml *contains* the scenario part of the branch name.
+        Scenario part is after "release-"/"dev-" and before the modifier (+wombatlite).
+        It is optional for jobname to contain the modifier, but required to contain the scenario part.
+        """
+        jobname = config.get("jobname", "")
+
+        # Use the target branch name if provided, otherwise get the current branch name
+        branch_name = target_branch
+        if branch_name is None:
+            branch_name = get_git_branch_name(control_path)
+
+        prefix = f"{branch_type}-"
+
+        # ignore the branch type- and +modifier
+        expt_name = branch_name.split(prefix, 1)[1].split("+", 1)[0]
+
+        if "+" not in branch_name:
+            # When no modifer is in branch name, jobname must match the scenario part
+            assert (
+                jobname == expt_name
+            ), f"Jobname '{jobname}' in config does not match the experiment name '{expt_name}' extracted from branch name '{branch_name}'"
+
+        else:
+            # When modifer is presented, jobname must start with the scenario part
+            assert jobname.startswith(
+                expt_name
+            ), f"Jobname '{jobname}' in config does not start with the experiment name '{expt_name}' extracted from branch name '{branch_name}'"
+
 
 def read_exe_manifest_fullpaths(control_path: Path):
     """Return the full paths to the executables in the executable manifest file"""
