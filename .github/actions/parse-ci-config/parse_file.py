@@ -68,7 +68,7 @@ def parse_ci_config(test_type, reference, filepath):
         "python-version": python_version,
         "markers": markers,
         "payu-version": payu_version,
-        "walltime": walltime,
+        "walltime": walltime if walltime is not None else "",  # Return empty string if walltime is None
     }
 
 

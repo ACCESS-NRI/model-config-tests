@@ -81,10 +81,19 @@ class TestParseCommand:
         """The valid walltime should be accepted and parsed correctly"""
         assert parse_command(f'!test repro -w "{walltime}"').walltime == walltime
 
+    def test_walltime_none(self):
+        """The walltime should be None if not specified"""
+        assert parse_command("!test repro").walltime is None
+
     def test_combined_flags(self):
         args = parse_command('!test repro -c -m "slow"')
 
-        assert (args.test_type, args.commit, args.markers) == ("repro", True, "slow")
+        assert (args.test_type, args.commit, args.markers, args.walltime) == (
+            "repro",
+            True,
+            "slow",
+            None,
+        )
 
     def test_only_first_line_is_parsed(self):
         """Trailing lines are prose, and must not be able to inject arguments."""
@@ -113,6 +122,7 @@ class TestInvalidCommands:
             "!test repro extra-positional",
             "!test repro --unknown-flag",
             "!test repro -m",
+            "!test repro -w=''",
         ],
     )
     def test_rejects_invalid_args(self, body):
@@ -144,7 +154,10 @@ class TestFormatOutputs:
     def test_output_lines(self):
         outputs = format_outputs(parse_command('!test repro -c -m "slow"'))
 
-        assert outputs == "test-type=repro\nrequires-commit=true\nmarkers=slow\n"
+        assert (
+            outputs
+            == "test-type=repro\nrequires-commit=true\nmarkers=slow\nwalltime=\n"
+        )
 
     def test_commit_is_rendered_as_yaml_bool(self):
         """GitHub Actions expressions compare against the strings
@@ -161,11 +174,22 @@ class TestFormatOutputs:
         value could forge additional GITHUB_OUTPUT entries."""
         outputs = format_outputs(parse_command('!test repro -m "slow and not flaky"'))
 
-        assert len(outputs.strip().splitlines()) == 3
+        assert len(outputs.strip().splitlines()) == 4
 
 
 class TestMain:
     def test_writes_github_output_file(self, tmp_path, monkeypatch):
+        output_file = tmp_path / "github_output"
+        monkeypatch.setenv("COMMAND_BODY", '!test repro -c -m "slow" -w 1:00:00')
+        monkeypatch.setenv("GITHUB_OUTPUT", str(output_file))
+
+        main()
+
+        assert output_file.read_text() == (
+            "test-type=repro\nrequires-commit=true\nmarkers=slow\nwalltime=1:00:00\n"
+        )
+
+    def test_writes_github_output_file_optional_args(self, tmp_path, monkeypatch):
         output_file = tmp_path / "github_output"
         monkeypatch.setenv("COMMAND_BODY", '!test repro -c -m "slow"')
         monkeypatch.setenv("GITHUB_OUTPUT", str(output_file))
@@ -173,7 +197,7 @@ class TestMain:
         main()
 
         assert output_file.read_text() == (
-            "test-type=repro\nrequires-commit=true\nmarkers=slow\n"
+            "test-type=repro\nrequires-commit=true\nmarkers=slow\nwalltime=\n"
         )
 
     def test_appends_to_existing_github_output(self, tmp_path, monkeypatch):
