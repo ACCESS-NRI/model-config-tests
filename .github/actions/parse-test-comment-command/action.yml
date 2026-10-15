@@ -41,6 +41,7 @@ runs:
         TEST_TYPE: ${{ steps.parse.outputs.test-type }}
         REQUIRES_COMMIT: ${{ steps.parse.outputs.requires-commit }}
         MARKERS: ${{ steps.parse.outputs.markers }}
+        WALLTIME: ${{ steps.parse.outputs.walltime }}
       run: |
         echo "test-type: $TEST_TYPE"
         echo "requires-commit: $REQUIRES_COMMIT"

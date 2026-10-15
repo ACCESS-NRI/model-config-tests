@@ -20,6 +20,9 @@ outputs:
   markers:
     value: ${{ steps.read-config.outputs.markers }}
     description: A python expression of markers to pass to model-config-tests pytests
+  walltime:
+    value: ${{ steps.read-config.outputs.walltime }}
+    description: The walltime used in test run jobs.
   payu-version:
     value: ${{ steps.read-config.outputs.payu-version }}
     description: The payu version used to create test virtual environment for remote tests (e.g. repro tests)
@@ -48,6 +51,7 @@ runs:
         echo "model-config-tests-version=$(jq -r '.["model-config-tests-version"]' tmp-result.json)" >> $GITHUB_OUTPUT
         echo "python-version=$(jq -r '.["python-version"]' tmp-result.json)" >> $GITHUB_OUTPUT
         echo "markers=$(jq -r '.["markers"]' tmp-result.json)" >> $GITHUB_OUTPUT
+        echo "walltime=$(jq -r '.["walltime"]' tmp-result.json)" >> $GITHUB_OUTPUT
         echo "payu-version=$(jq -r '.["payu-version"]' tmp-result.json)" >> $GITHUB_OUTPUT
 
         # Clean up result file
