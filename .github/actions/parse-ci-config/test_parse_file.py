@@ -186,7 +186,7 @@ from parse_file import get_config_value, parse_ci_config
             "walltime",
             "3:00:00",
         ),
-        # Test when walltime is not set anywhere (should return None or not present)
+        # Test when walltime is not set anywhere (should return None)
         (
             {
                 "reproducibility": {
@@ -266,5 +266,5 @@ def test_parse_ci_config(sample_config, tmp_path):
         "python-version": "3.10",
         "markers": "default-repro",
         "payu-version": "2.0.0",
-        "walltime": None,
+        "walltime": "",
     }

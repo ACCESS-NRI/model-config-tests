@@ -156,7 +156,7 @@ class TestFormatOutputs:
 
         assert (
             outputs
-            == "test-type=repro\nrequires-commit=true\nmarkers=slow\nwalltime=None\n"
+            == "test-type=repro\nrequires-commit=true\nmarkers=slow\nwalltime=\n"
         )
 
     def test_commit_is_rendered_as_yaml_bool(self):
@@ -197,7 +197,7 @@ class TestMain:
         main()
 
         assert output_file.read_text() == (
-            "test-type=repro\nrequires-commit=true\nmarkers=slow\nwalltime=None\n"
+            "test-type=repro\nrequires-commit=true\nmarkers=slow\nwalltime=\n"
         )
 
     def test_appends_to_existing_github_output(self, tmp_path, monkeypatch):
