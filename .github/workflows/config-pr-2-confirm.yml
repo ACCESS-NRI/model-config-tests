@@ -14,10 +14,41 @@ on:
 env:
   RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
 jobs:
+  permission-check:
+    name: Permission Check
+    # `!bump` results in a GPG-signed commit being pushed with a branch-protection-bypassing
+    # PAT, so the commenter must be authorized before any of that work happens.
+    if: github.event.issue.pull_request && startsWith(github.event.comment.body, '!bump')
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Determine if commenter has permission to run the command
+        id: commenter
+        uses: access-nri/actions/.github/actions/commenter-permission-check@main
+        with:
+          minimum-permission: write
+
+      - name: React to '!bump'
+        uses: access-nri/actions/.github/actions/react-to-comment@main
+        with:
+          reaction: ${{ steps.commenter.outputs.has-permission == 'true' && 'rocket' || 'confused' }}
+          token: ${{ github.token }}
+
+      - name: Fail if no permissions
+        if: steps.commenter.outputs.has-permission != 'true'
+        run: |
+          echo "::error::You do not have at least write permissions on this repository."
+          exit 1
+
   bump-version:
     name: Bump metadata.yaml
     # Bump the `metadata.yaml` file if the comment is made on a PR and starts with '!bump'
     if: github.event.issue.pull_request && startsWith(github.event.comment.body, '!bump')
+    needs:
+      - permission-check
     runs-on: ubuntu-latest
     permissions:
       pull-requests: write
@@ -29,11 +60,6 @@ jobs:
       # The type of bump - 'major' or 'minor'
       type: ${{ steps.type.outputs.bump }}
     steps:
-      - uses: access-nri/actions/.github/actions/react-to-comment@main
-        with:
-          reaction: rocket
-          token: ${{ secrets.GITHUB_TOKEN }}
-
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
@@ -97,6 +123,7 @@ jobs:
   commit:
     name: Commit metadata.yaml and Checksum
     needs:
+      - permission-check
       - bump-version
     runs-on: ubuntu-latest
     permissions:
@@ -115,19 +142,33 @@ jobs:
         # Since the trigger for this workflow was on.issue_comment, we need
         # to do a bit more wrangling to checkout the pull request and get the branch name
         id: pr
+        env:
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
         run: |
-          gh pr checkout ${{ github.event.issue.number }}
-          echo "branch=$(git rev-parse --abbrev-ref HEAD)" >> $GITHUB_OUTPUT
+          gh pr checkout "$ISSUE_NUMBER"
+          branch=$(git rev-parse --abbrev-ref HEAD)
+
+          # The PR head branch name is attacker-controlled (it can come from a fork), and is
+          # used in the `gh run list` filter below.
+          if [[ ! "$branch" =~ ^[A-Za-z0-9._/-]+$ ]]; then
+            echo "::error::The PR head branch name '$branch' is invalid: it must match ^[A-Za-z0-9._/-]+$"
+            exit 1
+          fi
+
+          echo "branch=$branch" >> $GITHUB_OUTPUT
 
       - name: Download Newly Created Checksum
         # Given the PR branch, we need to find the latest associated workflow run
         # on this branch we can then download the associated artifact
+        env:
+          BRANCH: ${{ steps.pr.outputs.branch }}
         run: |
           associated_run=$(gh run list \
             --limit=100 \
             --json='databaseId,headBranch,updatedAt,status' \
-            --jq='[.[] | select(.headBranch == "${{ steps.pr.outputs.branch }}" and .status == "completed")] | sort_by(.updatedAt) | last | .databaseId')
-          gh run download $associated_run -D ${{ env.ARTIFACT_LOCAL_LOCATION }}
+            | jq --raw-output --arg branch "$BRANCH" \
+              '[.[] | select(.headBranch == $branch and .status == "completed")] | sort_by(.updatedAt) | last | .databaseId')
+          gh run download "$associated_run" -D "$ARTIFACT_LOCAL_LOCATION"
 
       - name: Update metadata.yaml and Checksum files
         run: |
