@@ -86,6 +86,59 @@ jobs:
     env:
       EXPERIMENT_LOCATION: ${{ vars.EXPERIMENTS_LOCATION }}/${{ github.event.repository.name }}/${{ inputs.run-context }}/${{ inputs.config-ref }}/${{ inputs.config-hash }}
     steps:
+      - name: Validate Inputs
+        # Several of these inputs (notably `config-ref`, which is a git branch name on a
+        # possibly-forked PR) are attacker-controlled, so we put them through env: and validate the inputs.
+        env:
+          CONFIG_REF: ${{ inputs.config-ref }}
+          CONFIG_HASH: ${{ inputs.config-hash }}
+          COMPARED_CONFIG_REF: ${{ inputs.compared-config-ref }}
+          RUN_CONTEXT: ${{ inputs.run-context }}
+          TEST_MARKERS: ${{ inputs.test-markers }}
+          WALLTIME: ${{ inputs.walltime }}
+          PAYU_VERSION: ${{ inputs.payu-version }}
+          MODEL_CONFIG_TESTS_VERSION: ${{ inputs.model-config-tests-version }}
+          ADDITIONAL_ARTIFACT_CONTENT_PATHS: ${{ inputs.additional-artifact-content-paths }}
+        run: |
+          invalid=false
+
+          # Shell-safe characters, deliberately excluding whitespace so that a value can
+          # never split into extra arguments
+          GENERAL='^[A-Za-z0-9._/+,:-]+$'
+          # Pytest markers are the only input that legitimately needs spaces and parens.
+          MARKERS='^[A-Za-z0-9_ ()]+$'
+
+          check() {
+            local name="$1" value="$2" pattern="${3:-$GENERAL}"
+
+            # An empty value is shell-safe, and several of these inputs are optional.
+            [[ -z "$value" ]] && return 0
+
+            if [[ ! "$value" =~ $pattern ]]; then
+              echo "::error::inputs.$name is invalid: '$value'"
+              invalid=true
+            fi
+          }
+
+          check config-ref "$CONFIG_REF"
+          check config-hash "$CONFIG_HASH"
+          check compared-config-ref "$COMPARED_CONFIG_REF"
+          check run-context "$RUN_CONTEXT"
+          check test-markers "$TEST_MARKERS" "$MARKERS"
+          check walltime "$WALLTIME"
+          check payu-version "$PAYU_VERSION"
+          check model-config-tests-version "$MODEL_CONFIG_TESTS_VERSION"
+
+          while IFS= read -r content_path; do
+            if [[ -n "$content_path" ]]; then
+              check additional-artifact-content-paths "$content_path"
+            fi
+          done <<< "$ADDITIONAL_ARTIFACT_CONTENT_PATHS"
+
+          if [ "$invalid" == "true" ]; then
+            exit 1
+          fi
+
       - name: Validate ${{ inputs.environment-name }} Variables
         run: |
           vars_unset=false
@@ -241,8 +294,13 @@ jobs:
       - name: Generate Test Output Artifact Name
         id: artifact
         # Sanitize the artifact name to remove the '/' in config-ref for automated auto/*/* configs PRs.
+        env:
+          REPOSITORY_NAME: ${{ github.event.repository.name }}
+          RUN_CONTEXT: ${{ inputs.run-context }}
+          CONFIG_REF: ${{ inputs.config-ref }}
+          CONFIG_HASH: ${{ inputs.config-hash }}
         run: |
-          artifact_name="${{ github.event.repository.name }}-${{ inputs.run-context }}-${{ inputs.config-ref }}-${{ inputs.config-hash }}"
+          artifact_name="${REPOSITORY_NAME}-${RUN_CONTEXT}-${CONFIG_REF}-${CONFIG_HASH}"
           artifact_name_sanitized=$(tr '/' '-' <<< "${artifact_name}")
           echo "name=${artifact_name_sanitized}" >> $GITHUB_OUTPUT
 
