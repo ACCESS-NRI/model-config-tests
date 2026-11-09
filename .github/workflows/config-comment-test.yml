@@ -120,22 +120,36 @@ jobs:
 
       - name: Get config ref from PR comment
         id: pr
+        env:
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
         run: |
-          gh pr checkout ${{ github.event.issue.number }}
+          gh pr checkout "$ISSUE_NUMBER"
+          ref=$(git rev-parse --abbrev-ref HEAD)
+
+          # The PR head branch name is attacker-controlled (it can come from a fork), and is
+          # used in later shell commands both here and on the deployment target.
+          if [[ ! "$ref" =~ ^[A-Za-z0-9._/-]+$ ]]; then
+            echo "::error::The PR head branch name '$ref' is invalid: it must match ^[A-Za-z0-9._/-]+$"
+            exit 1
+          fi
+
           echo "hash=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
           echo "short-hash=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
-          echo "ref=$(git rev-parse --abbrev-ref HEAD)" >> $GITHUB_OUTPUT
+          echo "ref=$ref" >> $GITHUB_OUTPUT
 
       - name: Get compared config ref
         id: compared
         # Set up a default ref
         # We need to do this roundabout way to get the source branch commit because
         # We can't access github.base_ref as this trigger is on.issue_comment
+        env:
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          PR_REF: ${{ steps.pr.outputs.ref }}
         run: |
-          ref=$(gh pr view ${{ github.event.issue.number }} --json baseRefName --jq '.baseRefName')
+          ref=$(gh pr view "$ISSUE_NUMBER" --json baseRefName --jq '.baseRefName')
           echo "Using $ref"
-          hash=$(git show-branch --merge-base origin/$ref origin/${{ steps.pr.outputs.ref }})
-          short_hash=$(git rev-parse --short $hash)
+          hash=$(git show-branch --merge-base "origin/$ref" "origin/$PR_REF")
+          short_hash=$(git rev-parse --short "$hash")
           echo "AKA $hash (shortened as $short_hash)"
 
           echo "hash=$hash" >> $GITHUB_OUTPUT
