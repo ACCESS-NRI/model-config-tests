@@ -94,6 +94,15 @@ class AccessEsm1p6Branch:
         # Regex below is essentially 'give me the 'modifier' part in all the '+modifier's in the branch name'
         return re.findall(r"\+([^+]+)", self.branch_name)
 
+    def skip_atmosphere_only_scenarios(self):
+        """Skip test if configuration is atmosphere-only. This includes
+        amip, and piClim (e.g. piClim-control, piClim-anthro, piClim-4xCO2)"""
+        if self.config_scenario == "amip" or self.config_scenario.startswith("piClim"):
+            pytest.skip(
+                "amip or piClim scenarios are atmosphere-only and "
+                + "do not include mom and cice submodels"
+            )
+
 
 @pytest.fixture(scope="class")
 def branch(control_path, target_branch):
@@ -201,8 +210,8 @@ class TestAccessEsm1p6:
         """
         Check that collation is not enabled.
         """
-        if branch.config_scenario == "amip":
-            pytest.skip("amip scenarios do not contain the MOM sub-model")
+        # Skip the test if the scenario does not include the MOM sub-model
+        branch.skip_atmosphere_only_scenarios()
 
         assert "collate" in config, error_field_nonexistence("collate", "config.yaml")
 
@@ -218,8 +227,8 @@ class TestAccessEsm1p6:
         """
         Check that io_layout set to 1,1 in MOM namelist
         """
-        if branch.config_scenario == "amip":
-            pytest.skip("amip scenarios do not contain the MOM sub-model")
+        # Skip the test if the scenario does not include the MOM sub-model
+        branch.skip_atmosphere_only_scenarios()
 
         # Find MOM sub-model control path
         model_name = None
@@ -250,8 +259,8 @@ class TestAccessEsm1p6:
     def test_cice_configuration_icefields_nml_in_ice_history_nml(
         self, branch, config, control_path
     ):
-        if branch.config_scenario == "amip":
-            pytest.skip("amip scenarios do not contain the CICE sub-model.")
+        # Skip the test if the scenario does not include the CICE sub-model
+        branch.skip_atmosphere_only_scenarios()
 
         # Find CICE sub-model control path
         model_name = None
