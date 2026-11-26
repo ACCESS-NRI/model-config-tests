@@ -218,14 +218,24 @@ It requires all the `secrets`/`vars` defined on the caller (as above), as well a
 Usage is as follows:
 
 ```txt
-!test TYPE [commit]
+!test TYPE [-c|--commit] [-m|--markers MARKERS] [-w|--walltime WALLTIME]
 ```
 
 Where `TYPE` is a test suite that we support. Currently, this consists of `repro`.
 
-The commands are all case sensitive and require lower case.
+The commands are all case sensitive and require lower case. Only the first line of the comment is read.
 
-Using `commit` as an option will commit the result of the test to the PR, provided the commenter has at least `write` permission, and the checksums differ.
+Options:
+
+- `-c`/`--commit`: commit the result of the test to the PR, provided the commenter has at least `write` permission, and the checksums differ.
+- `-m`/`--markers MARKERS`: run only the tests matching these [pytest markers](#pytest_markers), instead of the markers in the CI configuration file. Quote marker expressions that contain spaces, e.g. `-m "repro and not slow"`.
+- `-w`/`--walltime WALLTIME`: walltime for the test job, in `HH:MM:SS` format or as a number of seconds.
+
+For example:
+
+```txt
+!test repro --commit -m repro_historical -w 02:00:00
+```
 
 ##### `!test repro`
 
